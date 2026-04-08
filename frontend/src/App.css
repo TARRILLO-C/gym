@@ -1,0 +1,109 @@
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  gap: 24px;
+}
+
+.sidebar {
+  width: 280px;
+  background: var(--panel-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--panel-border);
+  padding: 32px 24px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  z-index: 100;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 280px;
+  padding: 40px;
+  max-width: 1400px;
+}
+
+@media (max-width: 1024px) {
+  .sidebar { width: 80px; padding: 32px 16px; }
+  .main-content { margin-left: 80px; }
+  .sidebar-text { display: none; }
+}
+
+@media (max-width: 768px) {
+  .app-container { flex-direction: column-reverse; }
+  .sidebar {
+    width: 100%;
+    height: 70px;
+    top: auto;
+    bottom: 0;
+    flex-direction: row;
+    padding: 0 24px;
+    justify-content: space-around;
+    align-items: center;
+    border-right: none;
+    border-top: 1px solid var(--panel-border);
+  }
+  .main-content { margin-left: 0; margin-bottom: 70px; padding: 24px; }
+}
+
+/* Common UI Components */
+.card {
+  padding: 24px;
+  background: var(--panel-bg);
+  border-radius: 20px;
+  border: 1px solid var(--panel-border);
+  transition: var(--transition-smooth);
+}
+
+.card:hover { border-color: rgba(255, 62, 62, 0.4); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  padding: 12px 24px;
+  font-weight: 600;
+  box-shadow: 0 10px 20px -5px rgba(255, 62, 62, 0.3);
+}
+
+.btn-primary:active { transform: scale(0.96); }
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-active { background: rgba(0, 255, 127, 0.1); color: #00ff7f; }
+.badge-inactive { background: rgba(255, 62, 62, 0.1); color: #ff3e3e; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 24px;
+}
+
+th {
+  text-align: left;
+  padding: 16px;
+  color: var(--text-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+td {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
