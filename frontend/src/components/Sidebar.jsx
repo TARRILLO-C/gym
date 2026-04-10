@@ -1,39 +1,57 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
   ShieldCheck, 
   CreditCard, 
   Package,
-  Dumbbell
+  Dumbbell,
+  Sun,
+  Moon,
+  LogOut,
+  Receipt
 } from 'lucide-react';
+import { ThemeContext } from '../context/ThemeContext';
 
 const Sidebar = () => {
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
+  const navigate = useNavigate();
+
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Control de Acceso', path: '/asistencia', icon: ShieldCheck },
     { name: 'Socios', path: '/socios', icon: Users },
     { name: 'Membresías', path: '/membresias', icon: CreditCard },
     { name: 'Productos', path: '/productos', icon: Package },
+    { name: 'Ventas', path: '/ventas', icon: Receipt },
   ];
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('username');
+    navigate('/login');
+  };
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="sidebar-header">
         <div style={{ 
           background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
           padding: '10px',
-          borderRadius: '12px'
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
           <Dumbbell size={24} color="white" />
         </div>
-        <h1 className="sidebar-text" style={{ fontSize: '1.5rem', fontWeight: '800' }}>
+        <h1 className="sidebar-text" style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>
           GYM<span className="text-gradient">PRO</span>
         </h1>
       </div>
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+      <nav className="sidebar-nav">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
@@ -41,32 +59,34 @@ const Sidebar = () => {
             className={({ isActive }) => 
               `nav-link ${isActive ? 'active' : ''}`
             }
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              padding: '14px 20px',
-              borderRadius: '14px',
-              textDecoration: 'none',
-              color: 'inherit',
-              transition: 'var(--transition-smooth)'
-            }}
           >
             <item.icon size={20} className="nav-icon" />
-            <span className="sidebar-text" style={{ fontWeight: '500' }}>{item.name}</span>
+            <span className="sidebar-text">{item.name}</span>
           </NavLink>
         ))}
       </nav>
 
-      <div className="sidebar-footer" style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '20px' }}>
-        <p className="sidebar-text" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          v1.0.0 Stable
-        </p>
+      <div className="sidebar-footer">
+        <button 
+          onClick={toggleTheme} 
+          className="nav-link theme-btn"
+        >
+          {isDarkMode ? <Sun size={20} className="nav-icon" /> : <Moon size={20} className="nav-icon" />}
+          <span className="sidebar-text">{isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}</span>
+        </button>
+
+        <button 
+          onClick={handleLogout} 
+          className="nav-link logout-btn"
+        >
+          <LogOut size={20} />
+          <span className="sidebar-text">Cerrar Sesión</span>
+        </button>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
         .nav-link:hover {
-          background: rgba(255, 255, 255, 0.05);
+          background: rgba(150, 150, 150, 0.1);
         }
         .nav-link.active {
           background: rgba(255, 62, 62, 0.1);
