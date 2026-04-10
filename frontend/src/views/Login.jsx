@@ -35,7 +35,7 @@ const Login = () => {
           <div className="logo-container" style={{ justifyContent: 'center' }}>
             <Dumbbell size={40} className="logo-icon text-accent" />
           </div>
-          <h1 className="text-gradient" style={{ marginTop: '15px' }}>GymPRO</h1>
+          <h1 className="text-gradient" style={{ marginTop: '15px' }}>The Jungle</h1>
           <p className="text-muted">Acceso al sistema de gestión</p>
         </div>
         

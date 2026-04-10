@@ -54,26 +54,21 @@ const Socios = () => {
     fetchSocios();
   }, []);
 
-  // Autocomplete con API Cloud
+  // Autocomplete DNI utilizando Backend Proxy
   useEffect(() => {
     const lookupDni = async () => {
-      // Solo buscar si estamos creando uno nuevo y tiene 8 dígitos
       if (formData.dni.length === 8 && !editingId) {
         setIsSearchingDni(true);
         try {
-          const response = await axios.get(`https://miapi.cloud/v1/dni/${formData.dni}`, {
-            headers: { 'Authorization': `Bearer ${API_CLOUD_TOKEN}` }
-          });
-          
-          if (response.data && response.data.success) {
-            const datos = response.data.datos || {};
+          const response = await api.get(`/consultas/dni/${formData.dni}`);
+          if (response.data && response.data.nombreCompleto) {
             setFormData(prev => ({
               ...prev,
-              nombreCompleto: `${datos.nombres || ''} ${datos.ape_paterno || ''} ${datos.ape_materno || ''}`.trim()
+              nombreCompleto: response.data.nombreCompleto
             }));
           }
         } catch (err) {
-          console.error("Error consultando DNI:", err);
+          console.error("Error consultando DNI localmente:", err);
         } finally {
           setIsSearchingDni(false);
         }
@@ -81,6 +76,7 @@ const Socios = () => {
     };
     lookupDni();
   }, [formData.dni, editingId]);
+
 
   const handleRegisterOrUpdate = async (e) => {
     e.preventDefault();

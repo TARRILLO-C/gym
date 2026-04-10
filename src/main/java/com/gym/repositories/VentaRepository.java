@@ -22,4 +22,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      * Retorna las ventas realizadas en un rango de fechas (para reportes).
      */
     List<Venta> findByFechaBetween(LocalDateTime inicio, LocalDateTime fin);
+
+    /**
+     * Obtiene la última venta de una serie específica para calcular el siguiente correlativo.
+     */
+    java.util.Optional<Venta> findFirstBySerieOrderByCorrelativoDesc(String serie);
 }

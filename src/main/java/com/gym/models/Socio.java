@@ -29,6 +29,12 @@ public class Socio {
     @Column(name = "dni", nullable = false, unique = true, length = 8)
     private String dni;
 
+    @Column(name = "ruc", length = 11, unique = true)
+    private String ruc;
+
+    @Column(name = "razon_social", length = 200)
+    private String razonSocial;
+
     @Column(name = "telefono", length = 15)
     private String telefono;
 

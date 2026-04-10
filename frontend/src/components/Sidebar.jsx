@@ -47,7 +47,7 @@ const Sidebar = () => {
           <Dumbbell size={24} color="white" />
         </div>
         <h1 className="sidebar-text" style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>
-          GYM<span className="text-gradient">PRO</span>
+          THE <span className="text-gradient">JUNGLE</span>
         </h1>
       </div>
 

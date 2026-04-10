@@ -2,7 +2,6 @@ package com.gym.controllers;
 
 import com.gym.models.DetalleVenta;
 import com.gym.models.Venta;
-import com.gym.models.Venta.MetodoPago;
 import com.gym.services.VentaService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +31,10 @@ public class VentaController {
         Venta nueva = ventaService.registrarVenta(
                 request.getSocioId(),
                 request.getMetodoPago(),
-                request.getDetalles()
+                request.getDetalles(),
+                request.getTipoComprobante(),
+                request.getClienteNombre(),
+                request.getClienteDocumento()
         );
         return new ResponseEntity<>(nueva, HttpStatus.CREATED);
     }
@@ -43,7 +45,10 @@ public class VentaController {
     @Data
     public static class VentaRequest {
         private Long socioId;
-        private MetodoPago metodoPago;
+        private Venta.MetodoPago metodoPago;
         private List<DetalleVenta> detalles;
+        private Venta.TipoComprobante tipoComprobante;
+        private String clienteNombre;
+        private String clienteDocumento;
     }
 }

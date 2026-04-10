@@ -32,7 +32,14 @@ const Productos = () => {
   });
 
   const [checkoutForm, setCheckoutForm] = useState({
-    socioId: '', metodoPago: 'EFECTIVO', numeroTarjeta: '', numeroOperacion: '', montoRecibido: ''
+    socioId: '', 
+    metodoPago: 'EFECTIVO', 
+    tipoComprobante: 'BOLETA', 
+    numeroTarjeta: '', 
+    numeroOperacion: '', 
+    montoRecibido: '',
+    clienteNombre: '',
+    clienteDocumento: ''
   });
 
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
@@ -112,6 +119,32 @@ const Productos = () => {
 
   const cartTotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
+  const [isSearchingDoc, setIsSearchingDoc] = useState(false);
+
+  const handleDocumentLookup = async () => {
+    const isFactura = checkoutForm.tipoComprobante === 'FACTURA';
+    const doc = checkoutForm.clienteDocumento || '';
+    if (doc.length === 8 && !isFactura) {
+      setIsSearchingDoc(true);
+      try {
+        const res = await api.get(`/consultas/dni/${doc}`);
+        if (res.data && res.data.nombreCompleto) {
+          setCheckoutForm(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        }
+      } catch (err) { console.error("Error dni:", err); }
+      setIsSearchingDoc(false);
+    } else if (doc.length === 11 && isFactura) {
+      setIsSearchingDoc(true);
+      try {
+        const res = await api.get(`/consultas/ruc/${doc}`);
+        if (res.data && res.data.nombreCompleto) {
+          setCheckoutForm(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        }
+      } catch (err) { console.error("Error ruc:", err); }
+      setIsSearchingDoc(false);
+    }
+  };
+
   const handleFinalizeSale = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -129,37 +162,38 @@ const Productos = () => {
       const payload = {
         socioId: checkoutForm.socioId || null,
         metodoPago: checkoutForm.metodoPago,
+        tipoComprobante: checkoutForm.tipoComprobante,
+        clienteNombre: checkoutForm.clienteNombre,
+        clienteDocumento: checkoutForm.clienteDocumento,
         referencia: checkoutForm.metodoPago === 'TARJETA' ? checkoutForm.numeroTarjeta : checkoutForm.numeroOperacion,
         detalles: cart.map(item => ({ producto: { id: item.producto.id }, cantidad: item.cantidad }))
       };
       
-      try { await api.post('/ventas', payload); } catch(ex) { console.warn("Fallback api post failed, using local format.") }
+      const resp = await api.post('/ventas', payload);
+      const ventaRealData = resp.data;
       
-      const ventaMockData = {
-        id: Math.floor(Math.random() * 100000),
-        fecha: new Date().toLocaleString(),
-        cartCopy: [...cart],
-        total: cartTotal,
-        metodo: checkoutForm.metodoPago
-      };
-      
-      setLastVentaData(ventaMockData);
+      setLastVentaData(ventaRealData);
       setCart([]);
-      setCheckoutForm({...checkoutForm, numeroTarjeta: '', numeroOperacion: '', montoRecibido: '', socioId: ''});
+      setCheckoutForm({...checkoutForm, numeroTarjeta: '', numeroOperacion: '', montoRecibido: '', socioId: '', clienteNombre: '', clienteDocumento: ''});
       setSocioSearch('');
       setShowCheckoutModal(false);
       
       setDialogConfig({
         isOpen: true,
-        type: 'confirm',
+        type: 'alert',
         title: '¡Venta Registrada con Éxito!',
-        message: 'La transacción se procesó correctamente en el sistema.',
-        btnConfirmText: 'IMPRIMIR TICKET',
-        btnCancelText: 'VOLVER A TIENDA',
-        onConfirm: () => {
-          setDialogConfig({isOpen: false});
-          setTimeout(() => window.print(), 350);
-        }
+        message: ventaRealData.enlacePdfTicket ? 'El comprobante oficial ha sido generado por SUNAT.' : 'La transacción se procesó correctamente.',
+        btnConfirmText: 'NUEVA VENTA',
+        extraContent: ventaRealData.enlacePdfTicket ? (
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+            <button onClick={() => window.open(ventaRealData.enlacePdfTicket, '_blank')} style={{ flex: 1, padding: '12px', background: 'var(--accent-primary)', color: '#fff', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>🖨️ VER TICKET (80mm)</button>
+            <button onClick={() => window.open(ventaRealData.enlacePdfA4, '_blank')} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📄 VER PDF (A4)</button>
+          </div>
+        ) : (
+          <div style={{ marginTop: '15px' }}>
+            <button onClick={() => { setDialogConfig({isOpen: false}); setTimeout(() => window.print(), 350); }} style={{ width: '100%', padding: '12px', background: 'var(--accent-secondary)', color: '#fff', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>IMPRIMIR TICKET INTERNO</button>
+          </div>
+        )
       });
       fetchData();
     } catch (err) { showAlert("Error", "Error al procesar la venta"); }
@@ -349,7 +383,15 @@ const Productos = () => {
               {socioSearch && filteredSocios.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-color)', border: '1px solid var(--panel-border)', borderRadius: '12px', zIndex: 1100, maxHeight: '150px', overflowY: 'auto' }}>
                   {filteredSocios.map(s => (
-                    <div key={s.id} onClick={() => { setCheckoutForm({...checkoutForm, socioId: s.id}); setSocioSearch(s.nombreCompleto); }} style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
+                    <div key={s.id} onClick={() => { 
+                      setCheckoutForm({
+                        ...checkoutForm, 
+                        socioId: s.id, 
+                        clienteNombre: checkoutForm.tipoComprobante === 'FACTURA' ? (s.razonSocial || s.nombreCompleto) : s.nombreCompleto,
+                        clienteDocumento: checkoutForm.tipoComprobante === 'FACTURA' ? (s.ruc || s.dni) : s.dni
+                      }); 
+                      setSocioSearch(s.nombreCompleto); 
+                    }} style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
                       {s.nombreCompleto} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({s.dni})</span>
                     </div>
                   ))}
@@ -366,6 +408,70 @@ const Productos = () => {
                 </div>
               ))}
             </div>
+
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tipo de Comprobante</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '10px', marginBottom: '24px' }}>
+              {[
+                { id: 'BOLETA', label: 'Boleta' }, 
+                { id: 'FACTURA', label: 'Factura' }, 
+                { id: 'NOTA_VENTA', label: 'Ticket Int.' }
+              ].map(tipo => (
+                <div 
+                  key={tipo.id} 
+                  onClick={() => {
+                    const isFactura = tipo.id === 'FACTURA';
+                    setCheckoutForm({
+                      ...checkoutForm, 
+                      tipoComprobante: tipo.id,
+                      // Limpiar o mantener según socio
+                      clienteDocumento: '',
+                      clienteNombre: ''
+                    });
+                  }} 
+                  style={{ 
+                    padding: '12px 6px', 
+                    borderRadius: '12px', 
+                    textAlign: 'center', 
+                    cursor: 'pointer', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 'bold', 
+                    background: checkoutForm.tipoComprobante === tipo.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--panel-bg)', 
+                    border: checkoutForm.tipoComprobante === tipo.id ? '1px solid #3b82f6' : '1px solid var(--panel-border)', 
+                    color: checkoutForm.tipoComprobante === tipo.id ? '#3b82f6' : 'var(--text-main)' 
+                  }}
+                >
+                  {tipo.label}
+                </div>
+              ))}
+            </div>
+            {/* Campos Dinámicos para Boleta/Factura */}
+            {checkoutForm.tipoComprobante === 'FACTURA' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', padding: '12px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>RUC (Obligatorio para Factura)</label>
+                  <div style={{ position: 'relative' }}>
+                    <input required type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="11" placeholder="Ej: 20601234567" style={{ borderColor: '#3b82f6', width: '100%' }} />
+                    {isSearchingDoc && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6' }}>Buscando...</div>}
+                  </div>
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>Razón Social</label>
+                  <input required type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value})} placeholder="Ej: Mi Empresa S.A.C." style={{ borderColor: '#3b82f6' }} />
+                </div>
+              </div>
+            )}
+
+            {checkoutForm.tipoComprobante === 'BOLETA' && (
+              <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>DNI (Opcional para Boleta)</label>
+                <div style={{ position: 'relative' }}>
+                  <input type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="8" placeholder="Ej: 71234567" style={{ borderColor: '#3b82f6', width: '100%' }} />
+                  {isSearchingDoc && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6' }}>Buscando...</div>}
+                </div>
+                <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold', marginTop: '8px', display: 'block' }}>Nombre Completo</label>
+                <input type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value})} placeholder="Público General" style={{ borderColor: '#3b82f6' }} />
+              </div>
+            )}
 
             {/* Configuración Dinámica de Métodos de Pago */}
             {checkoutForm.metodoPago === 'EFECTIVO' && (
@@ -418,6 +524,8 @@ const Productos = () => {
     <Modal isOpen={dialogConfig.isOpen} onClose={() => setDialogConfig({ isOpen: false })} title={dialogConfig.title || 'Aviso'}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <p style={{ color: 'var(--text-main)', fontSize: '1rem', margin: 0 }}>{dialogConfig.message}</p>
+        
+        {dialogConfig.extraContent && dialogConfig.extraContent}
 
         <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
           {dialogConfig.type !== 'alert' && (

@@ -88,11 +88,14 @@ const Ventas = () => {
             <tbody>
               {filteredVentas.map(venta => (
                 <tr key={venta.id}>
-                  <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>#{venta.id}</td>
+                  <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', marginBottom: '2px' }}>{venta.tipoComprobante}</div>
+                    <div>{venta.serie && venta.correlativo ? `${venta.serie}-${venta.correlativo}` : `#${venta.id}`}</div>
+                  </td>
                   <td data-label="FECHA">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Calendar size={14} color="var(--text-muted)" />
-                      {new Date(venta.fechaVenta).toLocaleString()}
+                      {new Date(venta.fecha).toLocaleString()}
                     </div>
                   </td>
                   <td data-label="CLIENTE" style={{ fontWeight: '600' }}>
@@ -107,13 +110,32 @@ const Ventas = () => {
                     S/ {parseFloat(venta.total).toFixed(2)}
                   </td>
                   <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
-                    <button
-                      onClick={() => handleImprimir(venta)}
-                      title="Reimprimir Comprobante"
-                      style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
-                    >
-                      <Printer size={16} />
-                    </button>
+                    {venta.enlacePdfTicket ? (
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => window.open(venta.enlacePdfTicket, '_blank')}
+                          title="Ver Ticket de SUNAT (80mm)"
+                          style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                        >
+                          <Printer size={14} /> SUNAT
+                        </button>
+                        <button
+                          onClick={() => window.open(venta.enlacePdfA4, '_blank')}
+                          title="Ver PDF (A4)"
+                          style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                        >
+                          <FileText size={14} /> A4
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleImprimir(venta)}
+                        title="Reimprimir Comprobante Interno"
+                        style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', marginLeft: 'auto' }}
+                      >
+                        <Printer size={16} /> INTERNO
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

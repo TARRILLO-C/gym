@@ -27,16 +27,21 @@ public class VentaService {
     private final VentaRepository ventaRepository;
     private final ProductoService productoService;
     private final SocioRepository socioRepository;
+    private final FacturacionService facturacionService;
 
     /**
      * Registra una nueva venta de productos.
      * 
-     * @param socioId    ID del socio (opcional)
-     * @param metodoPago medio de pago utilizado
-     * @param detalles   lista de ítems a vender
-     * @return venta guardada con stock actualizado
+     * @param socioId         ID del socio (opcional)
+     * @param metodoPago      medio de pago utilizado
+     * @param detalles        lista de ítems a vender
+     * @param tipoComprobante tipo de documento legal a emitir
+     * @param clienteNombre   nombre o razón social manual
+     * @param clienteDocumento DNI o RUC manual
+     * @return venta guardada con stock actualizado y datos de facturación
      */
-    public Venta registrarVenta(Long socioId, MetodoPago metodoPago, List<DetalleVenta> detalles) {
+    public Venta registrarVenta(Long socioId, MetodoPago metodoPago, List<DetalleVenta> detalles, 
+                               Venta.TipoComprobante tipoComprobante, String clienteNombre, String clienteDocumento) {
         Socio socio = null;
         if (socioId != null) {
             socio = socioRepository.findById(socioId)
@@ -45,8 +50,11 @@ public class VentaService {
 
         Venta venta = Venta.builder()
                 .socio(socio)
+                .clienteNombre(clienteNombre)
+                .clienteDocumento(clienteDocumento)
                 .fecha(LocalDateTime.now())
                 .metodoPago(metodoPago)
+                .tipoComprobante(tipoComprobante != null ? tipoComprobante : Venta.TipoComprobante.NOTA_VENTA)
                 .total(BigDecimal.ZERO)
                 .build();
 
@@ -66,6 +74,7 @@ public class VentaService {
             productoService.crear(p); // Actualizar producto
 
             // Configurar ítem del detalle
+            item.setProducto(p);
             item.setPrecioUnitario(p.getPrecio());
             BigDecimal subtotalItem = p.getPrecio().multiply(BigDecimal.valueOf(item.getCantidad()));
             item.setSubtotal(subtotalItem);
@@ -75,11 +84,16 @@ public class VentaService {
         }
 
         venta.setTotal(subtotalGeneral);
+
+        // Generar Facturación Electrónica (Series y Correlativos)
+        facturacionService.procesarComprobante(venta);
+
         Venta guardada = ventaRepository.save(venta);
         
-        log.info("Venta registrada ID: {} - Total: S/ {} - Socio: {}", 
-                guardada.getId(), guardada.getTotal(), 
-                socio != null ? socio.getNombreCompleto() : "PÚBLICO GENERAL");
+        log.info("Venta registrada ID: {} - {} {}-{} - Total: S/ {}", 
+                guardada.getId(), guardada.getTipoComprobante(), 
+                guardada.getSerie(), guardada.getCorrelativo(),
+                guardada.getTotal());
         
         return guardada;
     }

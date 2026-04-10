@@ -53,6 +53,64 @@ public class Venta {
     private MetodoPago metodoPago;
 
     /**
+     * Tipo de comprobante electrónico emitido.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_comprobante", nullable = false)
+    private TipoComprobante tipoComprobante;
+
+    /**
+     * Serie del comprobante (ej: B001, F001).
+     */
+    @Column(name = "serie", length = 4)
+    private String serie;
+
+    /**
+     * Número correlativo del comprobante.
+     */
+    @Column(name = "correlativo")
+    private Integer correlativo;
+
+    /**
+     * Código hash de la firma digital (obligatorio para SUNAT).
+     */
+    @Column(name = "codigo_hash", length = 100)
+    private String codigoHash;
+
+    /**
+     * Estado del envío a SUNAT.
+     */
+    @Column(name = "estado_sunat")
+    private String estadoSunat;
+
+    /**
+     * Nombre o razón social ingresado manualmente para el comprobante.
+     */
+    @Column(name = "cliente_nombre")
+    private String clienteNombre;
+
+    /**
+     * DNI o RUC ingresado manualmente para el comprobante.
+     */
+    @Column(name = "cliente_documento", length = 20)
+    private String clienteDocumento;
+
+    /**
+     * Enlaces directos hacia los PDFs generados por miapi.cloud
+     */
+    @Column(name = "enlace_pdf_ticket", length = 500)
+    private String enlacePdfTicket;
+
+    @Column(name = "enlace_pdf_a4", length = 500)
+    private String enlacePdfA4;
+
+    @Column(name = "enlace_xml_sin_firmar", length = 500)
+    private String enlaceXmlSinFirmar;
+
+    @Column(name = "enlace_xml_firmado", length = 500)
+    private String enlaceXmlFirmado;
+
+    /**
      * Lista de productos incluidos en esta venta.
      */
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -69,5 +127,11 @@ public class Venta {
         TARJETA,
         TRANSFERENCIA,
         YAPE_PLIN
+    }
+
+    public enum TipoComprobante {
+        BOLETA,
+        FACTURA,
+        NOTA_VENTA // Comprobante interno sin valor legal
     }
 }
