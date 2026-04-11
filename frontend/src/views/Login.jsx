@@ -9,15 +9,32 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Simulate authentication
-    if (username === 'admin' && password === 'admin') {
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('username', username);
-      navigate('/');
-    } else {
-      setError('Credenciales incorrectas. (Pista: admin / admin)');
+    try {
+      const response = await fetch('http://localhost:8080/api/usuarios/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('username', data.username);
+        localStorage.setItem('role', data.rol);
+        
+        if (data.rol === 'RECEPCIONISTA') {
+          navigate('/asistencia');
+        } else {
+          navigate('/');
+        }
+      } else {
+        setError('Credenciales incorrectas.');
+      }
+    } catch (err) {
+      setError('Error al conectar con el servidor.');
+      console.error(err);
     }
   };
 

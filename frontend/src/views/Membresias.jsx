@@ -33,6 +33,7 @@ const Membresias = () => {
   const [showSocioList, setShowSocioList] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [editingPlanId, setEditingPlanId] = useState(null);
+  const role = localStorage.getItem('role');
   
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [promptValue, setPromptValue] = useState("");
@@ -402,9 +403,11 @@ const Membresias = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ color: 'var(--text-muted)', fontWeight: '400' }}>Configura los planes y precios que ofreces al público.</h3>
-            <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioMensual: '', duracionDias: '', descripcion: '', estado: 'DISPONIBLE' }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Plus size={20} /> CREAR NUEVO PLAN
-            </button>
+            {role === 'ADMINISTRADOR' && (
+              <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioMensual: '', duracionDias: '', descripcion: '', estado: 'DISPONIBLE' }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Plus size={20} /> CREAR NUEVO PLAN
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
@@ -433,10 +436,12 @@ const Membresias = () => {
                 
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', minHeight: '40px' }}>{m.descripcion || "Sin descripción detallada."}</p>
 
-                <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--panel-border)', display: 'flex', gap: '12px' }}>
-                  <button onClick={() => { setEditingPlanId(m.id); setPlanFormData(m); setShowPlanModal(true); }} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--panel-border)', borderRadius: '10px', color: 'var(--text-main)' }}>Editar</button>
-                  <button onClick={() => handleArchivePlan(m)} style={{ flex: 1, padding: '10px', background: 'rgba(255, 62, 62, 0.1)', border: 'none', borderRadius: '10px', color: 'var(--accent-primary)' }}>Archivar</button>
-                </div>
+                {role === 'ADMINISTRADOR' && (
+                  <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--panel-border)', display: 'flex', gap: '12px' }}>
+                    <button onClick={() => { setEditingPlanId(m.id); setPlanFormData(m); setShowPlanModal(true); }} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--panel-border)', borderRadius: '10px', color: 'var(--text-main)' }}>Editar</button>
+                    <button onClick={() => handleArchivePlan(m)} style={{ flex: 1, padding: '10px', background: 'rgba(255, 62, 62, 0.1)', border: 'none', borderRadius: '10px', color: 'var(--accent-primary)' }}>Archivar</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

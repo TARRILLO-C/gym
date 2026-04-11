@@ -7,6 +7,7 @@ import Socios from './views/Socios';
 import Membresias from './views/Membresias';
 import Productos from './views/Productos';
 import Ventas from './views/Ventas';
+import Usuarios from './views/Usuarios';
 import Login from './views/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
@@ -34,12 +35,13 @@ const AppLayout = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/asistencia" element={<ProtectedRoute><Asistencia /></ProtectedRoute>} />
-            <Route path="/socios" element={<ProtectedRoute><Socios /></ProtectedRoute>} />
-            <Route path="/membresias" element={<ProtectedRoute><Membresias /></ProtectedRoute>} />
-            <Route path="/productos" element={<ProtectedRoute><Productos /></ProtectedRoute>} />
-            <Route path="/ventas" element={<ProtectedRoute><Ventas /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Dashboard /></ProtectedRoute>} />
+            <Route path="/asistencia" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Asistencia /></ProtectedRoute>} />
+            <Route path="/socios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Socios /></ProtectedRoute>} />
+            <Route path="/membresias" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Membresias /></ProtectedRoute>} />
+            <Route path="/productos" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Productos /></ProtectedRoute>} />
+            <Route path="/ventas" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Ventas /></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Usuarios /></ProtectedRoute>} />
           </Routes>
         </ErrorBoundary>
       </main>

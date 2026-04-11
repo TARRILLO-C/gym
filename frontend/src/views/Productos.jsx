@@ -50,6 +50,7 @@ const Productos = () => {
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
   const [socioSearch, setSocioSearch] = useState('');
+  const role = localStorage.getItem('role');
 
   useEffect(() => { fetchData(); }, []);
 
@@ -239,9 +240,11 @@ const Productos = () => {
           <button onClick={() => setActiveTab('pos')} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: activeTab === 'pos' ? 'rgba(255, 62, 62, 0.1)' : 'transparent', color: activeTab === 'pos' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', transition: '0.3s' }}>
             <ShoppingBag size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Venta
           </button>
-          <button onClick={() => setActiveTab('inventario')} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: activeTab === 'inventario' ? 'rgba(255, 62, 62, 0.1)' : 'transparent', color: activeTab === 'inventario' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', transition: '0.3s' }}>
-            <Package size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Inventario
-          </button>
+          {role === 'ADMINISTRADOR' && (
+            <button onClick={() => setActiveTab('inventario')} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: activeTab === 'inventario' ? 'rgba(255, 62, 62, 0.1)' : 'transparent', color: activeTab === 'inventario' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', transition: '0.3s' }}>
+              <Package size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Inventario
+            </button>
+          )}
         </div>
       }
     >

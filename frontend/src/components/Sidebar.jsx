@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   LogOut,
+  UserCog,
   Receipt
 } from 'lucide-react';
 import { ThemeContext } from '../context/ThemeContext';
@@ -18,18 +19,22 @@ const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
 
+  const role = localStorage.getItem('role');
+
   const menuItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Control de Acceso', path: '/asistencia', icon: ShieldCheck },
-    { name: 'Socios', path: '/socios', icon: Users },
-    { name: 'Membresías', path: '/membresias', icon: CreditCard },
-    { name: 'Productos', path: '/productos', icon: Package },
-    { name: 'Ventas', path: '/ventas', icon: Receipt },
-  ];
+    { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR'] },
+    { name: 'Control de Acceso', path: '/asistencia', icon: ShieldCheck, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+    { name: 'Socios', path: '/socios', icon: Users, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+    { name: 'Membresías', path: '/membresias', icon: CreditCard, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+    { name: 'Productos', path: '/productos', icon: Package, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+    { name: 'Ventas', path: '/ventas', icon: Receipt, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+    { name: 'Personal', path: '/usuarios', icon: UserCog, roles: ['ADMINISTRADOR'] },
+  ].filter(item => item.roles.includes(role));
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('username');
+    localStorage.removeItem('role');
     navigate('/login');
   };
 
