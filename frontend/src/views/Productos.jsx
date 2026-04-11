@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { uploadImage } from '../services/storage';
 import { 
   Package, 
   ShoppingCart, 
@@ -26,6 +27,7 @@ const Productos = () => {
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [uploading, setUploading] = useState(false);
   
   const [productForm, setProductForm] = useState({
     nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: ''
@@ -80,6 +82,22 @@ const Productos = () => {
   const resetProductForm = () => {
     setProductForm({ nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: '' });
     setEditingProduct(null);
+    setUploading(false);
+  };
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setProductForm(prev => ({ ...prev, imagenUrl: url }));
+    } catch (err) {
+      showAlert("Error", "No se pudo subir la imagen a Appwrite. Verifique la conexión.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDeleteProduct = (id) => {
@@ -358,9 +376,49 @@ const Productos = () => {
               <option value="OTRO">OTRO</option>
             </select>
           </div>
-          <div>
-            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Imagen URL (Opcional)</label>
-            <input type="text" value={productForm.imagenUrl} onChange={e => setProductForm({...productForm, imagenUrl: e.target.value})} />
+          <div style={{ gridColumn: 'span 2' }}>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Imagen del Producto</label>
+            <div style={{ 
+              marginTop: '8px', 
+              padding: '20px', 
+              border: '2px dashed var(--panel-border)', 
+              borderRadius: '12px', 
+              textAlign: 'center',
+              background: 'rgba(255,255,255,0.02)',
+              position: 'relative'
+            }}>
+              {productForm.imagenUrl ? (
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <img src={productForm.imagenUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px' }} />
+                  <button 
+                    type="button" 
+                    onClick={() => setProductForm({...productForm, imagenUrl: ''})}
+                    style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ff3e3e', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer' }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <Plus size={24} color="var(--text-muted)" />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    {uploading ? 'Subiendo imagen...' : 'Seleccionar imagen para Appwrite'}
+                  </span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageChange}
+                    disabled={uploading}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} 
+                  />
+                </div>
+              )}
+            </div>
+            {uploading && (
+              <div style={{ width: '100%', height: '2px', background: 'var(--panel-border)', marginTop: '10px', overflow: 'hidden' }}>
+                <div className="loading-bar" style={{ width: '50%', height: '100%', background: 'var(--accent-primary)' }}></div>
+              </div>
+            )}
           </div>
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Descripción</label>

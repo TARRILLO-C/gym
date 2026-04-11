@@ -1,19 +1,33 @@
 version: '3.8'
 
 services:
-  mysql-db:
-    image: mysql:8.0
-    container_name: gym_mysql
+  appwrite:
+    image: appwrite/appwrite:latest
+    container_name: appwrite
     restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: gym_db
-      MYSQL_USER: gym_user
-      MYSQL_PASSWORD: gym_password
     ports:
-      - "3306:3306"
+      - "34800:80"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./appwrite:/usr/src/code/appwrite
+    environment:
+      _APP_ENV: production
+      _APP_OPENSSL_KEY_V1: your-secret-key-change-this
+      _APP_DOMAIN: localhost
+      _APP_DOMAIN_TARGET: localhost
+      _APP_STORAGE_LIMIT: 30000000
+      _APP_STORAGE_PREVIEW_LIMIT: 20000000
+      _APP_STORAGE_ANTIVIRUS: disabled
 
-volumes:
-  mysql_data:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: MUwjL1I5Cpc9dcGfdU
+      MYSQL_DATABASE: proyectos
+      MYSQL_USER: devuser
+      MYSQL_PASSWORD: 0111nACpaRWV
+    volumes:
+      - ./mysql:/var/lib/mysql
