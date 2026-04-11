@@ -28,7 +28,7 @@ export const deleteImage = async (fileUrl) => {
 export const uploadImage = async (file) => {
   try {
     // Renombrar el archivo con un timestamp para que sea único en la consola de Appwrite
-    const newFileName = `gym-${Date.now()}_${file.name}`;
+    const newFileName = `gym_${Date.now()}_${file.name}`;
     const renamedFile = new File([file], newFileName, { type: file.type });
 
     const response = await storage.createFile(
