@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { uploadImage } from '../services/storage';
+import { uploadImage, deleteImage } from '../services/storage';
 import { 
   Package, 
   ShoppingCart, 
@@ -92,6 +92,10 @@ const Productos = () => {
     setUploading(true);
     try {
       const url = await uploadImage(file);
+      // Opcional: Si ya había una imagen y estamos editando o subiendo una nueva, borramos la anterior
+      if (productForm.imagenUrl) {
+        deleteImage(productForm.imagenUrl);
+      }
       setProductForm(prev => ({ ...prev, imagenUrl: url }));
     } catch (err) {
       showAlert("Error", "No se pudo subir la imagen a Appwrite. Verifique la conexión.");
@@ -106,6 +110,11 @@ const Productos = () => {
       message: '¿Estás seguro de eliminar este producto?',
       onConfirm: async () => {
         try {
+          // Obtener el producto actual para borrar su imagen de Appwrite si existe
+          const productToDelete = productos.find(p => p.id === id);
+          if (productToDelete && productToDelete.imagenUrl) {
+            deleteImage(productToDelete.imagenUrl);
+          }
           await api.delete(`/productos/${id}`);
           fetchData();
         } catch (err) { showAlert("Error", "Error al eliminar"); }
@@ -392,7 +401,10 @@ const Productos = () => {
                   <img src={productForm.imagenUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px' }} />
                   <button 
                     type="button" 
-                    onClick={() => setProductForm({...productForm, imagenUrl: ''})}
+                    onClick={() => {
+                      if (productForm.imagenUrl) deleteImage(productForm.imagenUrl);
+                      setProductForm({...productForm, imagenUrl: ''});
+                    }}
                     style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ff3e3e', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer' }}
                   >
                     ×
