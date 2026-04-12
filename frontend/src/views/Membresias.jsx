@@ -23,6 +23,7 @@ const Membresias = () => {
   const [activeTab, setActiveTab] = useState('suscripciones');
   const [suscripciones, setSuscripciones] = useState([]);
   const [membresias, setMembresias] = useState([]);
+  const [filterMode, setFilterMode] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('todas');
@@ -73,19 +74,32 @@ const Membresias = () => {
       setLoading(false);
     }
   };
-
   const handleDeleteSus = (id) => {
     setDialogConfig({
       isOpen: true, type: 'confirm', title: 'Eliminar Suscripción',
       message: '¿Estás seguro de eliminar esta suscripción? Esta acción no se puede deshacer.',
       onConfirm: async () => {
         try {
-          await api.delete(`/suscripciones/${id}`);
-          fetchData();
+          const susToArchive = suscripciones.find(s => s.id === id);
+          await api.put(`/suscripciones/${id}`, { ...susToArchive, activo: false });
+          await fetchData();
           setActiveMenuId(null);
         } catch (err) {
-          showAlert('Error', 'Error al eliminar la suscripción');
+          showAlert('Error', 'Error al archivar la suscripción');
         }
+      }
+    });
+  };
+
+  const handleRestoreSus = (sus) => {
+    setDialogConfig({
+      isOpen: true, type: 'confirm', title: 'Reactivar Suscripción',
+      message: `¿Estás seguro de reactivar la suscripción de "${sus.socio.nombreCompleto}"?`,
+      onConfirm: async () => {
+        try {
+          await api.put(`/suscripciones/${sus.id}`, { ...sus, activo: true });
+          await fetchData();
+        } catch (err) { showAlert('Error', 'Error al reactivar la suscripción'); }
       }
     });
   };
@@ -153,7 +167,7 @@ const Membresias = () => {
         await api.post('/membresias', planFormData);
       }
       setShowPlanModal(false);
-      fetchData();
+      await fetchData();
       setPlanFormData({ nombre: '', precio: '', precioMensual: '', duracionDias: '', descripcion: '', estado: 'DISPONIBLE' });
       setEditingPlanId(null);
     } catch (err) {
@@ -230,7 +244,13 @@ const Membresias = () => {
     });
   };
 
-  const filteredSuscripciones = (Array.isArray(suscripciones) ? suscripciones : []).filter(s => {
+  const filteredSuscripciones = (Array.isArray(suscripciones) ? suscripciones : [])
+    .filter(s => {
+      if (filterMode === 'ACTIVO') return s && s.activo !== false;
+      if (filterMode === 'INACTIVO') return s && s.activo === false;
+      return true;
+    })
+    .filter(s => {
     if (!s || !s.socio) return false;
     const matchSearch = (s.socio.nombreCompleto || '').toLowerCase().includes(search.toLowerCase()) || (s.socio.dni || '').includes(search);
     const hoy = new Date();
@@ -310,10 +330,31 @@ const Membresias = () => {
                 onChange={e => setFilter(e.target.value)}
                 style={{ padding: '10px 16px', borderRadius: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)', flex: '1 1 auto' }}
               >
-                <option value="todas">Todas las suscripciones</option>
+                <option value="todas">Todas las categorías</option>
                 <option value="semana">Vencen esta semana</option>
                 <option value="vencidas">Ya vencidas</option>
               </select>
+
+              <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'center' }}>
+                <button 
+                  onClick={() => setFilterMode('ALL')}
+                  style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
+                >
+                  Todos
+                </button>
+                <button 
+                  onClick={() => setFilterMode('ACTIVO')}
+                  style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
+                >
+                  Activos
+                </button>
+                <button 
+                  onClick={() => setFilterMode('INACTIVO')}
+                  style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
+                >
+                  Archivados
+                </button>
+              </div>
             </div>
             <button className="btn-primary" onClick={() => setShowSusModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Plus size={20} /> VENDER PLAN
@@ -381,9 +422,15 @@ const Membresias = () => {
                             </button>
                             {activeMenuId === s?.id && (
                               <div style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--bg-color)', border: '1px solid var(--panel-border)', borderRadius: '12px', zIndex: 1200, minWidth: '160px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
-                                <button onClick={(e) => { e.stopPropagation(); handleDeleteSus(s?.id); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: 'var(--accent-primary)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <Trash2 size={16} /> ELIMINAR
-                                </button>
+                                {s.activo !== false ? (
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteSus(s?.id); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: 'var(--accent-primary)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Trash2 size={16} /> ELIMINAR
+                                  </button>
+                                ) : (
+                                  <button onClick={(e) => { e.stopPropagation(); handleRestoreSus(s); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: '#00ff7f', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <RotateCcw size={16} /> RESTAURAR
+                                  </button>
+                                )}
                                 <button onClick={() => setActiveMenuId(null)} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--panel-border)' }}>
                                   <XCircle size={16} /> CANCELAR
                                 </button>
@@ -449,33 +496,40 @@ const Membresias = () => {
       )}
 
       {/* Modales refactorizados usando nuestro Modal Global (agnóstico al dark mode) */}
-      <Modal isOpen={showPlanModal} onClose={() => setShowPlanModal(false)} title={editingPlanId ? "Editar Plan" : "Crear Nuevo Plan"}>
-        <form onSubmit={handleCreatePlan} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <Modal isOpen={showPlanModal} onClose={() => setShowPlanModal(false)} title={editingPlanId ? "Editar Plan de Membresía" : "Configurar Nuevo Plan"}>
+        <form onSubmit={handleCreatePlan} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Nombre del Plan</label>
-            <input required type="text" value={planFormData.nombre} onChange={e => setPlanFormData({...planFormData, nombre: e.target.value})} placeholder="Ej: Mensualidad Estándar" />
+            <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Nombre Identificador</label>
+            <input required type="text" value={planFormData.nombre} onChange={e => setPlanFormData({...planFormData, nombre: e.target.value})} placeholder="Ej: Trimestre Promocional" />
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Precio Total (S/)</label>
-              <input required type="number" step="0.01" value={planFormData.precio} onChange={e => setPlanFormData({...planFormData, precio: e.target.value})} />
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Duración (Días)</label>
+              <input required type="number" placeholder="Ej: 30" value={planFormData.duracionDias} onChange={e => setPlanFormData({...planFormData, duracionDias: e.target.value})} />
             </div>
             <div>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Costo Mensual (Opt S/)</label>
-              <input type="number" step="0.01" value={planFormData.precioMensual} onChange={e => setPlanFormData({...planFormData, precioMensual: e.target.value})} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Duración (Días)</label>
-              <input required type="number" value={planFormData.duracionDias} onChange={e => setPlanFormData({...planFormData, duracionDias: e.target.value})} />
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Precio Público (S/)</label>
+              <input required type="number" step="0.01" placeholder="Ej: 99.00" value={planFormData.precio} onChange={e => setPlanFormData({...planFormData, precio: e.target.value})} />
             </div>
           </div>
+
           <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Descripción</label>
-            <textarea rows="3" value={planFormData.descripcion} onChange={e => setPlanFormData({...planFormData, descripcion: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }} />
+            <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Costo Desglosado Mensual (S/ - Opcional)</label>
+            <input type="number" step="0.01" placeholder="Ej: 33.00" value={planFormData.precioMensual} onChange={e => setPlanFormData({...planFormData, precioMensual: e.target.value})} />
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>* Útil para reportes de rentabilidad y comparativas.</p>
           </div>
-          <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-            <button type="button" onClick={() => setShowPlanModal(false)} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)' }}>CANCELAR</button>
-            <button type="submit" className="btn-primary" style={{ flex: 1 }}>GUARDAR PLAN</button>
+
+          <div>
+            <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Especificaciones y Beneficios</label>
+            <textarea rows="3" placeholder="Describe lo que incluye este plan..." value={planFormData.descripcion} onChange={e => setPlanFormData({...planFormData, descripcion: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', resize: 'none' }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+            <button type="button" onClick={() => setShowPlanModal(false)} style={{ flex: 1, padding: '14px', background: 'transparent', color: 'var(--text-main)', fontWeight: 'bold' }}>CANCELAR</button>
+            <button type="submit" className="btn-primary" style={{ flex: 1, padding: '14px', fontWeight: 'bold' }}>
+              {editingPlanId ? "ACTUALIZAR" : "GUARDAR PLAN"}
+            </button>
           </div>
         </form>
       </Modal>

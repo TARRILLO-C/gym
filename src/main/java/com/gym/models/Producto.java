@@ -59,6 +59,13 @@ public class Producto {
     @Column(name = "stock", nullable = false)
     private Integer stock;
 
+    /**
+     * Indica si el producto está activo (borrado lógico).
+     */
+    @Builder.Default
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
+
     public enum CategoriaProducto {
         BEBIDA,
         SUPLEMENTO,

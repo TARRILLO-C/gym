@@ -5,7 +5,8 @@ import {
   Edit,
   Trash2,
   AlertCircle,
-  Filter
+  Filter,
+  RotateCcw
 } from 'lucide-react';
 import axios from 'axios';
 import api from '../services/api';
@@ -29,6 +30,9 @@ const Socios = () => {
     estado: 'ACTIVO'
   });
   const [isSearchingDni, setIsSearchingDni] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
+
+  const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
   const API_CLOUD_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2MDMsImV4cCI6MTc2NDY4NDM1N30.nH31PRzhb_PF61yLGccnjkkA1ajNZ8jJAKPVwpHL8tA';
 
@@ -93,18 +97,42 @@ const Socios = () => {
     }
   };
 
-  const handleLogicalDelete = async (socio) => {
-    if (window.confirm(`¿Estás seguro de que deseas dar de baja (desactivar) a ${socio.nombreCompleto}?`)) {
-      try {
-        const updatedData = { ...socio, estado: 'INACTIVO' };
-        await api.put(`/socios/${socio.id}`, updatedData);
-        fetchSocios();
-      } catch (err) {
-        alert('Error al desactivar al socio. Mostrando resultado falso en pantalla.');
-        // Reflejar cambio visual en caso de no tener backend mapeado al método PUT
-        setSocios(socios.map(s => s.id === socio.id ? { ...s, estado: 'INACTIVO'} : s));
+  const handleLogicalDelete = (socio) => {
+    setDialogConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Dar de Baja',
+      message: `¿Estás seguro de que deseas dar de baja (desactivar) a ${socio.nombreCompleto}?`,
+      onConfirm: async () => {
+        try {
+          const updatedData = { ...socio, estado: 'INACTIVO' };
+          await api.put(`/socios/${socio.id}`, updatedData);
+          await fetchSocios();
+        } catch (err) {
+          showAlert('Error', 'Error al desactivar al socio.');
+          setSocios(socios.map(s => s.id === socio.id ? { ...s, estado: 'INACTIVO'} : s));
+        }
       }
-    }
+    });
+  };
+
+  const handleRestoreSocio = (socio) => {
+    setDialogConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Reactivar Socio',
+      message: `¿Estás seguro de que deseas reactivar a ${socio.nombreCompleto}?`,
+      onConfirm: async () => {
+        try {
+          const updatedData = { ...socio, estado: 'ACTIVO' };
+          await api.put(`/socios/${socio.id}`, updatedData);
+          await fetchSocios();
+        } catch (err) {
+          showAlert('Error', 'Error al reactivar al socio.');
+          setSocios(socios.map(s => s.id === socio.id ? { ...s, estado: 'ACTIVO'} : s));
+        }
+      }
+    });
   };
 
   const openModalForNew = () => {
@@ -224,13 +252,21 @@ const Socios = () => {
                       >
                         <Edit size={16} />
                       </button>
-                      {socio.estado === 'ACTIVO' && (
+                      {socio.estado === 'ACTIVO' ? (
                         <button 
                           onClick={() => handleLogicalDelete(socio)} 
                           title="Dar de baja"
                           style={{ background: 'transparent', color: '#ff3e3e', padding: '8px' }}
                         >
                           <Trash2 size={16} />
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleRestoreSocio(socio)} 
+                          title="Reactivar"
+                          style={{ background: 'transparent', color: '#00ff7f', padding: '8px' }}
+                        >
+                          <RotateCcw size={16} />
                         </button>
                       )}
                     </div>
@@ -331,6 +367,30 @@ const Socios = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Global Action Modal */}
+      <Modal isOpen={dialogConfig.isOpen} onClose={() => setDialogConfig({ isOpen: false })} title={dialogConfig.title || 'Aviso'}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p style={{ color: 'var(--text-main)', fontSize: '1rem', margin: 0 }}>{dialogConfig.message}</p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
+            {dialogConfig.type !== 'alert' && (
+              <button onClick={() => setDialogConfig({ isOpen: false })} style={{ padding: '10px 20px', background: 'transparent', color: 'var(--text-muted)' }}>
+                Cancelar
+              </button>
+            )}
+            <button 
+              className="btn-primary" 
+              onClick={() => {
+                if(dialogConfig.type === 'confirm') dialogConfig.onConfirm();
+                setDialogConfig({ isOpen: false });
+              }} 
+              style={{ padding: '10px 24px' }}
+            >
+              {dialogConfig.type === 'alert' ? 'Aceptar' : 'Confirmar'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </PageLayout>
   );

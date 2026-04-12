@@ -111,6 +111,13 @@ public class Venta {
     private String enlaceXmlFirmado;
 
     /**
+     * Indica si la venta está activa (no anulada).
+     */
+    @Builder.Default
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
+
+    /**
      * Lista de productos incluidos en esta venta.
      */
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)

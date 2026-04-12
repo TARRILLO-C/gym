@@ -7,7 +7,7 @@ const PageLayout = ({
   children 
 }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+    <div className="page-animate-entry" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ flex: '1 1 min-content' }}>
           <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.2rem)', marginBottom: '8px', lineHeight: '1.2' }}>

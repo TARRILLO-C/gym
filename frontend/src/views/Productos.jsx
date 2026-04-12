@@ -9,7 +9,8 @@ import {
   Trash2, 
   Edit2, 
   AlertTriangle,
-  ShoppingBag
+  ShoppingBag,
+  RotateCcw
 } from 'lucide-react';
 import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
@@ -22,6 +23,7 @@ const Productos = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState([]);
+  const [filterMode, setFilterMode] = useState('ALL');
   
   // Modales globalizados
   const [showProductModal, setShowProductModal] = useState(false);
@@ -30,7 +32,7 @@ const Productos = () => {
   const [uploading, setUploading] = useState(false);
   
   const [productForm, setProductForm] = useState({
-    nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: ''
+    nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: '', activo: true
   });
 
   const [checkoutForm, setCheckoutForm] = useState({
@@ -81,7 +83,7 @@ const Productos = () => {
   };
 
   const resetProductForm = () => {
-    setProductForm({ nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: '' });
+    setProductForm({ nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: '', activo: true });
     setEditingProduct(null);
     setUploading(false);
   };
@@ -105,20 +107,33 @@ const Productos = () => {
     }
   };
 
+
   const handleDeleteProduct = (id) => {
     setDialogConfig({
       isOpen: true, type: 'confirm', title: 'Eliminar Producto',
       message: '¿Estás seguro de eliminar este producto?',
       onConfirm: async () => {
         try {
-          // Obtener el producto actual para borrar su imagen de Appwrite si existe
           const productToDelete = productos.find(p => p.id === id);
           if (productToDelete && productToDelete.imagenUrl) {
             deleteImage(productToDelete.imagenUrl);
           }
-          await api.delete(`/productos/${id}`);
-          fetchData();
-        } catch (err) { showAlert("Error", "Error al eliminar"); }
+          await api.put(`/productos/${id}`, { ...productToDelete, activo: false });
+          await fetchData();
+        } catch (err) { showAlert("Error", "Error al archivar producto"); }
+      }
+    });
+  };
+
+  const handleRestoreProduct = (product) => {
+    setDialogConfig({
+      isOpen: true, type: 'confirm', title: 'Activar Producto',
+      message: `¿Estás seguro de reactivar el producto "${product.nombre}"? Volverá a aparecer en el punto de venta.`,
+      onConfirm: async () => {
+        try {
+          await api.put(`/productos/${product.id}`, { ...product, activo: true });
+          await fetchData();
+        } catch (err) { showAlert("Error", "Error al reactivar producto"); }
       }
     });
   };
@@ -227,7 +242,18 @@ const Productos = () => {
     } catch (err) { showAlert("Error", "Error al procesar la venta"); }
   };
 
-  const filteredProducts = productos.filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || p.categoria.toLowerCase().includes(search.toLowerCase()));
+  const productsForPOS = productos
+    .filter(p => p.activo !== false)
+    .filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || p.categoria.toLowerCase().includes(search.toLowerCase()));
+
+  const productsForInventory = productos
+    .filter(p => {
+      if (filterMode === 'ACTIVO') return p.activo !== false;
+      if (filterMode === 'INACTIVO') return p.activo === false;
+      return true;
+    })
+    .filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || p.categoria.toLowerCase().includes(search.toLowerCase()));
+
   const filteredSocios = socios.filter(s => s.nombreCompleto.toLowerCase().includes(socioSearch.toLowerCase()) || s.dni.includes(socioSearch));
 
   return (
@@ -257,6 +283,29 @@ const Productos = () => {
               <input type="text" placeholder="Buscar por nombre o categoría..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: '40px', width: '100%', background: 'transparent' }} />
             </div>
             {activeTab === 'inventario' && (
+              <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'center' }}>
+                <button 
+                  onClick={() => setFilterMode('ALL')}
+                  style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
+                >
+                  Todos
+                </button>
+                <button 
+                  onClick={() => setFilterMode('ACTIVO')}
+                  style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
+                >
+                  Activos
+                </button>
+                <button 
+                  onClick={() => setFilterMode('INACTIVO')}
+                  style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
+                >
+                  Inactivos
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'inventario' && (
               <button className="btn-primary" onClick={() => { resetProductForm(); setShowProductModal(true); }}>
                 <Plus size={18} /> NUEVO PRODUCTO
               </button>
@@ -265,17 +314,83 @@ const Productos = () => {
 
           {activeTab === 'pos' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-              {filteredProducts.map(p => (
-                <div key={p.id} className="card product-card" style={{ padding: '0', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--panel-border)', transition: '0.3s' }} onClick={() => p.stock > 0 && addToCart(p)}>
-                  <div style={{ height: '160px', background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                    {p.imagenUrl ? <img src={p.imagenUrl} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={48} color="var(--text-muted)" />}
-                    <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '4px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: 'white' }}>{p.categoria}</div>
+              {productsForPOS.map(p => (
+                <div key={p.id} className="card product-card" style={{ padding: '0', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--panel-border)', transition: 'all 0.3s ease', display: 'flex', flexDirection: 'column' }} onClick={() => p.stock > 0 && addToCart(p)}>
+                  {/* Contenedor de Imagen */}
+                  <div style={{ 
+                    height: '180px', 
+                    background: 'var(--bg-color)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    position: 'relative',
+                    borderBottom: '1px solid var(--panel-border)',
+                    padding: '8px'
+                  }}>
+                    {p.imagenUrl ? (
+                      <img src={p.imagenUrl} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <Package size={56} color="var(--text-muted)" opacity={0.5} />
+                    )}
+                    
+                    {/* Badge de Categoría */}
+                    <div style={{ 
+                      position: 'absolute', 
+                      bottom: '8px', 
+                      left: '8px', 
+                      background: 'rgba(255,255,255,0.08)', 
+                      backdropFilter: 'blur(8px)', 
+                      padding: '4px 10px', 
+                      borderRadius: '6px', 
+                      fontSize: '0.65rem', 
+                      fontWeight: '800', 
+                      color: 'var(--text-main)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {p.categoria}
+                    </div>
+
+                    {/* Badge de Stock (Si es bajo) */}
+                    {p.stock < 5 && (
+                      <div style={{ 
+                        position: 'absolute', 
+                        top: '8px', 
+                        right: '8px', 
+                        background: p.stock === 0 ? '#ff3e3e' : '#f59e0b', 
+                        padding: '4px 8px', 
+                        borderRadius: '6px', 
+                        fontSize: '0.65rem', 
+                        fontWeight: 'bold', 
+                        color: 'white' 
+                      }}>
+                        {p.stock === 0 ? 'AGOTADO' : `¡SOLO ${p.stock}!`}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ padding: '16px' }}>
-                    <h4 style={{ fontSize: '1rem', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nombre}</h4>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--accent-primary)' }}>S/ {p.precio.toFixed(2)}</span>
-                      <span style={{ fontSize: '0.8rem', color: p.stock < 5 ? '#ff3e3e' : '#00ff7f' }}>{p.stock} disp.</span>
+
+                  {/* Info del Producto */}
+                  <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <h4 style={{ fontSize: '1.05rem', fontWeight: 'bold', marginBottom: '4px', lineHeight: '1.3' }}>{p.nombre}</h4>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.descripcion || 'Sin descripción'}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                      <span style={{ fontSize: '1.4rem', fontWeight: '900', color: 'var(--accent-primary)' }}>S/ {p.precio.toFixed(2)}</span>
+                      <div style={{ 
+                        width: '32px', 
+                        height: '32px', 
+                        borderRadius: '50%', 
+                        background: 'var(--accent-primary)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        color: 'white',
+                        boxShadow: '0 4px 10px rgba(255, 62, 62, 0.3)'
+                      }}>
+                        <Plus size={18} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -290,11 +405,12 @@ const Productos = () => {
                     <th>Categoría</th>
                     <th>Precio</th>
                     <th>Stock</th>
+                    <th>Estado</th>
                     <th style={{ textAlign: 'right', padding: '16px' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map(p => (
+                  {productsForInventory.map(p => (
                     <tr key={p.id} style={{ borderBottom: '1px solid var(--panel-border)' }}>
                       <td data-label="PRODUCTO" style={{ padding: '16px' }}>
                         <div style={{ fontWeight: '600' }}>{p.nombre}</div>
@@ -308,9 +424,20 @@ const Productos = () => {
                           {p.stock} unidades
                         </div>
                       </td>
+                      <td data-label="ESTADO">
+                        <span className={`badge ${p.activo !== false ? 'badge-active' : 'badge-inactive'}`}>
+                          {p.activo !== false ? 'ACTIVO' : 'INACTIVO'}
+                        </span>
+                      </td>
                       <td data-label="ACCIONES" style={{ textAlign: 'right', padding: '16px' }}>
-                        <button onClick={() => { setEditingProduct(p); setProductForm(p); setShowProductModal(true); }} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }}><Edit2 size={18} /></button>
-                        <button onClick={() => handleDeleteProduct(p.id)} style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                        {p.activo !== false ? (
+                          <>
+                            <button onClick={() => { setEditingProduct(p); setProductForm(p); setShowProductModal(true); }} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }} title="Editar"><Edit2 size={18} /></button>
+                            <button onClick={() => handleDeleteProduct(p.id)} style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer' }} title="Archivar"><Trash2 size={18} /></button>
+                          </>
+                        ) : (
+                          <button onClick={() => handleRestoreProduct(p)} style={{ background: 'transparent', border: 'none', color: '#00ff7f', cursor: 'pointer' }} title="Reactivar"><RotateCcw size={18} /></button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -381,11 +508,18 @@ const Productos = () => {
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Categoría</label>
             <select value={productForm.categoria} onChange={e => setProductForm({...productForm, categoria: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-              <option value="BEBIDA">BEBIDA</option>
               <option value="SUPLEMENTO">SUPLEMENTO</option>
+              <option value="BEBIDA">BEBIDA</option>
               <option value="ROPA">ROPA</option>
               <option value="ACCESORIO">ACCESORIO</option>
               <option value="OTRO">OTRO</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Estado</label>
+            <select value={productForm.activo} onChange={e => setProductForm({...productForm, activo: e.target.value === 'true'})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+              <option value="true">ACTIVO</option>
+              <option value="false">INACTIVO</option>
             </select>
           </div>
           <div style={{ gridColumn: 'span 2' }}>
@@ -609,8 +743,8 @@ const Productos = () => {
           <button 
             className="btn-primary" 
             onClick={() => {
-              dialogConfig.onConfirm && dialogConfig.onConfirm();
-              if(dialogConfig.type !== 'confirm') setDialogConfig({ isOpen: false });
+              if(dialogConfig.onConfirm) dialogConfig.onConfirm();
+              setDialogConfig({ isOpen: false });
             }} 
             style={{ padding: '10px 24px' }}
           >
