@@ -9,7 +9,10 @@
   --text-main: #ffffff;
   --text-muted: #a0a0a0;
   --glass-blur: blur(12px);
-  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --body-bg-gradient: radial-gradient(circle at 50% 50%, #151518 0%, #0a0a0c 100%);
+  --glow-color-1: rgba(255, 62, 62, 0.03);
+  --glow-color-2: rgba(255, 138, 0, 0.03);
 }
 
 [data-theme="light"] {
@@ -20,6 +23,9 @@
   --accent-secondary: #ff8a00;
   --text-main: #212529;
   --text-muted: #6c757d;
+  --body-bg-gradient: radial-gradient(circle at 50% 50%, #ffffff 0%, #f8f9fa 100%);
+  --glow-color-1: rgba(255, 62, 62, 0.05);
+  --glow-color-2: rgba(255, 138, 0, 0.05);
 }
 
 * {
@@ -31,10 +37,31 @@
 body {
   font-family: 'Outfit', sans-serif;
   background-color: var(--bg-color);
+  background: var(--body-bg-gradient);
   color: var(--text-main);
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 10% 20%, var(--glow-color-1) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, var(--glow-color-2) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: -1;
+  animation: ambientGlow 20s ease-in-out infinite alternate;
+}
+
+@keyframes ambientGlow {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.1); opacity: 0.8; }
 }
 
 h1, h2, h3 {
@@ -169,4 +196,37 @@ input:focus {
 @keyframes loading-bar-move {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
+}
+
+/* Page Entry Animations */
+.page-animate-entry {
+  animation: pageFadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pageFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover Life Effects */
+.btn-primary:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+  box-shadow: 0 10px 20px -5px rgba(255, 62, 62, 0.4);
+}
+
+.logo-icon {
+  filter: drop-shadow(0 0 8px rgba(255, 62, 62, 0.3));
+  transition: var(--transition-smooth);
+}
+
+.card:hover .logo-icon {
+  filter: drop-shadow(0 0 12px rgba(255, 62, 62, 0.6));
+  transform: rotate(15deg) scale(1.1);
 }
