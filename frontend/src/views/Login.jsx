@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, LogIn, ShieldCheck } from 'lucide-react';
+import { Dumbbell, LogIn, ShieldCheck, User, Lock, Eye, EyeOff } from 'lucide-react';
 import '../App.css';
 import './Login.css';
 
@@ -9,6 +9,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -47,68 +48,97 @@ const Login = () => {
 
   return (
     <div className="login-wrapper">
-      <div className="login-card">
-        <div className="login-header">
-          <div className="login-logo">
-            <div className="logo-circle">
-              <Dumbbell size={36} color="white" />
-            </div>
+      <div className="login-overlay"></div>
+      
+      <div className="login-container">
+        <div className="login-visual-side">
+          {/* This side could have some text or just the image vibe */}
+          <div className="visual-content">
+            <h2 className="visual-title">ELEVA TU <br/><span className="text-gradient">POTENCIAL</span></h2>
+            <p className="visual-text">Bienvenido a la jungla. Donde los campeones se forjan cada día.</p>
           </div>
-          <h1 className="login-title">THE JUNGLE</h1>
-          <p className="login-subtitle">Sistema de Gestión de Gimnasio</p>
         </div>
-        
-        <form onSubmit={handleLogin}>
-          <div className="input-group">
-            <label className="input-label">USUARIO</label>
-            <div className="input-wrapper">
-              <input 
-                className="input-field"
-                type="text" 
-                placeholder="Introduzca su usuario" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-          </div>
 
-          <div className="input-group">
-            <label className="input-label">CONTRASEÑA</label>
-            <div className="input-wrapper">
-              <input 
-                className="input-field"
-                type="password" 
-                placeholder="••••••••" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+        <div className="login-card">
+          <div className="login-header">
+            <div className="login-logo">
+              <div className="logo-circle">
+                <Dumbbell size={40} color="white" strokeWidth={2.5} />
+              </div>
             </div>
+            <h1 className="login-title text-gradient">THE JUNGLE</h1>
+            <p className="login-subtitle">GESTIÓN DE ALTO RENDIMIENTO</p>
           </div>
           
-          {error && <div className="error-msg">{error}</div>}
-          
-          <button 
-            type="submit" 
-            className="btn-primary login-btn" 
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="loading-spinner"></span>
-            ) : (
-              <>
-                <LogIn size={20} />
-                Acceder al sistema
-              </>
+          <form className="login-form" onSubmit={handleLogin}>
+            <div className="input-group">
+              <label className="input-label">USUARIO</label>
+              <div className="input-wrapper">
+                <User className="input-icon" size={20} />
+                <input 
+                  className="input-field"
+                  type="text" 
+                  placeholder="Introduce tu usuario" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">CONTRASEÑA</label>
+              <div className="input-wrapper">
+                <Lock className="input-icon" size={20} />
+                <input 
+                  className="input-field"
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button 
+                  type="button" 
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+            
+            {error && (
+              <div className="error-msg animate-shake">
+                {error}
+              </div>
             )}
-          </button>
-        </form>
+            
+            <button 
+              type="submit" 
+              className="btn-primary login-btn" 
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="loading-dots">
+                  <span></span><span></span><span></span>
+                </div>
+              ) : (
+                <>
+                  <span>ACCEDER AL SISTEMA</span>
+                  <LogIn size={20} />
+                </>
+              )}
+            </button>
+          </form>
 
-        <div className="login-footer">
-          <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <ShieldCheck size={16} /> Conexión segura habilitada
-          </p>
+          <div className="login-footer">
+            <div className="secure-badge">
+              <ShieldCheck size={14} />
+              <span>SISTEMA SEGURO BIOMÉTRICO</span>
+            </div>
+            <p className="copyright">&copy; 2026 The Jungle Gym. All rights reserved.</p>
+          </div>
         </div>
       </div>
     </div>
