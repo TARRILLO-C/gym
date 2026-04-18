@@ -3,6 +3,7 @@ package com.gym.models;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -23,9 +24,13 @@ public class Socio {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El nombre no puede estar vacío")
+    @Size(max = 150, message = "El nombre no puede exceder los 150 caracteres")
     @Column(name = "nombre_completo", nullable = false, length = 150)
     private String nombreCompleto;
 
+    @NotBlank(message = "El DNI es obligatorio")
+    @Size(min = 8, max = 15, message = "El DNI debe tener entre 8 y 15 caracteres")
     @Column(name = "dni", nullable = false, unique = true, length = 8)
     private String dni;
 
@@ -35,6 +40,7 @@ public class Socio {
     @Column(name = "razon_social", length = 200)
     private String razonSocial;
 
+    @Pattern(regexp = "^[0-9]*$", message = "El teléfono debe contener solo números")
     @Column(name = "telefono", length = 15)
     private String telefono;
 

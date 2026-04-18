@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 /**
  * Controlador REST para la gestión de Planes de Membresía.
@@ -30,12 +31,12 @@ public class MembresiaController {
     }
 
     @PostMapping
-    public ResponseEntity<Membresia> crear(@RequestBody Membresia membresia) {
+    public ResponseEntity<Membresia> crear(@Valid @RequestBody Membresia membresia) {
         return new ResponseEntity<>(membresiaService.crear(membresia), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Membresia> actualizar(@PathVariable Long id, @RequestBody Membresia membresia) {
+    public ResponseEntity<Membresia> actualizar(@PathVariable Long id, @Valid @RequestBody Membresia membresia) {
         return ResponseEntity.ok(membresiaService.actualizar(id, membresia));
     }
 

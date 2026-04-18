@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 /**
  * Controlador REST para la gestión de Socios.
@@ -37,12 +38,12 @@ public class SocioController {
     }
 
     @PostMapping
-    public ResponseEntity<Socio> registrar(@RequestBody Socio socio) {
+    public ResponseEntity<Socio> registrar(@Valid @RequestBody Socio socio) {
         return new ResponseEntity<>(socioService.registrar(socio), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Socio> actualizar(@PathVariable Long id, @RequestBody Socio socio) {
+    public ResponseEntity<Socio> actualizar(@PathVariable Long id, @Valid @RequestBody Socio socio) {
         return ResponseEntity.ok(socioService.actualizar(id, socio));
     }
 

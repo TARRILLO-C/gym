@@ -111,6 +111,19 @@ public class Venta {
     private String enlaceXmlFirmado;
 
     /**
+     * Indica si la venta está activa (no anulada).
+     */
+    @Builder.Default
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
+
+    /**
+     * Motivo legal de anulación para Notas de Crédito / Bajas a SUNAT.
+     */
+    @Column(name = "motivo_anulacion", length = 255)
+    private String motivoAnulacion;
+
+    /**
      * Lista de productos incluidos en esta venta.
      */
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)

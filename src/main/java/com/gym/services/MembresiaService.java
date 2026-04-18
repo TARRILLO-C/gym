@@ -57,7 +57,8 @@ public class MembresiaService {
     @Transactional
     public void eliminar(Long id) {
         Membresia mem = buscarPorId(id);
-        membresiaRepository.delete(mem);
-        log.info("Membresía ID {} eliminada.", id);
+        mem.setEstado(Membresia.EstadoMembresia.OCULTO);
+        membresiaRepository.save(mem);
+        log.info("Membresía ID {} pasada a estado OCULTO (borrado lógico).", id);
     }
 }

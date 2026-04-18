@@ -3,6 +3,7 @@ package com.gym.services;
 import com.gym.exceptions.ResourceNotFoundException;
 import com.gym.models.*;
 import com.gym.models.Venta.MetodoPago;
+import com.gym.models.Venta.TipoComprobante;
 import com.gym.repositories.SocioRepository;
 import com.gym.repositories.VentaRepository;
 import lombok.RequiredArgsConstructor;
@@ -107,5 +108,71 @@ public class VentaService {
     public Venta buscarPorId(Long id) {
         return ventaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Venta", id));
+    }
+
+    /**
+     * Anula o restaura una venta y reversa/aplica el descuento de stock.
+     */
+    public Venta cambiarEstadoVenta(Long id, boolean activo, String motivo) {
+        Venta venta = buscarPorId(id);
+        if (venta.isActivo() == activo) {
+            return venta;
+        }
+
+        if (!activo) {
+            // Anular (Devolver stock)
+            for (DetalleVenta item : venta.getDetalles()) {
+                Producto p = item.getProducto();
+                p.setStock(p.getStock() + item.getCantidad());
+                productoService.actualizar(p.getId(), p);
+            }
+            venta.setActivo(false);
+            venta.setMotivoAnulacion(motivo);
+            log.info("Venta ID {} anulada. Motivo: {}", id, motivo);
+        } else {
+            // Restaurar (Volver a descontar stock)
+            for (DetalleVenta item : venta.getDetalles()) {
+                Producto p = item.getProducto();
+                if (p.getStock() < item.getCantidad()) {
+                     throw new IllegalStateException("Stock insuficiente para restaurar el producto: " + p.getNombre());
+                }
+                p.setStock(p.getStock() - item.getCantidad());
+                productoService.actualizar(p.getId(), p);
+            }
+            venta.setActivo(true);
+            venta.setMotivoAnulacion(null);
+            log.info("Venta ID {} restaurada.", id);
+        }
+        
+        return ventaRepository.save(venta);
+    }
+
+    /**
+     * Convierte una Nota de Venta interna en una Factura o Boleta con valor legal hacia SUNAT.
+     */
+    public Venta emitirComprobante(Long id, Venta.TipoComprobante nuevoTipo, String documento, String nombre) {
+        Venta venta = buscarPorId(id);
+        
+        if (!venta.isActivo()) {
+            throw new IllegalStateException("No se puede emitir un comprobante sobre una venta anulada.");
+        }
+        
+        if (venta.getTipoComprobante() != Venta.TipoComprobante.NOTA_VENTA) {
+            throw new IllegalStateException("Esta venta ya es un comprobante fiscal (" + venta.getTipoComprobante() + ").");
+        }
+        
+        venta.setTipoComprobante(nuevoTipo);
+        if (documento != null && !documento.isBlank()) {
+            venta.setClienteDocumento(documento);
+        }
+        if (nombre != null && !nombre.isBlank()) {
+            venta.setClienteNombre(nombre);
+        }
+        
+        // Disparar proceso de SUNAT
+        facturacionService.procesarComprobante(venta);
+        
+        log.info("Nota de Venta ID {} promovida a {} {}", id, nuevoTipo, venta.getSerie() + "-" + venta.getCorrelativo());
+        return ventaRepository.save(venta);
     }
 }

@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
-import { Users, Plus, Shield, UserX, User } from 'lucide-react';
+import { Users, Plus, Shield, UserX, User, RotateCcw, Edit } from 'lucide-react';
 
 const Usuarios = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ username: '', password: '', rol: 'RECEPCIONISTA' });
+  const [editingId, setEditingId] = useState(null);
+  const [formData, setFormData] = useState({ username: '', password: '', rol: 'RECEPCIONISTA', activo: true });
   const [errorMSG, setErrorMSG] = useState('');
+  const [filterMode, setFilterMode] = useState('ALL');
 
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
 
@@ -31,12 +33,17 @@ const Usuarios = () => {
     fetchData();
   }, []);
 
-  const handleCreateUsuario = async (e) => {
+  const handleRegisterOrUpdate = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/usuarios', formData);
+      if (editingId) {
+        await api.put(`/usuarios/${editingId}`, formData);
+      } else {
+        await api.post('/usuarios', formData);
+      }
       setShowModal(false);
-      setFormData({ username: '', password: '', rol: 'RECEPCIONISTA' });
+      setFormData({ username: '', password: '', rol: 'RECEPCIONISTA', activo: true });
+      setEditingId(null);
       setErrorMSG('');
       fetchData();
     } catch (err) {
@@ -61,10 +68,28 @@ const Usuarios = () => {
       message: `¿Estás seguro que deseas eliminar el acceso a "${username}"? Esto no se puede deshacer.`,
       onConfirm: async () => {
         try {
-          await api.delete(`/usuarios/${id}`);
-          fetchData();
+          const userToArchive = usuarios.find(u => u.id === id);
+          await api.put(`/usuarios/${id}`, { ...userToArchive, activo: false });
+          await fetchData();
         } catch (err) {
-          showAlert('Error', err.response?.data || 'Error al eliminar');
+          showAlert('Error', err.response?.data || 'Error al desactivar acceso');
+        }
+      }
+    });
+  };
+
+  const handleRestoreUsuario = (user) => {
+    setDialogConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Activar Acceso',
+      message: `¿Estás seguro que deseas restaurar el acceso a "${user.username}"?`,
+      onConfirm: async () => {
+        try {
+          await api.put(`/usuarios/${user.id}`, { ...user, activo: true });
+          await fetchData();
+        } catch (err) {
+          showAlert('Error', err.response?.data || 'Error al reactivar acceso');
         }
       }
     });
@@ -75,11 +100,34 @@ const Usuarios = () => {
       title={<span>Gestión de <span className="text-gradient">Personal</span></span>}
       subtitle="Administra los accesos de tus recepcionistas y personal operativo."
       actionButton={
-        <button className="btn-primary" onClick={() => { setFormData({ username: '', password: '', rol: 'RECEPCIONISTA' }); setErrorMSG(''); setShowModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button className="btn-primary" onClick={() => { setEditingId(null); setFormData({ username: '', password: '', rol: 'RECEPCIONISTA', activo: true }); setErrorMSG(''); setShowModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Plus size={20} /> NUEVO USUARIO
         </button>
       }
     >
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setFilterMode('ALL')}
+            style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
+          >
+            Todos
+          </button>
+          <button 
+            onClick={() => setFilterMode('ACTIVO')}
+            style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
+          >
+            Activos
+          </button>
+          <button 
+            onClick={() => setFilterMode('INACTIVO')}
+            style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
+          >
+            Inactivos
+          </button>
+        </div>
+      </div>
+
       <div className="card" style={{ padding: '0 24px 24px' }}>
         {loading ? (
           <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando usuarios...</div>
@@ -94,7 +142,11 @@ const Usuarios = () => {
               </tr>
             </thead>
             <tbody>
-              {usuarios.map(u => (
+              {usuarios.filter(u => {
+                if (filterMode === 'ACTIVO') return u.activo !== false;
+                if (filterMode === 'INACTIVO') return u.activo === false;
+                return true;
+              }).map(u => (
                 <tr key={u.id}>
                   <td data-label="ID">{u.id}</td>
                   <td data-label="USUARIO (LOGIN)" style={{ fontWeight: 'bold' }}>{u.username}</td>
@@ -110,12 +162,29 @@ const Usuarios = () => {
                   </td>
                   <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
                     <button 
-                      onClick={() => handleDeleteUsuario(u.id, u.username)} 
-                      style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: u.username.toLowerCase() === 'admin' ? 0.3 : 1 }}
-                      title="Eliminar Acceso"
+                      onClick={() => { setEditingId(u.id); setFormData({ username: u.username, password: '********', rol: u.rol, activo: u.activo }); setErrorMSG(''); setShowModal(true); }} 
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: '8px' }}
+                      title="Editar Usuario"
                     >
-                      <UserX size={18} />
+                      <Edit size={18} />
                     </button>
+                    {u.activo !== false ? (
+                      <button 
+                        onClick={() => handleDeleteUsuario(u.id, u.username)} 
+                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: u.username.toLowerCase() === 'admin' ? 0.3 : 1 }}
+                        title="Eliminar Acceso"
+                      >
+                        <UserX size={18} />
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleRestoreUsuario(u)} 
+                        style={{ background: 'transparent', border: 'none', color: '#00ff7f', cursor: 'pointer', padding: '8px' }}
+                        title="Reactivar Acceso"
+                      >
+                        <RotateCcw size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -124,8 +193,8 @@ const Usuarios = () => {
         )}
       </div>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Nuevo Accesoo al Sistema">
-        <form onSubmit={handleCreateUsuario} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editingId ? "Editar Acceso" : "Nuevo Acceso al Sistema"}>
+        <form onSubmit={handleRegisterOrUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {errorMSG && <div style={{ padding: '10px', background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', borderRadius: '8px', textAlign: 'center', fontSize: '0.9rem' }}>{errorMSG}</div>}
           
           <div>
@@ -134,19 +203,30 @@ const Usuarios = () => {
           </div>
           <div>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contraseña</label>
-            <input required type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder="Segura y sin espacios" />
+            <input required={!editingId} type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} placeholder={editingId ? "Dejar vacío o '********' para no cambiar" : "Segura y sin espacios"} />
           </div>
-          <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Asignar Rol</label>
-            <select value={formData.rol} onChange={e => setFormData({...formData, rol: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-              <option value="RECEPCIONISTA">RECEPCIONISTA (Ventas, Socios, Asistencia)</option>
-              <option value="ADMINISTRADOR">ADMINISTRADOR (Acceso Total)</option>
-            </select>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Asignar Rol</label>
+              <select value={formData.rol} onChange={e => setFormData({...formData, rol: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                <option value="RECEPCIONISTA">RECEPCIONISTA</option>
+                <option value="ADMINISTRADOR">ADMINISTRADOR</option>
+              </select>
+            </div>
+            {editingId && (
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Estado</label>
+                <select value={formData.activo} onChange={e => setFormData({...formData, activo: e.target.value === 'true'})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                  <option value={true}>ACTIVO</option>
+                  <option value={false}>INACTIVO</option>
+                </select>
+              </div>
+            )}
           </div>
           
           <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
             <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)' }}>CANCELAR</button>
-            <button type="submit" className="btn-primary" style={{ flex: 1 }}>CREAR ACCESO</button>
+            <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editingId ? 'ACTUALIZAR ACCESO' : 'CREAR ACCESO'}</button>
           </div>
         </form>
       </Modal>

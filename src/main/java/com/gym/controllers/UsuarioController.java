@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/usuarios")
@@ -20,7 +21,7 @@ public class UsuarioController {
     private UsuarioService usuarioService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         Optional<Usuario> usuarioOpt = usuarioService.validarCredenciales(loginRequest.getUsername(), loginRequest.getPassword());
         
         if (usuarioOpt.isPresent()) {
@@ -38,7 +39,7 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<?> crearUsuario(@RequestBody Usuario usuario) {
+    public ResponseEntity<?> crearUsuario(@Valid @RequestBody Usuario usuario) {
         try {
             Usuario nuevoUsuario = usuarioService.guardarUsuario(usuario);
             return ResponseEntity.ok(nuevoUsuario);
@@ -52,6 +53,27 @@ public class UsuarioController {
         try {
             usuarioService.eliminarUsuario(id);
             return ResponseEntity.ok("Usuario eliminado correctamente");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> actualizarUsuario(@PathVariable Long id, @Valid @RequestBody Usuario usuarioDetails) {
+        try {
+            Optional<Usuario> usuarioOpt = usuarioService.findById(id);
+            if (usuarioOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
+            }
+            Usuario usuario = usuarioOpt.get();
+            usuario.setUsername(usuarioDetails.getUsername());
+            if (usuarioDetails.getPassword() != null && !usuarioDetails.getPassword().isEmpty() && !usuarioDetails.getPassword().equals("********")) {
+                usuario.setPassword(usuarioDetails.getPassword());
+            }
+            usuario.setRol(usuarioDetails.getRol());
+            usuario.setActivo(usuarioDetails.isActivo());
+            Usuario actualizado = usuarioService.guardarUsuario(usuario);
+            return ResponseEntity.ok(actualizado);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }

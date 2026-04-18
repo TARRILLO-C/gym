@@ -1,6 +1,7 @@
 package com.gym.models;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "usuarios")
@@ -10,14 +11,20 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El nombre de usuario es obligatorio")
     @Column(nullable = false, unique = true)
     private String username;
 
+    @NotBlank(message = "La contraseña es obligatoria")
     @Column(nullable = false)
     private String password; // Simplificado en texto plano para el inicio, de ser requerido se puede usar BCrypt luego
 
+    @NotBlank(message = "El rol es obligatorio")
     @Column(nullable = false)
     private String rol; // "ADMINISTRADOR" o "RECEPCIONISTA"
+
+    @Column(nullable = false)
+    private boolean activo = true;
 
     public Usuario() {}
 
@@ -57,5 +64,13 @@ public class Usuario {
 
     public void setRol(String rol) {
         this.rol = rol;
+    }
+
+    public boolean isActivo() {
+        return activo;
+    }
+
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

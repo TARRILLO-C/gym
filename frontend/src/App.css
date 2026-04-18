@@ -150,9 +150,15 @@
   border-radius: 20px;
   border: 1px solid var(--panel-border);
   transition: var(--transition-smooth);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
-.card:hover { border-color: rgba(255, 62, 62, 0.4); }
+.card:hover { 
+  border-color: rgba(255, 62, 62, 0.4); 
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
 
 .btn-primary {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));

@@ -4,17 +4,29 @@ import {
   Search,
   Calendar,
   DollarSign,
-  Printer
+  Printer,
+  Trash2,
+  FilePlus,
+  Ban
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
+import Modal from '../components/ui/Modal';
 import PrintTicket from '../components/ui/PrintTicket';
 
 const Ventas = () => {
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterMode, setFilterMode] = useState('ALL');
   const [ventaToPrint, setVentaToPrint] = useState(null);
+  const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
+  const [dialogInput, setDialogInput] = useState('');
+  
+  const [showEmitModal, setShowEmitModal] = useState(false);
+  const [emitForm, setEmitForm] = useState({ ventaId: null, tipo: 'BOLETA', documento: '', nombre: '' });
+
+  const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
   const fetchVentas = async () => {
     setLoading(true);
@@ -41,12 +53,75 @@ const Ventas = () => {
     }, 100);
   };
 
-  const filteredVentas = ventas.filter(v => {
-    const term = search.toLowerCase();
-    const socioNombre = v.socio?.nombreCompleto?.toLowerCase() || '';
-    const metodo = v.metodoPago?.toLowerCase() || '';
-    return socioNombre.includes(term) || metodo.includes(term);
-  });
+  const handleAnularVenta = (venta) => {
+    const ident = venta.serie && venta.correlativo 
+      ? `${venta.tipoComprobante} ${venta.serie}-${venta.correlativo}`
+      : `Venta Interna #${venta.id}`;
+
+    setDialogInput('');
+    setDialogConfig({
+      isOpen: true, 
+      type: 'confirm', 
+      title: 'Anular Comprobante',
+      message: `¿Estás seguro que deseas anular la ${ident}? El stock será devuelto (si aplica).`,
+      warningText: 'Esta acción reportará la baja a SUNAT y no se puede deshacer.',
+      showInput: true,
+      inputLabel: 'Motivo de anulación (Obligatorio)',
+      inputPlaceholder: 'Ej: Error en los productos, Cliente desistió de la compra...',
+      onConfirm: async () => {
+        try {
+          await api.put(`/ventas/${venta.id}`, { ...venta, activo: false, motivoAnulacion: dialogInput });
+          await fetchVentas();
+        } catch (err) { showAlert("Error", "Error al anular venta"); }
+      }
+    });
+  };
+
+  // Removida la función handleRestoreVenta según requerimiento de cambiar a "Emitir Comprobante"
+
+  const handleOpenEmitModal = (ventaId) => {
+    setEmitForm({ ventaId, tipo: 'BOLETA', documento: '', nombre: '' });
+    setShowEmitModal(true);
+  };
+
+  const handleGenerateComprobante = async () => {
+    try {
+      if (emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) {
+        showAlert("Error", "Debe completar un RUC de 11 dígitos y Razón Social para emitir Factura.");
+        return;
+      }
+      
+      const payload = {
+        tipo: emitForm.tipo,
+        ruc: emitForm.documento,
+        razonSocial: emitForm.nombre
+      };
+      
+      await api.post(`/ventas/${emitForm.ventaId}/emitir`, payload);
+      
+      setDialogConfig({
+        isOpen: true, type: 'alert', title: '¡Comprobante Emitido!',
+        message: 'El documento ha sido generado exitosamente en SUNAT.'
+      });
+      setShowEmitModal(false);
+      fetchVentas();
+    } catch (err) {
+      showAlert("Error al emitir", "Hubo un problema al conectar con SUNAT o procesar la petición.");
+    }
+  };
+
+  const filteredVentas = ventas
+    .filter(v => {
+      if (filterMode === 'ACTIVO') return v.activo !== false;
+      if (filterMode === 'INACTIVO') return v.activo === false;
+      return true;
+    })
+    .filter(v => {
+      const term = search.toLowerCase();
+      const socioNombre = v.socio?.nombreCompleto?.toLowerCase() || '';
+      const metodo = v.metodoPago?.toLowerCase() || '';
+      return socioNombre.includes(term) || metodo.includes(term);
+    });
 
   return (<>
     <PageLayout
@@ -68,6 +143,27 @@ const Ventas = () => {
               onChange={(e) => setSearch(e.target.value)}
               style={{ paddingLeft: '40px', width: '100%', background: 'var(--panel-bg)', color: 'var(--text-main)' }}
             />
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button 
+              onClick={() => setFilterMode('ALL')}
+              style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
+            >
+              Todos
+            </button>
+            <button 
+              onClick={() => setFilterMode('ACTIVO')}
+              style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
+            >
+              Válidas
+            </button>
+            <button 
+              onClick={() => setFilterMode('INACTIVO')}
+              style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
+            >
+              Anuladas
+            </button>
           </div>
         </div>
 
@@ -110,32 +206,60 @@ const Ventas = () => {
                     S/ {parseFloat(venta.total).toFixed(2)}
                   </td>
                   <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
-                    {venta.enlacePdfTicket ? (
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => window.open(venta.enlacePdfTicket, '_blank')}
-                          title="Ver Ticket de SUNAT (80mm)"
-                          style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
-                        >
-                          <Printer size={14} /> SUNAT
-                        </button>
-                        <button
-                          onClick={() => window.open(venta.enlacePdfA4, '_blank')}
-                          title="Ver PDF (A4)"
-                          style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
-                        >
-                          <FileText size={14} /> A4
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleImprimir(venta)}
-                        title="Reimprimir Comprobante Interno"
-                        style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', marginLeft: 'auto' }}
-                      >
-                        <Printer size={16} /> INTERNO
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      {venta.activo !== false ? (
+                        <>
+                          {venta.enlacePdfTicket ? (
+                            <>
+                              <button
+                                onClick={() => window.open(venta.enlacePdfTicket, '_blank')}
+                                title="Ver Ticket de Venta (80mm)"
+                                style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                              >
+                                <Printer size={14} /> TICKET
+                              </button>
+                              <button
+                                onClick={() => window.open(venta.enlacePdfA4, '_blank')}
+                                title="Ver PDF (A4)"
+                                style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                              >
+                                <FileText size={14} /> A4
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleImprimir(venta)}
+                                title="Reimprimir Comprobante Interno"
+                                style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                              >
+                                <Printer size={16} /> INTERNO
+                              </button>
+                              {venta.tipoComprobante === 'NOTA_VENTA' && (
+                                <button
+                                  onClick={() => handleOpenEmitModal(venta.id)}
+                                  title="Emitir Comprobante"
+                                  style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                >
+                                  <FilePlus size={16} /> EMITIR
+                                </button>
+                              )}
+                            </>
+                          )}
+                          <button 
+                            onClick={() => handleAnularVenta(venta)}
+                            title="Anular Comprobante"
+                            style={{ background: 'transparent', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px' }}
+                          >
+                            <Ban size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '8px', border: '1px dashed var(--panel-border)' }}>
+                          ANULADA
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -152,6 +276,147 @@ const Ventas = () => {
       </div>
     </PageLayout>
     <PrintTicket venta={ventaToPrint} />
+    
+    <Modal isOpen={dialogConfig.isOpen} onClose={() => setDialogConfig({ isOpen: false })} title={dialogConfig.title || 'Aviso'}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <p style={{ color: 'var(--text-main)', fontSize: '1rem', margin: 0 }}>{dialogConfig.message}</p>
+        
+        {dialogConfig.warningText && (
+          <p style={{ color: '#ff3e3e', fontSize: '0.85rem', fontWeight: 'bold', margin: 0, padding: '8px', background: 'rgba(255, 62, 62, 0.1)', borderRadius: '8px', borderLeft: '4px solid #ff3e3e' }}>
+            ⚠️ {dialogConfig.warningText}
+          </p>
+        )}
+
+        {dialogConfig.showInput && (
+          <div>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>{dialogConfig.inputLabel}</label>
+            <input 
+              type="text" 
+              value={dialogInput} 
+              onChange={(e) => setDialogInput(e.target.value)} 
+              placeholder={dialogConfig.inputPlaceholder} 
+              style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--bg-color)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }} 
+            />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
+          {dialogConfig.type !== 'alert' && (
+            <button onClick={() => setDialogConfig({ isOpen: false })} style={{ padding: '10px 20px', background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+              Cancelar
+            </button>
+          )}
+          <button 
+            className="btn-primary" 
+            disabled={dialogConfig.showInput && dialogInput.trim().length === 0}
+            onClick={() => {
+              if(dialogConfig.type === 'confirm') dialogConfig.onConfirm();
+              setDialogConfig({ isOpen: false });
+            }} 
+            style={{ padding: '10px 24px', opacity: (dialogConfig.showInput && dialogInput.trim().length === 0) ? 0.5 : 1, cursor: (dialogConfig.showInput && dialogInput.trim().length === 0) ? 'not-allowed' : 'pointer' }}
+          >
+            {dialogConfig.type === 'alert' ? 'Aceptar' : 'Confirmar'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    {/* Custom Modal: Emitir Comprobante Electrónico */}
+    <Modal isOpen={showEmitModal} onClose={() => setShowEmitModal(false)} title="Emitir Comprobante Electrónico">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <p style={{ color: 'var(--text-main)', fontSize: '1rem', margin: 0 }}>
+          ¿Qué tipo de comprobante deseas emitir para la Nota de Venta <span style={{fontWeight: 'bold', color: 'var(--accent-primary)'}}>#{emitForm.ventaId}</span>?
+        </p>
+
+        {/* Lógica Visual: Selector Toggles (Radio simulado) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div 
+            onClick={() => setEmitForm({...emitForm, tipo: 'BOLETA', documento: '', nombre: ''})}
+            style={{ 
+              padding: '16px', borderRadius: '16px', border: emitForm.tipo === 'BOLETA' ? '2px solid #f97316' : '1px solid var(--panel-border)', 
+              background: emitForm.tipo === 'BOLETA' ? 'rgba(249, 115, 22, 0.05)' : 'var(--panel-bg)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' 
+            }}
+          >
+            <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: emitForm.tipo === 'BOLETA' ? '6px solid #f97316' : '2px solid var(--text-muted)', transition: 'all 0.2s' }}></div>
+            <span style={{ fontWeight: 'bold', color: emitForm.tipo === 'BOLETA' ? '#f97316' : 'var(--text-main)' }}>Boleta</span>
+          </div>
+          
+          <div 
+            onClick={() => setEmitForm({...emitForm, tipo: 'FACTURA', documento: '', nombre: ''})}
+            style={{ 
+              padding: '16px', borderRadius: '16px', border: emitForm.tipo === 'FACTURA' ? '2px solid #f97316' : '1px solid var(--panel-border)', 
+              background: emitForm.tipo === 'FACTURA' ? 'rgba(249, 115, 22, 0.05)' : 'var(--panel-bg)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.2s' 
+            }}
+          >
+            <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: emitForm.tipo === 'FACTURA' ? '6px solid #f97316' : '2px solid var(--text-muted)', transition: 'all 0.2s' }}></div>
+            <span style={{ fontWeight: 'bold', color: emitForm.tipo === 'FACTURA' ? '#f97316' : 'var(--text-main)' }}>Factura</span>
+          </div>
+        </div>
+
+        {/* Renderizado dinámico para FACTURA o BOLETA */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--panel-bg)', padding: '20px', borderRadius: '16px', border: '1px solid var(--panel-border)', animation: 'fadeIn 0.3s ease-out' }}>
+          {emitForm.tipo === 'BOLETA' && (
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              💡 Nota: Si dejas <strong>ambos campos vacíos</strong>, la Boleta se emitirá oficialmente a favor de <strong>"PÚBLICO GENERAL"</strong> (DNI: 00000000). Si el cliente desea la boleta a su nombre, llénalos aquí:
+            </p>
+          )}
+
+          <div>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
+              {emitForm.tipo === 'FACTURA' ? 'Ingrese el RUC del cliente (Obligatorio)' : 'Ingrese el DNI del cliente (Opcional)'}
+            </label>
+            <input 
+              type="text" 
+              value={emitForm.documento} 
+              onChange={(e) => setEmitForm({...emitForm, documento: e.target.value.replace(/\D/g, '')})} 
+              maxLength={emitForm.tipo === 'FACTURA' ? "11" : "8"}
+              placeholder={emitForm.tipo === 'FACTURA' ? "Ej: 20601234567" : "Ej: 71234567"} 
+              style={{ width: '100%', padding: '14px', borderRadius: '12px', background: 'var(--bg-color)', border: emitForm.tipo === 'FACTURA' ? '1px solid #f97316' : '1px solid var(--panel-border)', color: 'var(--text-main)', fontSize: '1rem' }} 
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
+              {emitForm.tipo === 'FACTURA' ? 'Razón Social (Obligatorio)' : 'Nombres y Apellidos (Opcional)'}
+            </label>
+            <input 
+              type="text" 
+              value={emitForm.nombre} 
+              onChange={(e) => setEmitForm({...emitForm, nombre: e.target.value})} 
+              placeholder={emitForm.tipo === 'FACTURA' ? "Ej: Mi Empresa S.A.C." : "Ej: Juan Pérez"} 
+              style={{ width: '100%', padding: '14px', borderRadius: '12px', background: 'var(--bg-color)', border: emitForm.tipo === 'FACTURA' ? '1px solid #f97316' : '1px solid var(--panel-border)', color: 'var(--text-main)', fontSize: '1rem' }} 
+            />
+          </div>
+        </div>
+
+        {/* Footer del modal con Tailwind/CSS in-line minimalista */}
+        <div style={{ display: 'flex', gap: '12px', marginTop: '12px', justifyContent: 'flex-end' }}>
+          <button 
+            onClick={() => setShowEmitModal(false)} 
+            style={{ padding: '14px 28px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--panel-border)', borderRadius: '14px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}
+          >
+            Cancelar
+          </button>
+          <button 
+            disabled={emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')}
+            onClick={handleGenerateComprobante} 
+            style={{ 
+              padding: '14px 28px', 
+              background: '#f97316',
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '14px', 
+              cursor: (emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) ? 'not-allowed' : 'pointer', 
+              fontWeight: 'bold',
+              fontSize: '0.95rem',
+              opacity: (emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) ? 0.5 : 1,
+              boxShadow: '0 4px 14px rgba(249, 115, 22, 0.3)'
+            }}
+          >
+            Generar
+          </button>
+        </div>
+      </div>
+    </Modal>
   </>
   );
 };

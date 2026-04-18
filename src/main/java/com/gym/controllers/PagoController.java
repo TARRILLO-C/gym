@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/pagos")
@@ -17,7 +18,7 @@ public class PagoController {
     private final PagoService pagoService;
 
     @PostMapping("/suscripcion/{id}")
-    public ResponseEntity<Pago> registrarPago(@PathVariable Long id, @RequestBody Pago pago) {
+    public ResponseEntity<Pago> registrarPago(@PathVariable Long id, @Valid @RequestBody Pago pago) {
         return ResponseEntity.ok(pagoService.registrarPago(id, pago));
     }
 

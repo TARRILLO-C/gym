@@ -131,8 +131,9 @@ public class SocioService {
     @Transactional
     public void eliminar(Long id) {
         Socio socio = buscarPorId(id);
-        socioRepository.delete(socio);
-        log.info("Socio ID {} eliminado.", id);
+        socio.setEstado(EstadoSocio.INACTIVO);
+        socioRepository.save(socio);
+        log.info("Socio ID {} pasado a estado INACTIVO (borrado lógico).", id);
     }
 
     /**

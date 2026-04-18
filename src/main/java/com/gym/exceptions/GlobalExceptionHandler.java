@@ -44,11 +44,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-        List<String> errores = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
-                .toList();
+        Map<String, String> errores = new java.util.HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(fe -> 
+            errores.put(fe.getField(), fe.getDefaultMessage())
+        );
+        Map<String, Object> body = buildBody(HttpStatus.BAD_REQUEST, "Error de validación");
+        body.put("errores", errores);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraint(jakarta.validation.ConstraintViolationException ex) {
+        Map<String, String> errores = new java.util.HashMap<>();
+        ex.getConstraintViolations().forEach(cv -> 
+            errores.put(cv.getPropertyPath().toString(), cv.getMessage())
+        );
         Map<String, Object> body = buildBody(HttpStatus.BAD_REQUEST, "Error de validación");
         body.put("errores", errores);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);

@@ -4,7 +4,9 @@ import {
   TrendingUp, 
   Calendar, 
   Activity,
-  Package
+  Package,
+  DollarSign,
+  ShoppingBag
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -15,6 +17,9 @@ const Dashboard = () => {
     ingresosHoy: 0,
     membresiasActivas: 0,
     productosBajoStock: 0,
+    totalProductos: 0,
+    totalVentasCount: 0,
+    montoVendidoTotal: 0,
     ultimosMiembros: []
   });
   const [loading, setLoading] = useState(true);
@@ -23,17 +28,21 @@ const Dashboard = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const [socios, ingresos, productos] = await Promise.all([
+        const [socios, ingresos, productos, ventas] = await Promise.all([
           api.get('/socios'),
           api.get('/asistencias/hoy'),
-          api.get('/productos/disponibles')
+          api.get('/productos'),
+          api.get('/ventas')
         ]);
         
         setStats({
           totalSocios: socios.data.length || 0,
           ingresosHoy: ingresos.data.length || 0,
-          membresiasActivas: socios.data.filter(s => s.estado === 'ACTIVO').length || 0,
-          productosBajoStock: productos.data.filter(p => p.stock < 5).length || 0,
+          membresiasActivas: socios.data.filter(s => s.status === 'ACTIVO' || s.estado === 'ACTIVO').length || 0,
+          productosBajoStock: productos.data.filter(p => !p.activo || p.stock < 5).length || 0,
+          totalProductos: productos.data.length || 0,
+          totalVentasCount: ventas.data.length || 0,
+          montoVendidoTotal: (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0),
           ultimosMiembros: socios.data.slice(-4).reverse() || []
         });
       } catch (err) {
@@ -76,7 +85,7 @@ const Dashboard = () => {
       title={<span>¡Bienvenido de <span className="text-gradient">nuevo</span>!</span>}
       subtitle="Aquí tienes un resumen de la actividad de hoy en el gimnasio."
     >
-      <section style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
         <Card 
           title="Total Socios" 
           value={stats.totalSocios} 
@@ -90,16 +99,28 @@ const Dashboard = () => {
           color="var(--accent-primary)" 
         />
         <Card 
+          title="Ventas Totales" 
+          value={stats.totalVentasCount} 
+          icon={ShoppingBag} 
+          color="#3b82f6" 
+        />
+        <Card 
+          title="Monto Vendido" 
+          value={`S/ ${stats.montoVendidoTotal.toFixed(2)}`} 
+          icon={DollarSign} 
+          color="#00ff7f" 
+        />
+        <Card 
+          title="Productos" 
+          value={stats.totalProductos} 
+          icon={Package} 
+          color="rgba(180, 100, 246, 0.8)" 
+        />
+        <Card 
           title="Planes Activos" 
           value={stats.membresiasActivas} 
           icon={Calendar} 
           color="rgba(74, 144, 226, 0.8)" 
-        />
-        <Card 
-          title="Alerta Stock" 
-          value={stats.productosBajoStock} 
-          icon={Package} 
-          color="rgba(180, 180, 180, 0.8)" 
         />
       </section>
 

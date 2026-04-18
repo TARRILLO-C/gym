@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import jakarta.validation.Valid;
 
 /**
  * Controlador REST para la gestión de Suscripciones de socios.
@@ -48,12 +49,13 @@ public class SuscripcionController {
     }
 
     @PostMapping
-    public ResponseEntity<Suscripcion> crear(@RequestBody SuscripcionRequest request) {
+    public ResponseEntity<Suscripcion> crear(@Valid @RequestBody SuscripcionRequest request) {
         Suscripcion nueva = suscripcionService.crear(
                 request.getSocioId(),
                 request.getMembresiaId(),
                 request.getFechaInicio() != null ? request.getFechaInicio() : LocalDate.now(),
-                request.getEstadoPago()
+                request.getEstadoPago(),
+                request.getPagoTotal()
         );
         return new ResponseEntity<>(nueva, HttpStatus.CREATED);
     }
@@ -64,13 +66,19 @@ public class SuscripcionController {
     }
 
     @PostMapping("/{id}/congelar")
-    public ResponseEntity<Congelamiento> congelar(@PathVariable Long id, @RequestBody CongelamientoRequest request) {
+    public ResponseEntity<Congelamiento> congelar(@PathVariable Long id, @Valid @RequestBody CongelamientoRequest request) {
         return ResponseEntity.ok(suscripcionService.congelar(id, request.getFechaInicio(), request.getFechaFin(), request.getMotivo()));
     }
 
     @PostMapping("/{id}/descongelar")
     public ResponseEntity<Void> descongelar(@PathVariable Long id) {
         suscripcionService.descongelar(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/restaurar")
+    public ResponseEntity<Void> restaurar(@PathVariable Long id) {
+        suscripcionService.restaurar(id);
         return ResponseEntity.ok().build();
     }
 
@@ -89,6 +97,7 @@ public class SuscripcionController {
         private Long membresiaId;
         private LocalDate fechaInicio;
         private Suscripcion.EstadoPago estadoPago;
+        private Boolean pagoTotal;
     }
 
     @Data

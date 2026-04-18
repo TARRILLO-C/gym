@@ -33,9 +33,9 @@ public class PagoService {
             pago.setFechaPago(LocalDateTime.now());
         }
 
-        // Si es un pago mensual, extender la fecha de próximo cobro
-        if (sus.getMembresia().getPrecioMensual() != null && sus.getFechaProximoCobro() != null) {
-            sus.setFechaProximoCobro(sus.getFechaProximoCobro().plusDays(30));
+        // Si es un pago fraccionado, extender la fecha de próximo cobro
+        if (sus.getMembresia().getPrecioCuota() != null && sus.getFechaProximoCobro() != null && sus.getMembresia().getFrecuenciaCobroDias() != null) {
+            sus.setFechaProximoCobro(sus.getFechaProximoCobro().plusDays(sus.getMembresia().getFrecuenciaCobroDias()));
             // Asegurarse de no exceder la fecha de fin de la suscripción
             if (sus.getFechaProximoCobro().isAfter(sus.getFechaFin())) {
                 sus.setFechaProximoCobro(sus.getFechaFin());

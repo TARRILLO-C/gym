@@ -64,13 +64,15 @@ public class ProductoService {
         existente.setCategoria(datos.getCategoria());
         existente.setDescripcion(datos.getDescripcion());
         existente.setImagenUrl(datos.getImagenUrl());
+        existente.setActivo(datos.isActivo());
         return productoRepository.save(existente);
     }
 
     @Transactional
     public void eliminar(Long id) {
         Producto p = buscarPorId(id);
-        productoRepository.delete(p);
-        log.info("Producto ID {} eliminado.", id);
+        p.setActivo(false);
+        productoRepository.save(p);
+        log.info("Producto ID {} marcado como inactivo (borrado lógico).", id);
     }
 }

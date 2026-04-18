@@ -137,49 +137,67 @@ public class SuscripcionService {
      */
     @Transactional
     public Suscripcion crear(Long socioId, Long membresiaId,
-                             LocalDate fechaInicio, EstadoPago estadoPago) {
+                             LocalDate fechaInicio, EstadoPago estadoPago, Boolean pagoTotal) {
 
         if (socioId == null || membresiaId == null) {
             throw new IllegalArgumentException("El ID del socio y de la membresía son obligatorios.");
         }
 
-        if (tieneSuscripcionActiva(socioId)) {
-            throw new com.gym.exceptions.DuplicateResourceException(
-                "El socio ya cuenta con una membresía activa y vigente.");
-        }
-
+        // Ya no lanzamos DuplicateResourceException.
+        // Obtener dependencias necesarias
         Socio socio = socioRepository.findById(socioId)
                 .orElseThrow(() -> new ResourceNotFoundException("Socio", socioId));
 
         Membresia membresia = membresiaRepository.findById(membresiaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Membresía", membresiaId));
 
-        // Fecha de fin = fecha de inicio + duración en días del plan
-        LocalDate fechaFin = fechaInicio.plusDays(membresia.getDuracionDias());
-        
-        // Fecha de próximo cobro: 30 días después o igual a fechaFin si es corto
-        LocalDate proximoCobro = null;
-        if (membresia.getPrecioMensual() != null && membresia.getDuracionDias() > 30) {
-            proximoCobro = fechaInicio.plusDays(30);
+        // Unificamos la suscripción activa actual para evitar filas duplicadas en el Frontend.
+        Optional<Suscripcion> activaOpt = suscripcionRepository
+                .findSuscripcionActivaBySocio(socioId, EstadoPago.PAGADO, LocalDate.now());
+                
+        Suscripcion suscripcion;
+
+        if (activaOpt.isPresent()) {
+            suscripcion = activaOpt.get();
+            suscripcion.setMembresia(membresia); // Si elige otro plan, se le actualiza
+            
+            // Si le quedaban días, se le suman a partir de su vencimiento actual
+            LocalDate baseVigencia = suscripcion.getFechaFin().isBefore(LocalDate.now()) 
+                                     ? LocalDate.now() 
+                                     : suscripcion.getFechaFin();
+                                     
+            suscripcion.setFechaFin(baseVigencia.plusDays(membresia.getDuracionDias()));
+            log.info("Renovación/Mejora Unificada: Socio {} extendido hasta {}", socioId, suscripcion.getFechaFin());
         } else {
-            proximoCobro = fechaFin;
+            if (fechaInicio == null) {
+                fechaInicio = LocalDate.now();
+            }
+            
+            suscripcion = Suscripcion.builder()
+                    .socio(socio)
+                    .membresia(membresia)
+                    .fechaInicio(fechaInicio)
+                    .fechaFin(fechaInicio.plusDays(membresia.getDuracionDias()))
+                    .build();
         }
 
-        Suscripcion suscripcion = Suscripcion.builder()
-                .socio(socio)
-                .membresia(membresia)
-                .fechaInicio(fechaInicio)
-                .fechaFin(fechaFin)
-                .fechaProximoCobro(proximoCobro)
-                .estadoPago(estadoPago != null ? estadoPago : EstadoPago.PAGADO)
-                .build();
-
-        log.info("Cálculo de cobro: Plan={}, PrecioMensual={}, PróximoCobro={}", 
-                 membresia.getNombre(), membresia.getPrecioMensual(), proximoCobro);
+        // Fecha de próximo cobro y estado financiero
+        suscripcion.setEstadoPago(estadoPago != null ? estadoPago : EstadoPago.PAGADO);
+        
+        if (pagoTotal != null && pagoTotal) {
+            // Pagó el total de golpe (promo), su próximo cobro es cuando acabe el plan
+            suscripcion.setFechaProximoCobro(suscripcion.getFechaFin());
+            suscripcion.setEstadoPago(EstadoPago.PAGADO);
+        } else if (membresia.getPrecioCuota() != null && membresia.getFrecuenciaCobroDias() != null) {
+            LocalDate baseCobro = (suscripcion.getFechaInicio() != null) ? suscripcion.getFechaInicio() : LocalDate.now();
+            suscripcion.setFechaProximoCobro(baseCobro.plusDays(membresia.getFrecuenciaCobroDias()));
+            if (estadoPago == null) suscripcion.setEstadoPago(EstadoPago.PENDIENTE);
+        } else {
+            suscripcion.setFechaProximoCobro(suscripcion.getFechaFin());
+        }
 
         Suscripcion guardada = suscripcionRepository.save(suscripcion);
-        log.info("Suscripción creada: socio={}, membresía={}, vigencia={} → {}",
-                socioId, membresiaId, fechaInicio, fechaFin);
+        log.info("Suscripción procesada exitosamente: socio={}, membresía={}, fin={}", socioId, membresiaId, suscripcion.getFechaFin());
         return guardada;
     }
 
@@ -238,17 +256,32 @@ public class SuscripcionService {
 
     /**
      * Realiza una renovación rápida de una suscripción usando el mismo plan.
+     * En lugar de crear un duplicado, extiende la vigencia de la actual.
      */
     @Transactional
     public Suscripcion renovar(Long id) {
         Suscripcion anterior = buscarPorId(id);
         
-        // La nueva suscripción inicia el día que vence la anterior (o hoy si ya venció)
+        // Si está vencida, la vigencia nueva empieza hoy. Si aún no vence, se acumula al final de su contrato actual.
         LocalDate inicioVigencia = anterior.getFechaFin().isBefore(LocalDate.now()) 
                                    ? LocalDate.now() 
                                    : anterior.getFechaFin();
+                                   
+        LocalDate nuevaFechaFin = inicioVigencia.plusDays(anterior.getMembresia().getDuracionDias());
+        
+        anterior.setFechaFin(nuevaFechaFin);
+        anterior.setEstadoPago(EstadoPago.PAGADO);
 
-        return crear(anterior.getSocio().getId(), anterior.getMembresia().getId(), inicioVigencia, EstadoPago.PAGADO);
+        // Si es fraccionado, empujar su fecha de cobro hacia adelante
+        if (anterior.getFechaProximoCobro() != null && anterior.getMembresia().getFrecuenciaCobroDias() != null) {
+            LocalDate baseCobro = anterior.getFechaProximoCobro().isBefore(LocalDate.now()) 
+                                  ? LocalDate.now() 
+                                  : anterior.getFechaProximoCobro();
+            anterior.setFechaProximoCobro(baseCobro.plusDays(anterior.getMembresia().getFrecuenciaCobroDias()));
+        }
+
+        log.info("Suscripción {} renovada con éxito. Nueva fecha fin: {}", id, nuevaFechaFin);
+        return suscripcionRepository.save(anterior);
     }
 
     /**
@@ -274,7 +307,19 @@ public class SuscripcionService {
     @Transactional
     public void eliminar(Long id) {
         Suscripcion sus = buscarPorId(id);
-        suscripcionRepository.delete(sus);
-        log.info("Suscripción ID {} eliminada.", id);
+        sus.setActivo(false);
+        suscripcionRepository.save(sus);
+        log.info("Suscripción ID {} marcada como inactiva (borrado lógico).", id);
+    }
+
+    /**
+     * Restaura una suscripción eliminada lógicamente.
+     */
+    @Transactional
+    public void restaurar(Long id) {
+        Suscripcion sus = buscarPorId(id);
+        sus.setActivo(true);
+        suscripcionRepository.save(sus);
+        log.info("Suscripción ID {} ha sido restaurada con éxito.", id);
     }
 }

@@ -76,6 +76,10 @@ public class Suscripcion {
     @Column(name = "esta_congelada", nullable = false)
     private boolean estaCongelada = false;
 
+    @Builder.Default
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
+
     // ── Enum de estado de pago ────────────────────────────────────────────────
 
     public enum EstadoPago {

@@ -34,6 +34,10 @@ public class UsuarioService {
         return Optional.empty();
     }
 
+    public Optional<Usuario> findById(Long id) {
+        return usuarioRepository.findById(id);
+    }
+
     public java.util.List<Usuario> findAll() {
         return usuarioRepository.findAll();
     }
@@ -50,6 +54,10 @@ public class UsuarioService {
         if (usuario.isPresent() && "admin".equalsIgnoreCase(usuario.get().getUsername())) {
             throw new RuntimeException("No se puede eliminar al administrador principal");
         }
-        usuarioRepository.deleteById(id);
+        if (usuario.isPresent()) {
+            Usuario u = usuario.get();
+            u.setActivo(false);
+            usuarioRepository.save(u);
+        }
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import jakarta.validation.Valid;
 
 /**
  * Controlador REST para el control de acceso y registro de asistencias.
@@ -27,7 +28,7 @@ public class AsistenciaController {
      * @param request Mapa que contiene el "dni" del socio.
      */
     @PostMapping("/registrar-ingreso")
-    public ResponseEntity<Asistencia> registrarIngreso(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Asistencia> registrarIngreso(@Valid @RequestBody Map<String, String> request) {
         String dni = request.get("dni");
         if (dni == null || dni.isEmpty()) {
             return ResponseEntity.badRequest().build();

@@ -2,6 +2,7 @@ package com.gym.models;
 
 import jakarta.persistence.*;
 import lombok.*;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 
@@ -24,6 +25,7 @@ public class Producto {
     /**
      * Nombre descriptivo del producto (ej: "Proteína Whey", "Camiseta Dry-fit").
      */
+    @NotBlank(message = "El nombre es obligatorio")
     @Column(name = "nombre", nullable = false, length = 150)
     private String nombre;
 
@@ -49,6 +51,8 @@ public class Producto {
     /**
      * Precio de venta del producto.
      */
+    @NotNull(message = "El precio es obligatorio")
+    @DecimalMin(value = "0.0", inclusive = false, message = "El precio debe ser mayor a 0")
     @Column(name = "precio", nullable = false, precision = 10, scale = 2)
     private BigDecimal precio;
 
@@ -56,8 +60,17 @@ public class Producto {
      * Cantidad disponible en inventario.
      * No puede ser negativo; la lógica de negocio lo controlará en el Service.
      */
+    @NotNull(message = "El stock es obligatorio")
+    @Min(value = 0, message = "El stock no puede ser negativo")
     @Column(name = "stock", nullable = false)
     private Integer stock;
+
+    /**
+     * Indica si el producto está activo (borrado lógico).
+     */
+    @Builder.Default
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
 
     public enum CategoriaProducto {
         BEBIDA,
