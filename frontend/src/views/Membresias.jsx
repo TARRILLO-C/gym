@@ -146,7 +146,12 @@ const Membresias = () => {
       try {
         const resp = await api.post(`/pagos/suscripcion/${sus.id}`, {
           monto: parseFloat(monto),
+<<<<<<< HEAD
           metodoPago: 'EFECTIVO'
+=======
+          metodoPago: 'EFECTIVO',
+          fechaPago: new Date().toISOString().split('.')[0]
+>>>>>>> b304a0c (Mis cambios locales)
         });
         
         const nuevaFecha = resp.data?.suscripcion?.fechaProximoCobro;
@@ -462,11 +467,31 @@ const Membresias = () => {
                       </td>
                       <td data-label="PLAN">{s?.membresia?.nombre || 'Plan desconocido'}</td>
                       <td data-label="INICIO">{s?.fechaInicio || '-'}</td>
+<<<<<<< HEAD
                       <td data-label="PRÓXIMO COBRO" style={{ color: s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.fechaProximoCobro !== s.fechaFin ? '#ff3e3e' : 'var(--accent-secondary)', fontWeight: 'bold' }}>
                           {s.fechaProximoCobro ? s.fechaProximoCobro : '-'}
                           {s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.fechaProximoCobro !== s.fechaFin && (
                             <span style={{ display: 'block', fontSize: '0.7rem', color: '#ff3e3e' }}>¡DEUDA DE FECHA!</span>
                           )}
+=======
+                      <td data-label="PRÓXIMO COBRO">
+                        {(() => {
+                           const isFraccionado = s?.membresia?.precioCuota > 0;
+                           const isLate = s.fechaProximoCobro && new Date(s.fechaProximoCobro) < new Date();
+                           // Solo debe considerarse deuda si el estado es distinto de PAGADO,
+                           // o si es un plan fraccionado cuya fecha caducó y aún no ha sido marcado PAGADO.
+                           const hasDeuda = s.estadoPago !== 'PAGADO' || (isFraccionado && isLate && s.estadoPago !== 'PAGADO');
+
+                           return (
+                             <div style={{ color: hasDeuda ? '#ff3e3e' : 'var(--accent-secondary)', fontWeight: 'bold' }}>
+                               {s.fechaProximoCobro ? s.fechaProximoCobro : '-'}
+                               {hasDeuda && (
+                                  <span style={{ display: 'block', fontSize: '0.7rem', color: '#ff3e3e' }}>¡DEUDA!</span>
+                               )}
+                             </div>
+                           );
+                        })()}
+>>>>>>> b304a0c (Mis cambios locales)
                       </td>
                       <td data-label="VENCIMIENTO">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

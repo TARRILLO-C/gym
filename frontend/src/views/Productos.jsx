@@ -48,6 +48,7 @@ const Productos = () => {
 
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [lastVentaData, setLastVentaData] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
@@ -200,8 +201,10 @@ const Productos = () => {
 
   const handleFinalizeSale = async (e) => {
     e.preventDefault();
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isSubmitting) return;
+    setIsSubmitting(true);
 
+<<<<<<< HEAD
     // VALIDACIONES SUNAT
     const doc = checkoutForm.clienteDocumento ? checkoutForm.clienteDocumento.trim() : '';
     const nom = checkoutForm.clienteNombre ? checkoutForm.clienteNombre.trim() : '';
@@ -242,10 +245,16 @@ const Productos = () => {
 
     if (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) {
       showAlert("Atención", "Debe ingresar un número de tarjeta válido o comprobante de POS.");
+=======
+    if (checkoutForm.metodoPago === 'TARJETA' && checkoutForm.numeroTarjeta.length !== 16) {
+      showAlert("Atención", "Debe ingresar exactamente los 16 dígitos de la Tarjeta.");
+      setIsSubmitting(false);
+>>>>>>> b304a0c (Mis cambios locales)
       return;
     }
     if (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) {
       showAlert("Atención", "Debe ingresar el número de operación de la transferencia.");
+      setIsSubmitting(false);
       return;
     }
 
@@ -287,7 +296,11 @@ const Productos = () => {
         )
       });
       fetchData();
-    } catch (err) { showAlert("Error", "Error al procesar la venta"); }
+    } catch (err) { 
+        showAlert("Error", "Error al procesar la venta"); 
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const productsForPOS = productos
@@ -755,14 +768,14 @@ const Productos = () => {
             {checkoutForm.metodoPago === 'TARJETA' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Nº de Tarjeta (Aprobación POS)</label>
-                <input required type="text" value={checkoutForm.numeroTarjeta} onChange={e => setCheckoutForm({...checkoutForm, numeroTarjeta: e.target.value})} placeholder="Ej: **** **** **** 1234 o Cód. POS" />
+                <input required type="text" maxLength="16" value={checkoutForm.numeroTarjeta} onChange={e => setCheckoutForm({...checkoutForm, numeroTarjeta: e.target.value.replace(/\D/g, '')})} placeholder="Ej: 1234567890123456 (16 dígitos)" />
               </div>
             )}
             
             {checkoutForm.metodoPago === 'TRANSFERENCIA' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Nº de Operación Bancaria</label>
-                <input required type="text" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value})} placeholder="Ej: 00234141" />
+                <input required type="text" maxLength="24" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value.replace(/\D/g, '')})} placeholder="Ej: 00234141 (Máx 24 dígitos)" />
               </div>
             )}
             
@@ -770,7 +783,7 @@ const Productos = () => {
               <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Captura de Pantalla / Voucher (Opcional)</label>
                 <input type="file" accept="image/*" style={{ border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', padding: '10px', borderRadius: '12px', color: 'var(--text-main)' }} />
-                <input type="text" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value})} placeholder="Nº Operación o Celular Referencia (Opcional)" />
+                <input type="text" maxLength="9" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value.replace(/\D/g, '')})} placeholder="Nº Operación o Celular (Máx 9 dígitos)" />
               </div>
             )}
 
@@ -779,6 +792,7 @@ const Productos = () => {
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Total a Pagar</div>
             <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</div>
           </div>
+<<<<<<< HEAD
           
           <button 
             type="submit" 
@@ -818,6 +832,10 @@ const Productos = () => {
             }}
           >
             CONFIRMAR Y PAGAR
+=======
+          <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+            {isSubmitting ? 'PROCESANDO...' : 'CONFIRMAR Y PAGAR'}
+>>>>>>> b304a0c (Mis cambios locales)
           </button>
         </form>
       </Modal>

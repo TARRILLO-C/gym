@@ -12,6 +12,7 @@ const Usuarios = () => {
   const [formData, setFormData] = useState({ username: '', password: '', rol: 'RECEPCIONISTA', activo: true });
   const [errorMSG, setErrorMSG] = useState('');
   const [filterMode, setFilterMode] = useState('ALL');
+  const currentUser = localStorage.getItem('username');
 
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
 
@@ -35,6 +36,10 @@ const Usuarios = () => {
 
   const handleRegisterOrUpdate = async (e) => {
     e.preventDefault();
+    if (editingId && formData.activo === false && currentUser && formData.username.toLowerCase() === currentUser.toLowerCase()) {
+      setErrorMSG('Por seguridad, no puedes desactivar tu propia cuenta desde aquí.');
+      return;
+    }
     try {
       if (editingId) {
         await api.put(`/usuarios/${editingId}`, formData);
@@ -58,6 +63,10 @@ const Usuarios = () => {
   const handleDeleteUsuario = (user) => {
     if (user.rol === 'ADMINISTRADOR') {
       showAlert('Bloqueo de Seguridad', 'Por jerarquía de permisos, está prohibido eliminar o desactivar a un ADMINISTRADOR.');
+      return;
+    }
+    if (currentUser && username.toLowerCase() === currentUser.toLowerCase()) {
+      showAlert('Acción denegada', 'Por seguridad, no puedes eliminar ni desactivar tu propia cuenta mientras estás en sesión activa.');
       return;
     }
 
@@ -170,8 +179,13 @@ const Usuarios = () => {
                     </button>
                     {u.activo !== false ? (
                       <button 
+<<<<<<< HEAD
                         onClick={() => handleDeleteUsuario(u)} 
                         style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: u.rol === 'ADMINISTRADOR' ? 0.3 : 1 }}
+=======
+                        onClick={() => handleDeleteUsuario(u.id, u.username)} 
+                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: (u.username.toLowerCase() === 'admin' || (currentUser && u.username.toLowerCase() === currentUser.toLowerCase())) ? 0.3 : 1 }}
+>>>>>>> b304a0c (Mis cambios locales)
                         title="Eliminar Acceso"
                       >
                         <UserX size={18} />

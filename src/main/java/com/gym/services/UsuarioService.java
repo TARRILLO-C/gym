@@ -5,6 +5,7 @@ import com.gym.repositories.UsuarioRepository;
 import jakarta.annotation.PostConstruct;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -15,13 +16,21 @@ public class UsuarioService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @PostConstruct
     public void init() {
         if (usuarioRepository.count() == 0) {
+<<<<<<< HEAD
             Usuario admin = new Usuario("admin", BCrypt.hashpw("admin", BCrypt.gensalt()), "ADMINISTRADOR");
             Usuario recepcion = new Usuario("recepcion", BCrypt.hashpw("recepcion", BCrypt.gensalt()), "RECEPCIONISTA");
             usuarioRepository.save(admin);
             usuarioRepository.save(recepcion);
+=======
+            usuarioRepository.save(new Usuario("admin", passwordEncoder.encode("admin"), "ADMINISTRADOR"));
+            usuarioRepository.save(new Usuario("recepcion", passwordEncoder.encode("recepcion"), "RECEPCIONISTA"));
+>>>>>>> b304a0c (Mis cambios locales)
         }
     }
 
@@ -29,6 +38,7 @@ public class UsuarioService {
         Optional<Usuario> usuarioOpt = usuarioRepository.findByUsername(username);
         if (usuarioOpt.isPresent()) {
             Usuario usuario = usuarioOpt.get();
+<<<<<<< HEAD
             
             if (!usuario.isActivo()) {
                 return Optional.empty();
@@ -46,6 +56,11 @@ public class UsuarioService {
                     usuarioRepository.save(usuario);
                     return Optional.of(usuario);
                 }
+=======
+            // Uso de BCryptPasswordEncoder y verificación de usuario activo
+            if (usuario.isActivo() && passwordEncoder.matches(password, usuario.getPassword())) {
+                return Optional.of(usuario);
+>>>>>>> b304a0c (Mis cambios locales)
             }
         }
         return Optional.empty();
@@ -63,12 +78,19 @@ public class UsuarioService {
         if (usuarioRepository.findByUsername(usuario.getUsername()).isPresent() && usuario.getId() == null) {
             throw new RuntimeException("El nombre de usuario ya existe");
         }
+<<<<<<< HEAD
         
         // Encriptar la contraseña si viene en texto plano (nueva o actualizada)
         if (usuario.getPassword() != null && !usuario.getPassword().startsWith("$2a$")) {
             usuario.setPassword(BCrypt.hashpw(usuario.getPassword(), BCrypt.gensalt()));
         }
         
+=======
+        // Encriptar la contraseña si se está creando o actualizando
+        if (usuario.getPassword() != null && !usuario.getPassword().startsWith("$2a$")) {
+            usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+        }
+>>>>>>> b304a0c (Mis cambios locales)
         return usuarioRepository.save(usuario);
     }
 

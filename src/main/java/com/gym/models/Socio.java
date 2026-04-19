@@ -1,4 +1,4 @@
-package com.gym.models;
+       package com.gym.models;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -8,10 +8,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Entidad que representa a un Socio del gimnasio.
- * Un socio puede tener múltiples suscripciones y registros de asistencia.
- */
+
 @Entity
 @Table(name = "socios")
 @Data
@@ -40,12 +37,16 @@ public class Socio {
     @Column(name = "razon_social", length = 200)
     private String razonSocial;
 
-    @Pattern(regexp = "^[0-9]*$", message = "El teléfono debe contener solo números")
+    @Pattern(regexp = "^[0-9]{9}$", message = "El teléfono debe tener exactamente 9 dígitos")
     @Column(name = "telefono", length = 15)
     private String telefono;
 
     @Email(message = "El formato de correo electrónico no es válido")
+<<<<<<< HEAD
     @Column(name = "email", length = 150, unique = true)
+=======
+    @Column(name = "email", length = 100)
+>>>>>>> b304a0c (Mis cambios locales)
     private String email;
 
     @Column(name = "fecha_nacimiento")

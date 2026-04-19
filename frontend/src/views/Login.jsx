@@ -1,3 +1,6 @@
+git add .
+git commit -m "Mis cambios locales"
+git pull origin master
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, LogIn, ShieldCheck, User, Lock, Eye, EyeOff } from 'lucide-react';
