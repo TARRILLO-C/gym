@@ -91,8 +91,19 @@ public class SuscripcionService {
             throw new ResourceNotFoundException("Socio", socioId);
         }
         Optional<Suscripcion> activa = suscripcionRepository
-                .findSuscripcionActivaBySocio(socioId, EstadoPago.PAGADO, LocalDate.now());
-        return activa.isPresent();
+                .findFirstBySocioIdAndFechaFinGreaterThanEqualOrderByFechaFinDesc(socioId, LocalDate.now());
+        
+        if (activa.isEmpty()) return false;
+        
+        Suscripcion sus = activa.get();
+        if (!sus.isActivo()) return false;
+        if (sus.isEstaCongelada()) return false;
+        if (sus.getEstadoPago() != EstadoPago.PAGADO) return false;
+        
+        LocalDate limiteCobro = sus.getFechaProximoCobro() != null ? sus.getFechaProximoCobro() : sus.getFechaFin();
+        if (limiteCobro != null && limiteCobro.isBefore(LocalDate.now())) return false;
+
+        return true;
     }
 
     /**
@@ -105,12 +116,25 @@ public class SuscripcionService {
     @Transactional(readOnly = true)
     public Suscripcion obtenerSuscripcionActivaOFallar(Long socioId) {
         Suscripcion sus = suscripcionRepository
-                .findSuscripcionActivaBySocio(socioId, EstadoPago.PAGADO, LocalDate.now())
+                .findFirstBySocioIdAndFechaFinGreaterThanEqualOrderByFechaFinDesc(socioId, LocalDate.now())
                 .orElseThrow(() -> new SuscripcionInactivaException(
-                        "El socio no posee una suscripción activa y vigente."));
+                        "El socio no posee una suscripción vigente registrada."));
 
-        // Bloqueo por deuda técnica: si tiene fecha de próximo cobro vencida.
-        // Si es null (socio antiguo), usamos fechaFin como referencia de seguridad.
+        if (!sus.isActivo()) {
+            throw new SuscripcionInactivaException(
+                    "ACCESO DENEGADO. El plan actual de este socio ha sido ANULADO o CANCELADO.");
+        }
+
+        if (sus.isEstaCongelada()) {
+            throw new SuscripcionInactivaException(
+                    "ACCESO DENEGADO. La suscripción se encuentra congelada.");
+        }
+
+        if (sus.getEstadoPago() == EstadoPago.PENDIENTE || sus.getEstadoPago() == EstadoPago.VENCIDO) {
+            throw new SuscripcionInactivaException(
+                    "ACCESO DENEGADO. El socio presenta una DEUDA pendiente en su plan actual.");
+        }
+
         LocalDate limiteCobro = sus.getFechaProximoCobro() != null ? sus.getFechaProximoCobro() : sus.getFechaFin();
         
         if (limiteCobro != null && limiteCobro.isBefore(LocalDate.now())) {
@@ -153,7 +177,7 @@ public class SuscripcionService {
 
         // Unificamos la suscripción activa actual para evitar filas duplicadas en el Frontend.
         Optional<Suscripcion> activaOpt = suscripcionRepository
-                .findSuscripcionActivaBySocio(socioId, EstadoPago.PAGADO, LocalDate.now());
+                .findFirstBySocioIdAndFechaFinGreaterThanEqualOrderByFechaFinDesc(socioId, LocalDate.now());
                 
         Suscripcion suscripcion;
 

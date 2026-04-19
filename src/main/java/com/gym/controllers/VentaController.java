@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import com.gym.validators.ValidSunatDocument;
 
 import java.util.List;
 
@@ -58,6 +59,7 @@ public class VentaController {
     }
 
     @Data
+    @ValidSunatDocument
     public static class EmitirRequest {
         private Venta.TipoComprobante tipo;
         private String ruc;
@@ -68,6 +70,7 @@ public class VentaController {
      * DTO interno para recibir la solicitud de venta original.
      */
     @Data
+    @ValidSunatDocument
     public static class VentaRequest {
         private Long socioId;
 

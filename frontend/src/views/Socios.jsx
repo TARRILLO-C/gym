@@ -25,7 +25,10 @@ const Socios = () => {
   const [formData, setFormData] = useState({
     nombreCompleto: '',
     dni: '',
+    ruc: '',
+    razonSocial: '',
     telefono: '',
+    email: '',
     fechaNacimiento: '',
     estado: 'ACTIVO'
   });
@@ -84,6 +87,24 @@ const Socios = () => {
 
   const handleRegisterOrUpdate = async (e) => {
     e.preventDefault();
+    
+    // Validación estricta Frontend para correo
+    if (formData.email && formData.email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        showAlert('Error de Formato', 'El correo electrónico ingresado no es válido (Ej: usuario@dominio.com).');
+        return;
+      }
+    }
+
+    // Validación estricta Frontend para teléfono
+    if (formData.telefono && formData.telefono.trim() !== '') {
+      if (formData.telefono.length !== 9) {
+        showAlert('Error de Formato', 'El número de teléfono debe tener exactamente 9 dígitos.');
+        return;
+      }
+    }
+
     try {
       if (editingId) {
         await api.put(`/socios/${editingId}`, formData);
@@ -96,6 +117,8 @@ const Socios = () => {
       if (err.response?.status === 400 && err.response?.data?.errores) {
         const msgs = Object.values(err.response.data.errores).join(' | ');
         showAlert('Error de Validación', msgs);
+      } else if (err.response?.status === 409) {
+        showAlert('Error de Duplicidad', err.response?.data?.mensaje || 'El DNI, RUC o Email ya se encuentra registrado en el sistema.');
       } else {
         showAlert('Error', err.response?.data?.mensaje || 'Error al procesar la solicitud');
       }
@@ -142,7 +165,7 @@ const Socios = () => {
 
   const openModalForNew = () => {
     setEditingId(null);
-    setFormData({ nombreCompleto: '', dni: '', telefono: '', fechaNacimiento: '', estado: 'ACTIVO' });
+    setFormData({ nombreCompleto: '', dni: '', ruc: '', razonSocial: '', telefono: '', email: '', fechaNacimiento: '', estado: 'ACTIVO' });
     setShowModal(true);
   };
 
@@ -151,7 +174,10 @@ const Socios = () => {
     setFormData({
       nombreCompleto: socio.nombreCompleto || '',
       dni: socio.dni || '',
+      ruc: socio.ruc || '',
+      razonSocial: socio.razonSocial || '',
       telefono: socio.telefono || '',
+      email: socio.email || '',
       fechaNacimiento: socio.fechaNacimiento ? socio.fechaNacimiento.split('T')[0] : '',
       estado: socio.estado || 'ACTIVO'
     });
@@ -231,8 +257,8 @@ const Socios = () => {
             <thead>
               <tr>
                 <th>SOCIO</th>
-                <th>DNI</th>
-                <th>TELÉFONO</th>
+                <th>DOCUMENTO</th>
+                <th>CONTACTO</th>
                 <th>ESTADO</th>
                 <th style={{ textAlign: 'right' }}>ACCIONES</th>
               </tr>
@@ -240,9 +266,18 @@ const Socios = () => {
             <tbody>
               {filteredSocios.map(socio => (
                 <tr key={socio?.id || Math.random()}>
-                  <td data-label="SOCIO" style={{ fontWeight: '600' }}>{socio?.nombreCompleto || 'Sin nombre'}</td>
-                  <td data-label="DNI" style={{ color: 'var(--text-muted)' }}>{socio?.dni || 'N/A'}</td>
-                  <td data-label="TELÉFONO">{socio?.telefono || 'Sin datos'}</td>
+                  <td data-label="SOCIO" style={{ fontWeight: '600' }}>
+                    {socio?.nombreCompleto || 'Sin nombre'}
+                    {socio?.razonSocial && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>RS: {socio.razonSocial}</div>}
+                  </td>
+                  <td data-label="DOCUMENTO" style={{ color: 'var(--text-muted)' }}>
+                    DNI: {socio?.dni || 'N/A'}<br/>
+                    {socio?.ruc && <span style={{fontSize: '0.8rem'}}>RUC: {socio.ruc}</span>}
+                  </td>
+                  <td data-label="CONTACTO">
+                    <div style={{ fontSize: '0.85rem' }}>📞 {socio?.telefono || 'Sin tel'}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>✉️ {socio?.email || 'Sin email'}</div>
+                  </td>
                   <td data-label="ESTADO">
                     <span className={`badge ${socio?.estado === 'ACTIVO' ? 'badge-active' : 'badge-inactive'}`}>
                       {socio?.estado || 'DESCONOCIDO'}
@@ -295,15 +330,16 @@ const Socios = () => {
       >
         <form onSubmit={handleRegisterOrUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Nombre Completo</label>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Nombre Completo o Razón Social (Factura)</label>
             <input 
               required 
               type="text" 
               value={formData.nombreCompleto}
               onChange={e => setFormData({...formData, nombreCompleto: e.target.value})}
+              placeholder="Ej: Juan Pérez"
             />
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DNI</label>
               <div style={{ position: 'relative' }}>
@@ -315,7 +351,6 @@ const Socios = () => {
                   onChange={e => setFormData({...formData, dni: e.target.value.replace(/\D/g, '')})} 
                   placeholder="8 dígitos"
                   style={{ border: isDniDuplicate ? '1px solid #ff3e3e' : '1px solid var(--panel-border)' }}
-                  readOnly={!!editingId} // DNI no se debería poder editar si es la clave, o quizás sí, pero readOnly previene fallos.
                 />
                 {isSearchingDni && (
                   <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: 'var(--accent-primary)' }}>Consultando...</div>
@@ -323,20 +358,43 @@ const Socios = () => {
               </div>
               {isDniDuplicate && (
                 <div style={{ color: '#ff3e3e', fontSize: '0.75rem', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <AlertCircle size={12} /> Este DNI ya pertenece a <strong>{duplicateSocio.nombreCompleto}</strong>
+                  <AlertCircle size={12} /> DNI ocupado por <strong>{duplicateSocio.nombreCompleto}</strong>
                 </div>
               )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>RUC (Opcional para Factura)</label>
+              <input 
+                type="text" 
+                maxLength="11"
+                value={formData.ruc} 
+                onChange={e => setFormData({...formData, ruc: e.target.value.replace(/\D/g, '')})} 
+                placeholder="11 dígitos"
+              />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Correo Electrónico</label>
+              <input 
+                type="email" 
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+                placeholder="usuario@dominio.com"
+              />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Teléfono</label>
               <input 
                 type="text" 
+                maxLength="9"
+                placeholder="Ej: 987654321"
                 value={formData.telefono}
                 onChange={e => setFormData({...formData, telefono: e.target.value.replace(/\D/g, '')})}
               />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Fecha de Nacimiento</label>
               <input 

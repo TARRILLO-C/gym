@@ -26,11 +26,18 @@ public interface SocioRepository extends JpaRepository<Socio, Long> {
 
     /**
      * Verifica si ya existe un socio registrado con el DNI dado.
-     *
-     * @param dni número de DNI
-     * @return true si el DNI ya está registrado
      */
     boolean existsByDni(String dni);
+
+    /**
+     * Verifica si ya existe un socio con este RUC.
+     */
+    boolean existsByRuc(String ruc);
+
+    /**
+     * Verifica si ya existe un socio con este Email.
+     */
+    boolean existsByEmail(String email);
 
     /**
      * Retorna todos los socios filtrados por estado (ACTIVO / INACTIVO).

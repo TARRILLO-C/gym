@@ -64,6 +64,13 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Encriptación de contraseñas -->
+        <dependency>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
+        </dependency>
+
     </dependencies>
 
     <build>

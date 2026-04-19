@@ -10,7 +10,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/pagos")
+@RequestMapping("/pagos")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class PagoController {

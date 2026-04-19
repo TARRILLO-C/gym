@@ -17,6 +17,7 @@ C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\s
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\controllers\SocioController.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\dtos\auth\LoginRequest.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\dtos\facturacion\ItemDTO.java
+C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\validators\ValidadorComprobanteSunat.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\controllers\PagoController.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\exceptions\DuplicateResourceException.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\models\Venta.java
@@ -50,6 +51,7 @@ C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\s
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\dtos\auth\LoginResponse.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\exceptions\SuscripcionInactivaException.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\services\SocioService.java
+C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\validators\ValidSunatDocument.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\repositories\SocioRepository.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\models\Usuario.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\services\MembresiaService.java

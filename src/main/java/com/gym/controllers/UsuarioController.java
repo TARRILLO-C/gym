@@ -51,6 +51,10 @@ public class UsuarioController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminarUsuario(@PathVariable Long id) {
         try {
+            Optional<Usuario> userOpt = usuarioService.findById(id);
+            if (userOpt.isPresent() && "ADMINISTRADOR".equals(userOpt.get().getRol())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No se puede eliminar a un administrador del sistema.");
+            }
             usuarioService.eliminarUsuario(id);
             return ResponseEntity.ok("Usuario eliminado correctamente");
         } catch (RuntimeException e) {
@@ -71,6 +75,10 @@ public class UsuarioController {
                 usuario.setPassword(usuarioDetails.getPassword());
             }
             usuario.setRol(usuarioDetails.getRol());
+            
+            if ("ADMINISTRADOR".equals(usuario.getRol()) && !usuarioDetails.isActivo()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Seguridad: No se permite desactivar a usuarios con rol ADMINISTRADOR.");
+            }
             usuario.setActivo(usuarioDetails.isActivo());
             Usuario actualizado = usuarioService.guardarUsuario(usuario);
             return ResponseEntity.ok(actualizado);

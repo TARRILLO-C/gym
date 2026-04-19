@@ -44,6 +44,10 @@ public class Socio {
     @Column(name = "telefono", length = 15)
     private String telefono;
 
+    @Email(message = "El formato de correo electrónico no es válido")
+    @Column(name = "email", length = 150, unique = true)
+    private String email;
+
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 

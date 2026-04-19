@@ -84,8 +84,13 @@ public class SocioService {
     @Transactional
     public Socio registrar(Socio socio) {
         if (socioRepository.existsByDni(socio.getDni())) {
-            throw new DuplicateResourceException(
-                    "Ya existe un socio con DNI: " + socio.getDni());
+            throw new DuplicateResourceException("Ya existe un socio con DNI: " + socio.getDni());
+        }
+        if (socio.getRuc() != null && !socio.getRuc().trim().isEmpty() && socioRepository.existsByRuc(socio.getRuc())) {
+            throw new DuplicateResourceException("Ya existe un socio con RUC: " + socio.getRuc());
+        }
+        if (socio.getEmail() != null && !socio.getEmail().trim().isEmpty() && socioRepository.existsByEmail(socio.getEmail())) {
+            throw new DuplicateResourceException("El correo electrónico " + socio.getEmail() + " ya está en uso.");
         }
         // Por defecto, un nuevo socio inicia como ACTIVO
         if (socio.getEstado() == null) {
@@ -106,16 +111,31 @@ public class SocioService {
     public Socio actualizar(Long id, Socio datosNuevos) {
         Socio existente = buscarPorId(id);
 
-        // Verificar DNI duplicado solo si cambió
-        if (!existente.getDni().equals(datosNuevos.getDni())
-                && socioRepository.existsByDni(datosNuevos.getDni())) {
-            throw new DuplicateResourceException(
-                    "El DNI " + datosNuevos.getDni() + " ya pertenece a otro socio.");
+        // Verificar DNI duplicado
+        if (!existente.getDni().equals(datosNuevos.getDni()) && socioRepository.existsByDni(datosNuevos.getDni())) {
+            throw new DuplicateResourceException("El DNI " + datosNuevos.getDni() + " ya pertenece a otro socio.");
+        }
+        
+        // Verificar RUC duplicado
+        if (datosNuevos.getRuc() != null && !datosNuevos.getRuc().trim().isEmpty()) {
+            if ((existente.getRuc() == null || !existente.getRuc().equals(datosNuevos.getRuc())) && socioRepository.existsByRuc(datosNuevos.getRuc())) {
+                throw new DuplicateResourceException("El RUC " + datosNuevos.getRuc() + " ya pertenece a otro socio.");
+            }
+        }
+
+        // Verificar Email duplicado
+        if (datosNuevos.getEmail() != null && !datosNuevos.getEmail().trim().isEmpty()) {
+            if ((existente.getEmail() == null || !existente.getEmail().equals(datosNuevos.getEmail())) && socioRepository.existsByEmail(datosNuevos.getEmail())) {
+                throw new DuplicateResourceException("El correo " + datosNuevos.getEmail() + " ya está registrado por otro socio.");
+            }
         }
 
         existente.setNombreCompleto(datosNuevos.getNombreCompleto());
         existente.setDni(datosNuevos.getDni());
+        existente.setRuc(datosNuevos.getRuc());
+        existente.setRazonSocial(datosNuevos.getRazonSocial());
         existente.setTelefono(datosNuevos.getTelefono());
+        existente.setEmail(datosNuevos.getEmail());
         existente.setFechaNacimiento(datosNuevos.getFechaNacimiento());
         existente.setEstado(datosNuevos.getEstado());
 

@@ -86,9 +86,23 @@ const Ventas = () => {
 
   const handleGenerateComprobante = async () => {
     try {
-      if (emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) {
-        showAlert("Error", "Debe completar un RUC de 11 dígitos y Razón Social para emitir Factura.");
-        return;
+      const doc = emitForm.documento ? emitForm.documento.trim() : '';
+      const nom = emitForm.nombre ? emitForm.nombre.trim() : '';
+      
+      if (emitForm.tipo === 'FACTURA') {
+        if (doc.length !== 11 || !/^(10|20)\d{9}$/.test(doc)) {
+          showAlert("Error Fiscal", "El RUC debe tener exactamente 11 dígitos y comenzar con 10 o 20.");
+          return;
+        }
+        if (nom === '') {
+          showAlert("Error Fiscal", "La Razón Social es obligatoria para emitir Factura.");
+          return;
+        }
+      } else if (emitForm.tipo === 'BOLETA') {
+        if (doc.length > 0 && (doc.length !== 8 || !/^\d{8}$/.test(doc))) {
+          showAlert("Error de Formato", "Si ingresa un DNI para la boleta, debe ser de exactamente 8 dígitos.");
+          return;
+        }
       }
       
       const payload = {
@@ -397,7 +411,7 @@ const Ventas = () => {
             Cancelar
           </button>
           <button 
-            disabled={emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')}
+            disabled={(emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) || (emitForm.tipo === 'BOLETA' && emitForm.documento.length > 0 && emitForm.documento.length !== 8)}
             onClick={handleGenerateComprobante} 
             style={{ 
               padding: '14px 28px', 
@@ -405,10 +419,10 @@ const Ventas = () => {
               color: 'white', 
               border: 'none', 
               borderRadius: '14px', 
-              cursor: (emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) ? 'not-allowed' : 'pointer', 
+              cursor: ((emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) || (emitForm.tipo === 'BOLETA' && emitForm.documento.length > 0 && emitForm.documento.length !== 8)) ? 'not-allowed' : 'pointer', 
               fontWeight: 'bold',
               fontSize: '0.95rem',
-              opacity: (emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) ? 0.5 : 1,
+              opacity: ((emitForm.tipo === 'FACTURA' && (emitForm.documento.length !== 11 || emitForm.nombre.trim() === '')) || (emitForm.tipo === 'BOLETA' && emitForm.documento.length > 0 && emitForm.documento.length !== 8)) ? 0.5 : 1,
               boxShadow: '0 4px 14px rgba(249, 115, 22, 0.3)'
             }}
           >

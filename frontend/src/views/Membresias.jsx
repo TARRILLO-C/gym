@@ -79,15 +79,14 @@ const Membresias = () => {
   };
   const handleDeleteSus = (id) => {
     setDialogConfig({
-      isOpen: true, type: 'confirm', title: 'Eliminar Suscripción',
-      message: '¿Estás seguro de eliminar esta suscripción? Esta acción no se puede deshacer.',
+      isOpen: true, type: 'confirm', title: 'Anular Membresía',
+      message: '¿Estás seguro de anular esta suscripción? Esto invalidará el acceso del socio al gimnasio bajo este plan.',
       onConfirm: async () => {
         try {
           await api.delete(`/suscripciones/${id}`);
-          await fetchData();
-          setActiveMenuId(null);
+          fetchData();
         } catch (err) {
-          showAlert('Error', 'Error al archivar la suscripción');
+          showAlert('Error', 'No se pudo anular la suscripción');
         }
       }
     });
@@ -125,12 +124,18 @@ const Membresias = () => {
     let montoPredefinido = sus.membresia.precioCuota || sus.membresia.precio;
     const processCobro = async (monto) => {
       try {
-        await api.post(`/pagos/suscripcion/${sus.id}`, {
+        const resp = await api.post(`/pagos/suscripcion/${sus.id}`, {
           monto: parseFloat(monto),
-          metodoPago: 'EFECTIVO',
-          fechaPago: new Date().toISOString()
+          metodoPago: 'EFECTIVO'
         });
-        showAlert("Éxito", "¡Cobro realizado con éxito!");
+        
+        const nuevaFecha = resp.data?.suscripcion?.fechaProximoCobro;
+        if (nuevaFecha) {
+          showAlert("Éxito", `¡Cobro realizado con éxito! Próxima fecha de cobro: ${nuevaFecha}`);
+        } else {
+          showAlert("Éxito", "¡Cobro realizado con éxito! Ya no hay pagos pendientes en este plan.");
+        }
+        
         fetchData();
       } catch (err) {
         showAlert("Error", "Error al registrar el pago");
@@ -162,6 +167,21 @@ const Membresias = () => {
 
   const handleCreatePlan = async (e) => {
     e.preventDefault();
+    
+    // Validaciones estrictas de frontend para Membresías
+    if (!planFormData.nombre || planFormData.nombre.trim() === '') {
+      showAlert("Aviso", "El nombre del plan no puede estar vacío.");
+      return;
+    }
+    if (parseFloat(planFormData.precio) <= 0 || isNaN(parseFloat(planFormData.precio))) {
+      showAlert("Aviso Fiscal", "El precio del plan debe ser estrictamente mayor a 0.");
+      return;
+    }
+    if (parseInt(planFormData.duracionDias) <= 0 || isNaN(parseInt(planFormData.duracionDias))) {
+      showAlert("Aviso Lógico", "Un plan no puede tener duración 0 días. Ingrese una duración válida.");
+      return;
+    }
+
     try {
       if (editingPlanId) {
         await api.put(`/membresias/${editingPlanId}`, planFormData);
@@ -259,10 +279,15 @@ const Membresias = () => {
     .filter(s => {
     if (!s || !s.socio) return false;
     const matchSearch = (s.socio.nombreCompleto || '').toLowerCase().includes(search.toLowerCase()) || (s.socio.dni || '').includes(search);
-    const hoy = new Date();
-    const dif = Math.ceil((new Date(s.fechaFin || new Date()) - hoy) / (1000 * 60 * 60 * 24));
+    const hoyStrFilter = new Date().toISOString().split('T')[0];
+    const finStr = s.fechaFin || hoyStrFilter;
+    
+    // Comparación matemática estricta usando locale Date
+    const difTime = new Date(finStr + 'T00:00:00').getTime() - new Date(hoyStrFilter + 'T00:00:00').getTime();
+    const dif = Math.ceil(difTime / (1000 * 3600 * 24));
+
     if (filter === 'semana') return matchSearch && dif >= 0 && dif <= 7;
-    if (filter === 'vencidas') return matchSearch && dif < 0;
+    if (filter === 'vencidas') return matchSearch && (dif < 0 || s.estadoPago === 'VENCIDO');
     return matchSearch;
   });
 
@@ -280,14 +305,19 @@ const Membresias = () => {
 
   const getEstadoBadge = (s) => {
     if (!s) return null;
+    const hoyStr = new Date().toISOString().split('T')[0];
     if (s.estaCongelada) return <span className="badge" style={{background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6'}}>CONGELADA</span>;
+    if (s.estadoPago === 'VENCIDO' || s.estadoPago === 'PENDIENTE') {
+      return <span className="badge badge-inactive" style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e' }}>INACTIVO (DEUDA)</span>;
+    }
     if (!s.fechaFin) return <span className="badge badge-active">ACTIVO</span>;
-    if (new Date(s.fechaFin) < new Date()) return <span className="badge badge-inactive">VENCIDO</span>;
+    if (s.fechaFin < hoyStr) return <span className="badge badge-inactive">VENCIDO (FECHA)</span>;
     return <span className="badge badge-active">ACTIVO</span>;
   };
 
   const selectedMembresia = (membresias || []).find(m => m.id?.toString() === susFormData.membresiaId?.toString());
   const showPaymentMode = selectedMembresia && selectedMembresia.precioCuota > 0 && selectedMembresia.duracionDias > (selectedMembresia.frecuenciaCobroDias || 30);
+  const hoyStrRender = new Date().toISOString().split('T')[0];
 
   return (
     <PageLayout
@@ -395,9 +425,9 @@ const Membresias = () => {
                       </td>
                       <td data-label="PLAN">{s?.membresia?.nombre || 'Plan desconocido'}</td>
                       <td data-label="INICIO">{s?.fechaInicio || '-'}</td>
-                      <td data-label="PRÓXIMO COBRO" style={{ color: s.fechaProximoCobro && new Date(s.fechaProximoCobro) < new Date() ? '#ff3e3e' : 'var(--accent-secondary)', fontWeight: 'bold' }}>
+                      <td data-label="PRÓXIMO COBRO" style={{ color: s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.estadoPago !== 'PAGADO' ? '#ff3e3e' : 'var(--accent-secondary)', fontWeight: 'bold' }}>
                           {s.fechaProximoCobro ? s.fechaProximoCobro : '-'}
-                          {s.fechaProximoCobro && new Date(s.fechaProximoCobro) < new Date() && (
+                          {s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.estadoPago !== 'PAGADO' && (
                             <span style={{ display: 'block', fontSize: '0.7rem', color: '#ff3e3e' }}>¡DEUDA!</span>
                           )}
                       </td>
@@ -433,7 +463,7 @@ const Membresias = () => {
                               <div style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--bg-color)', border: '1px solid var(--panel-border)', borderRadius: '12px', zIndex: 1200, minWidth: '160px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
                                 {s.activo !== false ? (
                                   <button onClick={(e) => { e.stopPropagation(); handleDeleteSus(s?.id); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: 'var(--accent-primary)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Trash2 size={16} /> ELIMINAR
+                                    <Trash2 size={16} /> ANULAR PLAN
                                   </button>
                                 ) : (
                                   <button onClick={(e) => { e.stopPropagation(); handleRestoreSus(s); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: '#00ff7f', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -515,18 +545,18 @@ const Membresias = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Duración (Días)</label>
-              <input required type="number" placeholder="Ej: 30" value={planFormData.duracionDias} onChange={e => setPlanFormData({...planFormData, duracionDias: e.target.value})} />
+              <input required type="number" min="1" step="1" placeholder="Ej: 30" value={planFormData.duracionDias} onChange={e => setPlanFormData({...planFormData, duracionDias: e.target.value})} />
             </div>
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Precio Público (S/)</label>
-              <input required type="number" step="0.01" placeholder="Ej: 99.00" value={planFormData.precio} onChange={e => setPlanFormData({...planFormData, precio: e.target.value})} />
+              <input required type="number" min="0.01" step="0.01" placeholder="Ej: 99.00" value={planFormData.precio} onChange={e => setPlanFormData({...planFormData, precio: e.target.value})} />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Costo Cuota Fraccionada (S/ - Opcional)</label>
-              <input type="number" step="0.01" placeholder="Ej: 33.00" value={planFormData.precioCuota} onChange={e => setPlanFormData({...planFormData, precioCuota: e.target.value})} />
+              <input type="number" min="0" step="0.01" placeholder="Ej: 33.00" value={planFormData.precioCuota} onChange={e => setPlanFormData({...planFormData, precioCuota: e.target.value})} />
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>* Útil para pagos segmentados.</p>
             </div>
             <div>

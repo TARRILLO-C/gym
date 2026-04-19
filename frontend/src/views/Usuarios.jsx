@@ -55,9 +55,9 @@ const Usuarios = () => {
     }
   };
 
-  const handleDeleteUsuario = (id, username) => {
-    if (username.toLowerCase() === 'admin') {
-      showAlert('Acción denegada', 'El administrador principal no puede ser eliminado del sistema por razones de seguridad.');
+  const handleDeleteUsuario = (user) => {
+    if (user.rol === 'ADMINISTRADOR') {
+      showAlert('Bloqueo de Seguridad', 'Por jerarquía de permisos, está prohibido eliminar o desactivar a un ADMINISTRADOR.');
       return;
     }
 
@@ -65,11 +65,11 @@ const Usuarios = () => {
       isOpen: true,
       type: 'confirm',
       title: 'Eliminar Usuario',
-      message: `¿Estás seguro que deseas eliminar el acceso a "${username}"? Esto no se puede deshacer.`,
+      message: `¿Estás seguro que deseas eliminar el acceso a "${user.username}"? Esto no se puede deshacer.`,
       onConfirm: async () => {
         try {
-          const userToArchive = usuarios.find(u => u.id === id);
-          await api.put(`/usuarios/${id}`, { ...userToArchive, activo: false });
+          const userToArchive = usuarios.find(u => u.id === user.id);
+          await api.put(`/usuarios/${user.id}`, { ...userToArchive, activo: false });
           await fetchData();
         } catch (err) {
           showAlert('Error', err.response?.data || 'Error al desactivar acceso');
@@ -170,8 +170,8 @@ const Usuarios = () => {
                     </button>
                     {u.activo !== false ? (
                       <button 
-                        onClick={() => handleDeleteUsuario(u.id, u.username)} 
-                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: u.username.toLowerCase() === 'admin' ? 0.3 : 1 }}
+                        onClick={() => handleDeleteUsuario(u)} 
+                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: u.rol === 'ADMINISTRADOR' ? 0.3 : 1 }}
                         title="Eliminar Acceso"
                       >
                         <UserX size={18} />

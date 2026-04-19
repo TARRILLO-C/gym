@@ -70,6 +70,16 @@ const Productos = () => {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+
+    if (parseFloat(productForm.precio) <= 0 || isNaN(parseFloat(productForm.precio))) {
+      showAlert("Validación", "El precio del producto debe ser mayor a 0.");
+      return;
+    }
+    if (parseInt(productForm.stock) < 0 || isNaN(parseInt(productForm.stock))) {
+      showAlert("Validación", "El stock inicial no puede ser negativo.");
+      return;
+    }
+
     try {
       if (editingProduct) {
         await api.put(`/productos/${editingProduct.id}`, productForm);
@@ -191,6 +201,44 @@ const Productos = () => {
   const handleFinalizeSale = async (e) => {
     e.preventDefault();
     if (cart.length === 0) return;
+
+    // VALIDACIONES SUNAT
+    const doc = checkoutForm.clienteDocumento ? checkoutForm.clienteDocumento.trim() : '';
+    const nom = checkoutForm.clienteNombre ? checkoutForm.clienteNombre.trim() : '';
+
+    if (checkoutForm.tipoComprobante === 'FACTURA') {
+      if (doc.length !== 11 || !/^(10|20)\d{9}$/.test(doc)) {
+        showAlert("Error Fiscal (SUNAT)", "El RUC de la factura debe tener 11 dígitos exactos y comenzar con '10' o '20'.");
+        return;
+      }
+      if (nom === '') {
+        showAlert("Error Fiscal (SUNAT)", "La Razón Social es estrictamente obligatoria para emitir Factura.");
+        return;
+      }
+    } else if (checkoutForm.tipoComprobante === 'BOLETA') {
+      if (cartTotal > 700) {
+        if (doc.length !== 8 || !/^\d{8}$/.test(doc)) {
+          showAlert("Error Fiscal (SUNAT)", "Por normativas SUNAT, las ventas mayores a S/ 700.00 exigen DNI de 8 dígitos obligatoriamente.");
+          return;
+        }
+        if (nom === '') {
+          showAlert("Error Fiscal (SUNAT)", "Al superar S/ 700.00, el nombre completo del cliente es obligatorio.");
+          return;
+        }
+      } else if (doc.length > 0) {
+        if (doc.length !== 8 || !/^\d{8}$/.test(doc)) {
+          showAlert("Error de Formato", "Si ingresa un DNI voluntariamente, debe tener exactamente 8 dígitos.");
+          return;
+        }
+      }
+    }
+
+    if (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '') {
+      if (parseFloat(checkoutForm.montoRecibido) < cartTotal) {
+        showAlert("Atención", "El efectivo recibido (S/ " + checkoutForm.montoRecibido + ") es menor al Total a Pagar (S/ " + cartTotal.toFixed(2) + ").");
+        return;
+      }
+    }
 
     if (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) {
       showAlert("Atención", "Debe ingresar un número de tarjeta válido o comprobante de POS.");
@@ -501,11 +549,11 @@ const Productos = () => {
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Precio (S/)</label>
-            <input required type="number" step="0.01" value={productForm.precio} onChange={e => setProductForm({...productForm, precio: e.target.value})} />
+            <input required type="number" min="0.01" step="0.01" value={productForm.precio} onChange={e => setProductForm({...productForm, precio: e.target.value})} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Stock Inicial</label>
-            <input required type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} />
+            <input required type="number" min="0" step="1" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Categoría</label>
@@ -672,13 +720,22 @@ const Productos = () => {
 
             {checkoutForm.tipoComprobante === 'BOLETA' && (
               <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>DNI (Opcional para Boleta)</label>
+                {cartTotal > 700 && (
+                  <div style={{ color: '#ff3e3e', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '8px', background: 'rgba(255, 62, 62, 0.1)', padding: '6px', borderRadius: '6px' }}>
+                    ⚠️ Venta superior a S/ 700.00. El DNI y Nombre son OBLIGATORIOS (Resolución SUNAT).
+                  </div>
+                )}
+                <label style={{ fontSize: '0.75rem', color: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', fontWeight: 'bold' }}>
+                  DNI {cartTotal > 700 ? '(Obligatorio)' : '(Opcional para Boleta)'}
+                </label>
                 <div style={{ position: 'relative' }}>
-                  <input type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="8" placeholder="Ej: 71234567" style={{ borderColor: '#3b82f6', width: '100%' }} />
+                  <input type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="8" placeholder="Ej: 71234567" style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%' }} />
                   {isSearchingDoc && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6' }}>Buscando...</div>}
                 </div>
-                <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold', marginTop: '8px', display: 'block' }}>Nombre Completo</label>
-                <input type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value})} placeholder="Público General" style={{ borderColor: '#3b82f6' }} />
+                <label style={{ fontSize: '0.75rem', color: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', fontWeight: 'bold', marginTop: '8px', display: 'block' }}>
+                  Nombre Completo {cartTotal > 700 ? '(Obligatorio)' : ''}
+                </label>
+                <input type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value})} placeholder={cartTotal > 700 ? "Requerido por SUNAT" : "Público General"} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%' }} />
               </div>
             )}
 
@@ -722,7 +779,44 @@ const Productos = () => {
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Total a Pagar</div>
             <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</div>
           </div>
-          <button type="submit" className="btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem' }}>
+          
+          <button 
+            type="submit" 
+            className="btn-primary" 
+            disabled={
+              // Validaciones dinámicas que bloquean el botón:
+              (checkoutForm.tipoComprobante === 'FACTURA' && (checkoutForm.clienteDocumento.length !== 11 || !checkoutForm.clienteNombre.trim())) ||
+              (checkoutForm.tipoComprobante === 'BOLETA' && cartTotal > 700 && (checkoutForm.clienteDocumento.length !== 8 || !checkoutForm.clienteNombre.trim())) ||
+              (checkoutForm.tipoComprobante === 'BOLETA' && checkoutForm.clienteDocumento.length > 0 && checkoutForm.clienteDocumento.length !== 8) ||
+              (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '' && parseFloat(checkoutForm.montoRecibido) < cartTotal) ||
+              (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) ||
+              (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) ||
+              cart.length === 0
+            }
+            style={{ 
+              width: '100%', 
+              padding: '18px', 
+              fontSize: '1.1rem',
+              opacity: (
+                (checkoutForm.tipoComprobante === 'FACTURA' && (checkoutForm.clienteDocumento.length !== 11 || !checkoutForm.clienteNombre.trim())) ||
+                (checkoutForm.tipoComprobante === 'BOLETA' && cartTotal > 700 && (checkoutForm.clienteDocumento.length !== 8 || !checkoutForm.clienteNombre.trim())) ||
+                (checkoutForm.tipoComprobante === 'BOLETA' && checkoutForm.clienteDocumento.length > 0 && checkoutForm.clienteDocumento.length !== 8) ||
+                (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '' && parseFloat(checkoutForm.montoRecibido) < cartTotal) ||
+                (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) ||
+                (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) ||
+                cart.length === 0
+              ) ? 0.5 : 1,
+              cursor: (
+                (checkoutForm.tipoComprobante === 'FACTURA' && (checkoutForm.clienteDocumento.length !== 11 || !checkoutForm.clienteNombre.trim())) ||
+                (checkoutForm.tipoComprobante === 'BOLETA' && cartTotal > 700 && (checkoutForm.clienteDocumento.length !== 8 || !checkoutForm.clienteNombre.trim())) ||
+                (checkoutForm.tipoComprobante === 'BOLETA' && checkoutForm.clienteDocumento.length > 0 && checkoutForm.clienteDocumento.length !== 8) ||
+                (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '' && parseFloat(checkoutForm.montoRecibido) < cartTotal) ||
+                (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) ||
+                (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) ||
+                cart.length === 0
+              ) ? 'not-allowed' : 'pointer'
+            }}
+          >
             CONFIRMAR Y PAGAR
           </button>
         </form>

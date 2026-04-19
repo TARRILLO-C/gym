@@ -3,6 +3,7 @@ package com.gym.models;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.AssertTrue;
 
 import java.time.LocalDate;
 
@@ -79,6 +80,15 @@ public class Suscripcion {
     @Builder.Default
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
+
+    // Validación temporal cruzada según reglas de negocio
+    @AssertTrue(message = "Fechas inválidas: Vencimiento y Próximo Cobro deben ser estrictamente posteriores a la Fecha de Inicio")
+    public boolean isFechasValidas() {
+        if (fechaInicio == null) return true;
+        if (fechaFin != null && !fechaFin.isAfter(fechaInicio)) return false;
+        if (fechaProximoCobro != null && !fechaProximoCobro.isAfter(fechaInicio)) return false;
+        return true;
+    }
 
     // ── Enum de estado de pago ────────────────────────────────────────────────
 

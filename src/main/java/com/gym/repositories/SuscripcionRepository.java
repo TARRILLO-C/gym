@@ -35,25 +35,16 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> 
     List<Suscripcion> findByEstadoPago(EstadoPago estadoPago);
 
     /**
-     * Busca la suscripción activa y vigente de un socio.
+     * Busca la suscripción activa y vigente de un socio (independientemente del pago).
      * Se considera vigente si la fecha de fin es posterior o igual a hoy.
      *
      * @param socioId    ID del socio
-     * @param estadoPago estado PAGADO
      * @param hoy        fecha actual para comparación
-     * @return Optional con la suscripción activa si existe
+     * @return Optional con la suscripción activa más reciente si existe
      */
-    @Query("""
-            SELECT s FROM Suscripcion s
-            WHERE s.socio.id = :socioId
-              AND s.estadoPago = :estadoPago
-              AND s.fechaFin >= :hoy
-            ORDER BY s.fechaFin DESC
-            """)
-    Optional<Suscripcion> findSuscripcionActivaBySocio(
-            @Param("socioId") Long socioId,
-            @Param("estadoPago") EstadoPago estadoPago,
-            @Param("hoy") LocalDate hoy);
+    Optional<Suscripcion> findFirstBySocioIdAndFechaFinGreaterThanEqualOrderByFechaFinDesc(
+            Long socioId,
+            LocalDate hoy);
 
     /**
      * Retorna suscripciones cuya fecha de fin se encuentre en el rango dado.
