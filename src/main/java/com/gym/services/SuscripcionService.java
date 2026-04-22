@@ -116,13 +116,23 @@ public class SuscripcionService {
     @Transactional(readOnly = true)
     public Suscripcion obtenerSuscripcionActivaOFallar(Long socioId) {
         Suscripcion sus = suscripcionRepository
-                .findFirstBySocioIdAndFechaFinGreaterThanEqualOrderByFechaFinDesc(socioId, LocalDate.now())
+                .findFirstBySocioIdOrderByFechaFinDesc(socioId)
                 .orElseThrow(() -> new SuscripcionInactivaException(
-                        "El socio no posee una suscripción vigente registrada."));
+                        "El socio no posee una suscripción registrada."));
 
         if (!sus.isActivo()) {
             throw new SuscripcionInactivaException(
                     "ACCESO DENEGADO. El plan actual de este socio ha sido ANULADO o CANCELADO.");
+        }
+        
+        if (sus.getFechaFin() != null && !sus.getFechaFin().isAfter(LocalDate.now())) {
+            throw new SuscripcionInactivaException(
+                    "ACCESO DENEGADO. La membresía se encuentra VENCIDA desde el " + sus.getFechaFin() + ".");
+        }
+        
+        if (sus.getFechaInicio() != null && sus.getFechaInicio().isAfter(LocalDate.now())) {
+            throw new SuscripcionInactivaException(
+                    "ACCESO DENEGADO. Su plan de membresía inicia recién a partir del " + sus.getFechaInicio() + ".");
         }
 
         if (sus.isEstaCongelada()) {
@@ -137,7 +147,7 @@ public class SuscripcionService {
 
         LocalDate limiteCobro = sus.getFechaProximoCobro() != null ? sus.getFechaProximoCobro() : sus.getFechaFin();
         
-        if (limiteCobro != null && limiteCobro.isBefore(LocalDate.now())) {
+        if (limiteCobro != null && !limiteCobro.isAfter(LocalDate.now())) {
             throw new SuscripcionInactivaException(
                     "ACCESO DENEGADO. Debe regularizar su mensualidad. Fecha de cobro vencida el: " + limiteCobro);
         }
@@ -246,6 +256,12 @@ public class SuscripcionService {
     @Transactional
     public Congelamiento congelar(Long id, LocalDate inicio, LocalDate fin, String motivo) {
         Suscripcion sus = buscarPorId(id);
+        
+        if (sus.getMembresia() != null 
+            && sus.getMembresia().getPermiteCongelamiento() != null 
+            && !sus.getMembresia().getPermiteCongelamiento()) {
+            throw new IllegalArgumentException("Las políticas de este plan de membresía no permiten congelamientos.");
+        }
         
         long dias = ChronoUnit.DAYS.between(inicio, fin);
         if (dias <= 0) {

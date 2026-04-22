@@ -82,4 +82,16 @@ public class Socio {
         ACTIVO,
         INACTIVO
     }
+    // ── PrePersist & PreUpdate ───────────────────────────────────────────────
+
+    @PrePersist
+    @PreUpdate
+    public void sanitizeEmptyStringsToNull() {
+        if (this.ruc != null && this.ruc.trim().isEmpty()) {
+            this.ruc = null;
+        }
+        if (this.email != null && this.email.trim().isEmpty()) {
+            this.email = null;
+        }
+    }
 }

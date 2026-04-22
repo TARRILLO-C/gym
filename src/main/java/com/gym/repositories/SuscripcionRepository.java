@@ -47,6 +47,14 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> 
             LocalDate hoy);
 
     /**
+     * Busca la última suscripción de un socio sin importar si ya terminó.
+     *
+     * @param socioId    ID del socio
+     * @return Optional con la última suscripción creada/extendida
+     */
+    Optional<Suscripcion> findFirstBySocioIdOrderByFechaFinDesc(Long socioId);
+
+    /**
      * Retorna suscripciones cuya fecha de fin se encuentre en el rango dado.
      * Útil para filtrar "Vencen esta semana".
      *

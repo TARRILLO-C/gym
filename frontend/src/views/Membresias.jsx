@@ -49,7 +49,8 @@ const Membresias = () => {
     frecuenciaCobroDias: 30,
     duracionDias: '',
     descripcion: '',
-    estado: 'DISPONIBLE'
+    estado: 'DISPONIBLE',
+    permiteCongelamiento: true
   });
 
   const [susFormData, setSusFormData] = useState({
@@ -190,7 +191,7 @@ const Membresias = () => {
       }
       setShowPlanModal(false);
       await fetchData();
-      setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 30, duracionDias: '', descripcion: '', estado: 'DISPONIBLE' });
+      setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 30, duracionDias: '', descripcion: '', estado: 'DISPONIBLE', permiteCongelamiento: true });
       setEditingPlanId(null);
     } catch (err) {
       showAlert("Error", "Error al guardar plan");
@@ -451,9 +452,11 @@ const Membresias = () => {
                               <Play size={18} />
                             </button>
                           ) : (
-                            <button onClick={(e) => { e.stopPropagation(); handleCongelar(s?.id); }} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
-                              <Snowflake size={18} />
-                            </button>
+                            s?.membresia?.permiteCongelamiento !== false && (
+                              <button onClick={(e) => { e.stopPropagation(); handleCongelar(s?.id); }} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                                <Snowflake size={18} />
+                              </button>
+                            )
                           )}
                           <div style={{ position: 'relative' }}>
                             <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === s?.id ? null : s?.id); }} style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', padding: '8px' }}>
@@ -490,7 +493,7 @@ const Membresias = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ color: 'var(--text-muted)', fontWeight: '400' }}>Configura los planes y precios que ofreces al público.</h3>
             {role === 'ADMINISTRADOR' && (
-              <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 30, duracionDias: '', descripcion: '', estado: 'DISPONIBLE' }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 30, duracionDias: '', descripcion: '', estado: 'DISPONIBLE', permiteCongelamiento: true }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Plus size={20} /> CREAR NUEVO PLAN
               </button>
             )}
@@ -513,6 +516,11 @@ const Membresias = () => {
                   }}>
                     {m.estado || 'DISPONIBLE'}
                   </span>
+                  {m.permiteCongelamiento !== false && (
+                    <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', marginLeft: '8px' }}>
+                      CONGELAMIENTO
+                    </span>
+                  )}
                 </div>
                 
                 <div style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '8px' }}>S/ {m.precio}</div>
@@ -575,6 +583,19 @@ const Membresias = () => {
           <div>
             <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Especificaciones y Beneficios</label>
             <textarea rows="3" placeholder="Describe lo que incluye este plan..." value={planFormData.descripcion} onChange={e => setPlanFormData({...planFormData, descripcion: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', resize: 'none' }} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', padding: '12px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '12px' }}>
+            <input 
+              type="checkbox" 
+              id="permiteCongelamiento"
+              checked={planFormData.permiteCongelamiento !== false} 
+              onChange={e => setPlanFormData({...planFormData, permiteCongelamiento: e.target.checked})}
+              style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#3b82f6' }}
+            />
+            <label htmlFor="permiteCongelamiento" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '500' }}>
+              Permitir que las suscripciones a este plan puedan ser congeladas
+            </label>
           </div>
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>

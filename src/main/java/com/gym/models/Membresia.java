@@ -66,6 +66,13 @@ public class Membresia {
     private String descripcion;
 
     /**
+     * Indica si este plan de membresía permite que sus suscripciones sean congeladas.
+     */
+    @Column(name = "permite_congelamiento", nullable = false)
+    @Builder.Default
+    private Boolean permiteCongelamiento = true;
+
+    /**
      * Estado actual de la membresía en el catálogo.
      */
     @Enumerated(EnumType.STRING)

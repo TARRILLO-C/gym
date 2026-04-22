@@ -51,6 +51,9 @@ public class MembresiaService {
         membresia.setDuracionDias(detalles.getDuracionDias());
         membresia.setDescripcion(detalles.getDescripcion());
         membresia.setEstado(detalles.getEstado());
+        membresia.setPermiteCongelamiento(detalles.getPermiteCongelamiento());
+        membresia.setPrecioCuota(detalles.getPrecioCuota());
+        membresia.setFrecuenciaCobroDias(detalles.getFrecuenciaCobroDias());
         return membresiaRepository.save(membresia);
     }
 

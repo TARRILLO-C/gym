@@ -30,6 +30,10 @@ public class UsuarioService {
         if (usuarioOpt.isPresent()) {
             Usuario usuario = usuarioOpt.get();
             
+            if (!usuario.isActivo()) {
+                return Optional.empty();
+            }
+            
             // Validar usando BCrypt si está encriptada
             if (usuario.getPassword() != null && usuario.getPassword().startsWith("$2a$")) {
                 if (BCrypt.checkpw(password, usuario.getPassword())) {

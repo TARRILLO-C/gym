@@ -55,6 +55,10 @@ public class AsistenciaService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No se encontró ningún socio con DNI: " + dni));
 
+        if (socio.getEstado() == Socio.EstadoSocio.INACTIVO) {
+            throw new SuscripcionInactivaException("ACCESO DENEGADO. El perfil del socio se encuentra INACTIVO en el sistema.");
+        }
+
         // 2. Verificar suscripción activa (lanza SuscripcionInactivaException si no tiene)
         suscripcionService.obtenerSuscripcionActivaOFallar(socio.getId());
 

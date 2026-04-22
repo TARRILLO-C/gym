@@ -25,6 +25,42 @@ const Ventas = () => {
   
   const [showEmitModal, setShowEmitModal] = useState(false);
   const [emitForm, setEmitForm] = useState({ ventaId: null, tipo: 'BOLETA', documento: '', nombre: '' });
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+
+  const buscarDatos = async (doc, tipo) => {
+    const isDni = tipo === 'BOLETA' && doc.length === 8;
+    const isRuc = tipo === 'FACTURA' && doc.length === 11;
+    if (!isDni && !isRuc) return;
+
+    setLookupLoading(true);
+    setLookupError('');
+    try {
+      const endpoint = isDni ? `/consultas/dni/${doc}` : `/consultas/ruc/${doc}`;
+      const resp = await api.get(endpoint);
+      const data = resp.data;
+      // El backend ya devuelve getNombreCompleto() armado en un helper
+      // o podemos armarlo nosotros con los campos individuales
+      let nombre = '';
+      if (isDni) {
+        const nombres = data.nombres || '';
+        const paterno = data.ape_paterno || data.apellidoPaterno || '';
+        const materno = data.ape_materno || data.apellidoMaterno || '';
+        nombre = [nombres, paterno, materno].filter(Boolean).join(' ').trim();
+      } else {
+        nombre = data.razon_social || data.razonSocial || '';
+      }
+      if (nombre) {
+        setEmitForm(prev => ({ ...prev, nombre }));
+      } else {
+        setLookupError('No se encontraron datos para este número.');
+      }
+    } catch {
+      setLookupError('No se pudo consultar el número. Verifícalo o ingrésalo manualmente.');
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
@@ -379,14 +415,27 @@ const Ventas = () => {
             <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
               {emitForm.tipo === 'FACTURA' ? 'Ingrese el RUC del cliente (Obligatorio)' : 'Ingrese el DNI del cliente (Opcional)'}
             </label>
-            <input 
-              type="text" 
-              value={emitForm.documento} 
-              onChange={(e) => setEmitForm({...emitForm, documento: e.target.value.replace(/\D/g, '')})} 
-              maxLength={emitForm.tipo === 'FACTURA' ? "11" : "8"}
-              placeholder={emitForm.tipo === 'FACTURA' ? "Ej: 20601234567" : "Ej: 71234567"} 
-              style={{ width: '100%', padding: '14px', borderRadius: '12px', background: 'var(--bg-color)', border: emitForm.tipo === 'FACTURA' ? '1px solid #f97316' : '1px solid var(--panel-border)', color: 'var(--text-main)', fontSize: '1rem' }} 
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                value={emitForm.documento} 
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setEmitForm(prev => ({ ...prev, documento: val, nombre: '' }));
+                  setLookupError('');
+                  buscarDatos(val, emitForm.tipo);
+                }}
+                maxLength={emitForm.tipo === 'FACTURA' ? "11" : "8"}
+                placeholder={emitForm.tipo === 'FACTURA' ? "Ej: 20601234567" : "Ej: 71234567"} 
+                style={{ width: '100%', padding: '14px', paddingRight: lookupLoading ? '48px' : '14px', borderRadius: '12px', background: 'var(--bg-color)', border: emitForm.tipo === 'FACTURA' ? '1px solid #f97316' : '1px solid var(--panel-border)', color: 'var(--text-main)', fontSize: '1rem', boxSizing: 'border-box' }} 
+              />
+              {lookupLoading && (
+                <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', color: '#f97316', fontWeight: 'bold', whiteSpace: 'nowrap' }}>⏳ Buscando...</span>
+              )}
+            </div>
+            {lookupError && (
+              <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: '#ff3e3e' }}>⚠️ {lookupError}</p>
+            )}
           </div>
           <div>
             <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block', fontWeight: 'bold' }}>
