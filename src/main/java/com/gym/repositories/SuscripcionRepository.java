@@ -47,12 +47,19 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> 
             LocalDate hoy);
 
     /**
-     * Busca la última suscripción de un socio sin importar si ya terminó.
+     * Busca la suscripción actualmente activa basándose en la fecha de hoy, considerando 
+     * encolamientos en el futuro.
+     */
+    @Query("SELECT s FROM Suscripcion s WHERE s.socio.id = :socioId AND s.activo = true AND s.fechaInicio <= CURRENT_DATE AND s.fechaFin >= CURRENT_DATE AND (s.fechaProximoCobro IS NULL OR s.fechaProximoCobro >= CURRENT_DATE) ORDER BY s.fechaFin DESC")
+    List<Suscripcion> findVigentesParaHoy(@Param("socioId") Long socioId);
+
+    /**
+     * Busca la última suscripción de un socio sin importar si ya terminó, útil para encolar nuevas.
      *
      * @param socioId    ID del socio
      * @return Optional con la última suscripción creada/extendida
      */
-    Optional<Suscripcion> findFirstBySocioIdOrderByFechaFinDesc(Long socioId);
+    Optional<Suscripcion> findFirstBySocioIdAndActivoTrueOrderByFechaFinDesc(Long socioId);
 
     /**
      * Retorna suscripciones cuya fecha de fin se encuentre en el rango dado.

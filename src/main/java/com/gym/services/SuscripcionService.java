@@ -90,12 +90,11 @@ public class SuscripcionService {
         if (!socioRepository.existsById(socioId)) {
             throw new ResourceNotFoundException("Socio", socioId);
         }
-        Optional<Suscripcion> activa = suscripcionRepository
-                .findFirstBySocioIdAndFechaFinGreaterThanEqualOrderByFechaFinDesc(socioId, LocalDate.now());
         
-        if (activa.isEmpty()) return false;
+        List<Suscripcion> vigentes = suscripcionRepository.findVigentesParaHoy(socioId);
+        if (vigentes.isEmpty()) return false;
         
-        Suscripcion sus = activa.get();
+        Suscripcion sus = vigentes.get(0);
         if (!sus.isActivo()) return false;
         if (sus.isEstaCongelada()) return false;
         if (sus.getEstadoPago() != EstadoPago.PAGADO) return false;
@@ -115,17 +114,20 @@ public class SuscripcionService {
      */
     @Transactional(readOnly = true)
     public Suscripcion obtenerSuscripcionActivaOFallar(Long socioId) {
-        Suscripcion sus = suscripcionRepository
-                .findFirstBySocioIdOrderByFechaFinDesc(socioId)
-                .orElseThrow(() -> new SuscripcionInactivaException(
-                        "El socio no posee una suscripción registrada."));
+        List<Suscripcion> vigentes = suscripcionRepository.findVigentesParaHoy(socioId);
+        
+        if (vigentes.isEmpty()) {
+            throw new SuscripcionInactivaException("ACCESO DENEGADO. El socio no posee una suscripción activa para el día de hoy.");
+        }
+        
+        Suscripcion sus = vigentes.get(0);
 
         if (!sus.isActivo()) {
             throw new SuscripcionInactivaException(
                     "ACCESO DENEGADO. El plan actual de este socio ha sido ANULADO o CANCELADO.");
         }
         
-        if (sus.getFechaFin() != null && !sus.getFechaFin().isAfter(LocalDate.now())) {
+        if (sus.getFechaFin() != null && sus.getFechaFin().isBefore(LocalDate.now())) {
             throw new SuscripcionInactivaException(
                     "ACCESO DENEGADO. La membresía se encuentra VENCIDA desde el " + sus.getFechaFin() + ".");
         }
@@ -185,35 +187,29 @@ public class SuscripcionService {
         Membresia membresia = membresiaRepository.findById(membresiaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Membresía", membresiaId));
 
-        // Unificamos la suscripción activa actual para evitar filas duplicadas en el Frontend.
-        Optional<Suscripcion> activaOpt = suscripcionRepository
-                .findFirstBySocioIdAndFechaFinGreaterThanEqualOrderByFechaFinDesc(socioId, LocalDate.now());
+        // Encolamiento: Obtener la última suscripción que tuvo el usuario para empalmar las fechas
+        Optional<Suscripcion> ultimaOpt = suscripcionRepository
+                .findFirstBySocioIdAndActivoTrueOrderByFechaFinDesc(socioId);
                 
-        Suscripcion suscripcion;
-
-        if (activaOpt.isPresent()) {
-            suscripcion = activaOpt.get();
-            suscripcion.setMembresia(membresia); // Si elige otro plan, se le actualiza
-            
-            // Si le quedaban días, se le suman a partir de su vencimiento actual
-            LocalDate baseVigencia = suscripcion.getFechaFin().isBefore(LocalDate.now()) 
-                                     ? LocalDate.now() 
-                                     : suscripcion.getFechaFin();
-                                     
-            suscripcion.setFechaFin(baseVigencia.plusDays(membresia.getDuracionDias()));
-            log.info("Renovación/Mejora Unificada: Socio {} extendido hasta {}", socioId, suscripcion.getFechaFin());
+        if (ultimaOpt.isPresent() && !ultimaOpt.get().getFechaFin().isBefore(LocalDate.now())) {
+            // FORZAR ENCOLAMIENTO: Si la membresía termina hoy o en el futuro, ignoramos la fecha
+            // que mande el frontend y la obligamos a empezar un día después de su vencimiento actual.
+            fechaInicio = ultimaOpt.get().getFechaFin().plusDays(1);
+            log.info("Encolando nueva suscripción para Socio {}. Iniciará FORZOSAMENTE el {}", socioId, fechaInicio);
         } else {
+            // Si el socio es nuevo o su plan anterior ya expiró en el pasado, usamos la fecha 
+            // que envió el frontend (o la fecha de hoy si no envió nada).
             if (fechaInicio == null) {
                 fechaInicio = LocalDate.now();
             }
-            
-            suscripcion = Suscripcion.builder()
-                    .socio(socio)
-                    .membresia(membresia)
-                    .fechaInicio(fechaInicio)
-                    .fechaFin(fechaInicio.plusDays(membresia.getDuracionDias()))
-                    .build();
         }
+            
+        Suscripcion suscripcion = Suscripcion.builder()
+                .socio(socio)
+                .membresia(membresia)
+                .fechaInicio(fechaInicio)
+                .fechaFin(fechaInicio.plusDays(membresia.getDuracionDias()))
+                .build();
 
         // Fecha de próximo cobro y estado financiero
         suscripcion.setEstadoPago(estadoPago != null ? estadoPago : EstadoPago.PAGADO);
@@ -290,6 +286,30 @@ public class SuscripcionService {
     @Transactional
     public void descongelar(Long id) {
         Suscripcion sus = buscarPorId(id);
+        
+        // Buscar el último congelamiento registrado por ID (evita error de empates el mismo día)
+        java.util.Optional<com.gym.models.Congelamiento> ultimoOpt = congelamientoRepository.findFirstBySuscripcionIdOrderByIdDesc(id);
+        
+        if (ultimoOpt.isPresent()) {
+            com.gym.models.Congelamiento cong = ultimoOpt.get();
+            LocalDate hoy = LocalDate.now();
+            
+            // Si el socio regresa ANTES de la fecha planificada de fin
+            if (!hoy.isAfter(cong.getFechaFin()) && !hoy.isBefore(cong.getFechaInicio())) {
+                long diasNoUsados = java.time.temporal.ChronoUnit.DAYS.between(hoy, cong.getFechaFin());
+                
+                if (diasNoUsados > 0) {
+                    // Amputar los días que se le habían regalado de más
+                    sus.setFechaFin(sus.getFechaFin().minusDays(diasNoUsados));
+                    // Actualizar el historial para que acabe hoy
+                    cong.setFechaFin(hoy);
+                    congelamientoRepository.save(cong);
+                    
+                    log.info("Descongelamiento anticipado para {}. Días retirados: {}", id, diasNoUsados);
+                }
+            }
+        }
+        
         sus.setEstaCongelada(false);
         suscripcionRepository.save(sus);
     }
@@ -302,26 +322,10 @@ public class SuscripcionService {
     public Suscripcion renovar(Long id) {
         Suscripcion anterior = buscarPorId(id);
         
-        // Si está vencida, la vigencia nueva empieza hoy. Si aún no vence, se acumula al final de su contrato actual.
-        LocalDate inicioVigencia = anterior.getFechaFin().isBefore(LocalDate.now()) 
-                                   ? LocalDate.now() 
-                                   : anterior.getFechaFin();
-                                   
-        LocalDate nuevaFechaFin = inicioVigencia.plusDays(anterior.getMembresia().getDuracionDias());
-        
-        anterior.setFechaFin(nuevaFechaFin);
-        anterior.setEstadoPago(EstadoPago.PAGADO);
-
-        // Si es fraccionado, empujar su fecha de cobro hacia adelante
-        if (anterior.getFechaProximoCobro() != null && anterior.getMembresia().getFrecuenciaCobroDias() != null) {
-            LocalDate baseCobro = anterior.getFechaProximoCobro().isBefore(LocalDate.now()) 
-                                  ? LocalDate.now() 
-                                  : anterior.getFechaProximoCobro();
-            anterior.setFechaProximoCobro(baseCobro.plusDays(anterior.getMembresia().getFrecuenciaCobroDias()));
-        }
-
-        log.info("Suscripción {} renovada con éxito. Nueva fecha fin: {}", id, nuevaFechaFin);
-        return suscripcionRepository.save(anterior);
+        // En el nuevo modelo, renovar implica generar una NUEVA fila con el mismo plan encolada,
+        // no modificar la fila antigua. Reutilizamos crear() para delegarle la lógica de fechas y encolamiento.
+        log.info("Solicitud de renovación para suscripción ID {}. Se encolará un nuevo paquete idéntico.", id);
+        return crear(anterior.getSocio().getId(), anterior.getMembresia().getId(), null, EstadoPago.PAGADO, false);
     }
 
     /**

@@ -14,7 +14,8 @@ import {
   Play,
   DollarSign,
   XCircle,
-  RotateCcw
+  RotateCcw,
+  FileText
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -30,6 +31,8 @@ const Membresias = () => {
   const [filter, setFilter] = useState('todas');
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showSusModal, setShowSusModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedHistorySocio, setSelectedHistorySocio] = useState(null);
   const [socios, setSocios] = useState([]);
   const [socioSearch, setSocioSearch] = useState('');
   const [showSocioList, setShowSocioList] = useState(false);
@@ -46,7 +49,7 @@ const Membresias = () => {
     nombre: '',
     precio: '',
     precioCuota: '',
-    frecuenciaCobroDias: 30,
+    frecuenciaCobroDias: 0,
     duracionDias: '',
     descripcion: '',
     estado: 'DISPONIBLE',
@@ -78,6 +81,22 @@ const Membresias = () => {
       setLoading(false);
     }
   };
+
+  // Auto-calcular Costo Cuota Fraccionada
+  useEffect(() => {
+    const p = parseFloat(planFormData.precio);
+    const d = parseInt(planFormData.duracionDias);
+    const f = parseInt(planFormData.frecuenciaCobroDias);
+    
+    if (f > 0 && d > f && p > 0) {
+      const cuotas = Math.round(d / f);
+      if (cuotas > 0) {
+        setPlanFormData(prev => ({...prev, precioCuota: (p / cuotas).toFixed(2)}));
+      }
+    } else {
+      setPlanFormData(prev => ({...prev, precioCuota: ''}));
+    }
+  }, [planFormData.precio, planFormData.duracionDias, planFormData.frecuenciaCobroDias]);
   const handleDeleteSus = (id) => {
     setDialogConfig({
       isOpen: true, type: 'confirm', title: 'Anular Membresía',
@@ -113,7 +132,7 @@ const Membresias = () => {
       onConfirm: async () => {
         try {
           await api.post(`/suscripciones/${id}/descongelar`);
-          fetchData();
+          await fetchData();
         } catch (err) {
           showAlert('Error', 'Error al descongelar la suscripción');
         }
@@ -262,7 +281,7 @@ const Membresias = () => {
               fechaFin: fin.toISOString().split('T')[0],
               motivo: "Congelamiento manual"
             });
-            fetchData();
+            await fetchData();
           } catch (err) {
             showAlert("Error", "Error al congelar");
           }
@@ -271,7 +290,24 @@ const Membresias = () => {
     });
   };
 
-  const filteredSuscripciones = (Array.isArray(suscripciones) ? suscripciones : [])
+  const uniqueSuscripciones = Object.values(
+    (Array.isArray(suscripciones) ? suscripciones : []).reduce((acc, s) => {
+      if (!s || !s.socio || !s.socio.id) return acc;
+      if (!acc[s.socio.id]) {
+        acc[s.socio.id] = s;
+      } else {
+        // En caso de duplicados, mostramos el plan que expira más a futuro
+        const currentFin = new Date(acc[s.socio.id].fechaFin || 0);
+        const newFin = new Date(s.fechaFin || 0);
+        if (newFin > currentFin) {
+          acc[s.socio.id] = s;
+        }
+      }
+      return acc;
+    }, {})
+  );
+
+  const filteredSuscripciones = uniqueSuscripciones
     .filter(s => {
       if (filterMode === 'ACTIVO') return s && s.activo !== false;
       if (filterMode === 'INACTIVO') return s && s.activo === false;
@@ -426,10 +462,10 @@ const Membresias = () => {
                       </td>
                       <td data-label="PLAN">{s?.membresia?.nombre || 'Plan desconocido'}</td>
                       <td data-label="INICIO">{s?.fechaInicio || '-'}</td>
-                      <td data-label="PRÓXIMO COBRO" style={{ color: s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.estadoPago !== 'PAGADO' ? '#ff3e3e' : 'var(--accent-secondary)', fontWeight: 'bold' }}>
+                      <td data-label="PRÓXIMO COBRO" style={{ color: s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.fechaProximoCobro !== s.fechaFin ? '#ff3e3e' : 'var(--accent-secondary)', fontWeight: 'bold' }}>
                           {s.fechaProximoCobro ? s.fechaProximoCobro : '-'}
-                          {s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.estadoPago !== 'PAGADO' && (
-                            <span style={{ display: 'block', fontSize: '0.7rem', color: '#ff3e3e' }}>¡DEUDA!</span>
+                          {s.fechaProximoCobro && s.fechaProximoCobro < hoyStrRender && s.fechaProximoCobro !== s.fechaFin && (
+                            <span style={{ display: 'block', fontSize: '0.7rem', color: '#ff3e3e' }}>¡DEUDA DE FECHA!</span>
                           )}
                       </td>
                       <td data-label="VENCIMIENTO">
@@ -441,19 +477,28 @@ const Membresias = () => {
                       <td data-label="ESTADO">{getEstadoBadge(s)}</td>
                       <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                          <button onClick={(e) => { e.stopPropagation(); handleRegistrarCobro(s); }} style={{ background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-secondary)', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
-                            <DollarSign size={18} />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleRenovar(s); }} style={{ background: 'rgba(0, 255, 127, 0.1)', color: '#00ff7f', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
-                            <RefreshCw size={18} />
-                          </button>
-                          {s?.estaCongelada ? (
-                            <button onClick={(e) => { e.stopPropagation(); handleDescongelar(s?.id); }} style={{ background: 'rgba(0, 255, 127, 0.1)', color: '#00ff7f', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                          {/* Mostrar botón de cobro si tiene deuda de estado o si se le pasó su próxima fecha de cobro */}
+                          {(s?.estadoPago !== 'PAGADO' || (s?.fechaProximoCobro && s?.fechaProximoCobro < hoyStrRender && s?.fechaProximoCobro !== s?.fechaFin)) && s?.activo !== false && (
+                            <button onClick={(e) => { e.stopPropagation(); handleRegistrarCobro(s); }} style={{ background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-secondary)', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Registrar Cobro Pendiente">
+                              <DollarSign size={18} />
+                            </button>
+                          )}
+                          
+                          {/* Botón Renovar oculto solo si el plan fue explícitamente anulado */}
+                          {s?.activo !== false && (
+                            <button onClick={(e) => { e.stopPropagation(); handleRenovar(s); }} style={{ background: 'rgba(0, 255, 127, 0.1)', color: '#00ff7f', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Renovar">
+                              <RefreshCw size={18} />
+                            </button>
+                          )}
+                          
+                          {/* Validaciones para congelar/descongelar: no aplicar a planes anulados o ya vencidos */}
+                          {s?.activo !== false && s?.estaCongelada ? (
+                            <button onClick={(e) => { e.stopPropagation(); handleDescongelar(s?.id); }} style={{ background: 'rgba(0, 255, 127, 0.1)', color: '#00ff7f', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Descongelar Plan">
                               <Play size={18} />
                             </button>
                           ) : (
-                            s?.membresia?.permiteCongelamiento !== false && (
-                              <button onClick={(e) => { e.stopPropagation(); handleCongelar(s?.id); }} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                            s?.activo !== false && (!s?.fechaFin || s?.fechaFin >= hoyStrRender) && s?.membresia?.permiteCongelamiento !== false && (
+                              <button onClick={(e) => { e.stopPropagation(); handleCongelar(s?.id); }} style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Congelar Plan">
                                 <Snowflake size={18} />
                               </button>
                             )
@@ -464,8 +509,11 @@ const Membresias = () => {
                             </button>
                             {activeMenuId === s?.id && (
                               <div style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--bg-color)', border: '1px solid var(--panel-border)', borderRadius: '12px', zIndex: 1200, minWidth: '160px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+                                <button onClick={(e) => { e.stopPropagation(); setSelectedHistorySocio(s.socio); setShowHistoryModal(true); setActiveMenuId(null); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: 'var(--text-main)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <FileText size={16} /> VER HISTORIAL
+                                </button>
                                 {s.activo !== false ? (
-                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteSus(s?.id); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: 'var(--accent-primary)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteSus(s?.id); }} style={{ width: '100%', padding: '12px 16px', background: 'transparent', color: 'var(--accent-primary)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', borderTop: '1px solid var(--panel-border)' }}>
                                     <Trash2 size={16} /> ANULAR PLAN
                                   </button>
                                 ) : (
@@ -493,7 +541,7 @@ const Membresias = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ color: 'var(--text-muted)', fontWeight: '400' }}>Configura los planes y precios que ofreces al público.</h3>
             {role === 'ADMINISTRADOR' && (
-              <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 30, duracionDias: '', descripcion: '', estado: 'DISPONIBLE', permiteCongelamiento: true }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 0, duracionDias: '', descripcion: '', estado: 'DISPONIBLE', permiteCongelamiento: true }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Plus size={20} /> CREAR NUEVO PLAN
               </button>
             )}
@@ -570,6 +618,7 @@ const Membresias = () => {
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Frecuencia de Cobro</label>
               <select value={planFormData.frecuenciaCobroDias} onChange={e => setPlanFormData({...planFormData, frecuenciaCobroDias: parseInt(e.target.value)})} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }}>
+                <option value={0}>Ninguna (Pago Único)</option>
                 <option value={7}>Semanal (7 días)</option>
                 <option value={14}>Quincenal (14 días)</option>
                 <option value={30}>Mensual (30 días)</option>
@@ -642,10 +691,10 @@ const Membresias = () => {
             )}
             
             {selectedSocio && (
-              <div style={{ marginTop: '8px', padding: '10px 14px', background: socioHasActiveSub ? 'rgba(255, 62, 62, 0.05)' : 'rgba(0, 255, 127, 0.05)', border: socioHasActiveSub ? '1px solid rgba(255, 62, 62, 0.2)' : '1px solid rgba(0, 255, 127, 0.2)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginTop: '8px', padding: '10px 14px', background: socioHasActiveSub ? 'rgba(59, 130, 246, 0.05)' : 'rgba(0, 255, 127, 0.05)', border: socioHasActiveSub ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(0, 255, 127, 0.2)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontSize: '0.85rem' }}>
-                  <span style={{ color: socioHasActiveSub ? '#ff3e3e' : '#00ff7f', fontWeight: 'bold' }}>
-                    {socioHasActiveSub ? '¡Conflicto!' : 'Seleccionado:'}
+                  <span style={{ color: socioHasActiveSub ? '#3b82f6' : '#00ff7f', fontWeight: 'bold' }}>
+                    {socioHasActiveSub ? 'Se encolará al plan actual de:' : 'Seleccionado:'}
                   </span> {selectedSocio.nombreCompleto}
                 </div>
                 <button type="button" onClick={() => { setSusFormData({...susFormData, socioId: ''}); setSocioSearch(''); }} style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontSize: '0.8rem' }}>Cambiar</button>
@@ -682,6 +731,46 @@ const Membresias = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+
+      <Modal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)} title={`Historial: ${selectedHistorySocio?.nombreCompleto || ''}`}>
+        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          {selectedHistorySocio && (
+            <table className="responsive-table" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>PLAN</th>
+                  <th>INICIO</th>
+                  <th>VENCIMIENTO</th>
+                  <th>DEUDA</th>
+                  <th>ESTADO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(suscripciones || [])
+                  .filter(sus => sus?.socio?.id === selectedHistorySocio?.id)
+                  .sort((a, b) => new Date(b.fechaInicio || 0) - new Date(a.fechaInicio || 0))
+                  .map((sus, idx) => (
+                    <tr key={sus.id || idx}>
+                      <td data-label="PLAN">{sus?.membresia?.nombre}</td>
+                      <td data-label="INICIO">{sus.fechaInicio || '-'}</td>
+                      <td data-label="VENCIMIENTO">{sus.fechaFin || '-'}</td>
+                      <td data-label="DEUDA">
+                        <span className="badge" style={{ background: sus.estadoPago === 'PAGADO' ? 'rgba(0, 255, 127, 0.1)' : 'rgba(255, 62, 62, 0.1)', color: sus.estadoPago === 'PAGADO' ? '#00ff7f' : '#ff3e3e' }}>
+                          {sus.estadoPago || 'PENDIENTE'}
+                        </span>
+                      </td>
+                      <td data-label="ESTADO">{getEstadoBadge(sus)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+            <button onClick={() => setShowHistoryModal(false)} className="btn-primary" style={{ padding: '10px 20px' }}>Cerrar Historial</button>
+        </div>
       </Modal>
 
       {/* Global Action Modal for Alerts, Confirms, and Prompts */}

@@ -43,30 +43,22 @@ public class PagoService {
 
         // Es un contrato fraccionado SOLO si la duración total excede la frecuencia de cobro
         if (cobroDias != null && cobroDias > 0 && duracionDias != null && duracionDias > cobroDias) {
+            // El ciclo de cobro avanza estrictamente basado en su último vencimiento (para no perdonar días si pagan tarde)
+            LocalDate baseLine = sus.getFechaProximoCobro() != null ? sus.getFechaProximoCobro() : LocalDate.now();
+            LocalDate nextCobro = baseLine.plusDays(cobroDias);
             
-            LocalDate baseLine = (sus.getFechaProximoCobro() != null && sus.getFechaProximoCobro().isAfter(LocalDate.now().minusDays(1)))
-                                 ? sus.getFechaProximoCobro()
-                                 : LocalDate.now();
-            
-            sus.setFechaProximoCobro(baseLine.plusDays(cobroDias));
-
-            // Renovar automáticamente (extender contrato) si su pago fraccionado supera la fecha fin
-            if (sus.getFechaFin() != null && sus.getFechaProximoCobro().isAfter(sus.getFechaFin())) {
-                sus.setFechaFin(sus.getFechaProximoCobro());
+            // Si el próximo cobro supera o es igual a la fecha final del contrato, significa que canceló su última cuota.
+            if (sus.getFechaFin() != null && !nextCobro.isBefore(sus.getFechaFin())) {
+                sus.setFechaProximoCobro(sus.getFechaFin());
+            } else {
+                sus.setFechaProximoCobro(nextCobro);
             }
-            
         } else {
-            // Plan de Pago Único (ej: Plan diario, o Mensualidad clásica pagada al contado)
-            // Si el plan ya expiró en el pasado, arrancamos desde HOY. Si aún tiene días, sumamos a eso.
-            LocalDate baseLine = (sus.getFechaFin() != null && sus.getFechaFin().isAfter(LocalDate.now().minusDays(1)))
-                                 ? sus.getFechaFin()
-                                 : LocalDate.now();
-            
-            if (duracionDias != null && duracionDias > 0) {
-                sus.setFechaFin(baseLine.plusDays(duracionDias));
+            // Plan de Pago Único: Un pago aquí simplemente significa que está completando la deuda de este paquete.
+            // En el modelo de Encolamiento, NUNCA debemos extender la fechaFin al cobrar. Se respeta el contrato inicial.
+            if (sus.getFechaFin() != null) {
+                sus.setFechaProximoCobro(sus.getFechaFin());
             }
-            // Ya se saldó, no debe nada hasta que acabe este nuevo intervalo de tiempo
-            sus.setFechaProximoCobro(sus.getFechaFin());
         }
 
         suscripcionRepository.save(sus);

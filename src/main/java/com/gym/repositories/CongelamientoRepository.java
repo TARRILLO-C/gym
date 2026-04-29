@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface CongelamientoRepository extends JpaRepository<Congelamiento, Long> {
     List<Congelamiento> findBySuscripcionId(Long suscripcionId);
+    
+    java.util.Optional<Congelamiento> findFirstBySuscripcionIdOrderByIdDesc(Long suscripcionId);
 }
