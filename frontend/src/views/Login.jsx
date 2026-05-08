@@ -26,9 +26,9 @@ const Login = () => {
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('role', data.rol);
+        sessionStorage.setItem('isAuthenticated', 'true');
+        sessionStorage.setItem('username', data.username);
+        sessionStorage.setItem('role', data.rol);
         
         if (data.rol === 'RECEPCIONISTA') {
           navigate('/asistencia');

@@ -19,7 +19,7 @@ const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
 
-  const role = localStorage.getItem('role');
+  const role = sessionStorage.getItem('role');
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR'] },
@@ -32,9 +32,9 @@ const Sidebar = () => {
   ].filter(item => item.roles.includes(role));
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('username');
-    localStorage.removeItem('role');
+    sessionStorage.removeItem('isAuthenticated');
+    sessionStorage.removeItem('username');
+    sessionStorage.removeItem('role');
     navigate('/login');
   };
 

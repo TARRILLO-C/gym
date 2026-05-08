@@ -78,4 +78,13 @@ public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> 
      * @return lista de suscripciones cuya fecha de fin es anterior a hoy
      */
     List<Suscripcion> findByFechaFinBefore(LocalDate fecha);
+
+    /**
+     * Retorna suscripciones activas que finalizan en una fecha exacta.
+     * Útil para alertas de vencimiento por correo electrónico.
+     *
+     * @param fecha fecha de fin exacta
+     * @return lista de suscripciones
+     */
+    List<Suscripcion> findByFechaFinAndActivoTrue(LocalDate fecha);
 }

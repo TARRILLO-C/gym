@@ -30,6 +30,7 @@ C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\s
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\repositories\UsuarioRepository.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\repositories\SuscripcionRepository.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\services\SuscripcionService.java
+C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\services\SuscripcionAlertScheduler.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\config\InvoicingConfig.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\controllers\ProductoController.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\exceptions\GlobalExceptionHandler.java
@@ -49,6 +50,7 @@ C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\s
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\repositories\CongelamientoRepository.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\repositories\MembresiaRepository.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\dtos\auth\LoginResponse.java
+C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\services\EmailService.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\exceptions\SuscripcionInactivaException.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\services\SocioService.java
 C:\Users\JHIMI\OneDrive - Universidad Tecnologica del Peru\Desktop\ciclo 7\gym\src\main\java\com\gym\validators\ValidSunatDocument.java

@@ -36,6 +36,7 @@ public class SuscripcionService {
     private final SocioRepository       socioRepository;
     private final MembresiaRepository   membresiaRepository;
     private final CongelamientoRepository congelamientoRepository;
+    private final EmailService          emailService;
 
     // ── Consultas ─────────────────────────────────────────────────────────────
 
@@ -227,6 +228,10 @@ public class SuscripcionService {
         }
 
         Suscripcion guardada = suscripcionRepository.save(suscripcion);
+        
+        // Enviar correo de confirmación de compra
+        emailService.enviarConfirmacionCompra(guardada);
+        
         log.info("Suscripción procesada exitosamente: socio={}, membresía={}, fin={}", socioId, membresiaId, suscripcion.getFechaFin());
         return guardada;
     }

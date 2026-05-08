@@ -74,6 +74,8 @@ com\gym\GymManagementApplication.class
 com\gym\services\PagoService.class
 com\gym\controllers\PagoController.class
 com\gym\models\Producto$ProductoBuilder.class
+com\gym\services\EmailService.class
+com\gym\services\SuscripcionAlertScheduler.class
 com\gym\controllers\ConsultaController.class
 com\gym\controllers\ProductoController.class
 com\gym\models\Congelamiento$CongelamientoBuilder.class

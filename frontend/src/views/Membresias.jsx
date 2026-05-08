@@ -38,7 +38,7 @@ const Membresias = () => {
   const [showSocioList, setShowSocioList] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [editingPlanId, setEditingPlanId] = useState(null);
-  const role = localStorage.getItem('role');
+  const role = sessionStorage.getItem('role');
   
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [promptValue, setPromptValue] = useState("");

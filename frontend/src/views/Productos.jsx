@@ -52,7 +52,7 @@ const Productos = () => {
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
   const [socioSearch, setSocioSearch] = useState('');
-  const role = localStorage.getItem('role');
+  const role = sessionStorage.getItem('role');
 
   useEffect(() => { fetchData(); }, []);
 
