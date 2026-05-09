@@ -199,11 +199,19 @@ const Membresias = () => {
       return;
     }
     if (parseFloat(planFormData.precio) <= 0 || isNaN(parseFloat(planFormData.precio))) {
-      showAlert("Aviso Fiscal", "El precio del plan debe ser estrictamente mayor a 0.");
+      showAlert("Validación", "El precio del plan debe ser mayor a 0.");
+      return;
+    }
+    if (planFormData.precioCuota !== '' && parseFloat(planFormData.precioCuota) < 0) {
+      showAlert("Validación", "El costo de la cuota no puede ser negativo.");
       return;
     }
     if (parseInt(planFormData.duracionDias) <= 0 || isNaN(parseInt(planFormData.duracionDias))) {
-      showAlert("Aviso Lógico", "Un plan no puede tener duración 0 días. Ingrese una duración válida.");
+      showAlert("Validación", "La duración debe ser al menos 1 día.");
+      return;
+    }
+    if (parseInt(planFormData.frecuenciaCobroDias) <= 0 || isNaN(parseInt(planFormData.frecuenciaCobroDias))) {
+      showAlert("Validación", "La frecuencia de cobro debe ser al menos 1 día.");
       return;
     }
 
@@ -626,18 +634,44 @@ const Membresias = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Duración (Días)</label>
-              <input required type="number" min="1" step="1" placeholder="Ej: 30" value={planFormData.duracionDias} onChange={e => setPlanFormData({...planFormData, duracionDias: e.target.value})} />
+              <input 
+                required 
+                type="number" 
+                min="1" 
+                step="1" 
+                placeholder="Ej: 30" 
+                value={planFormData.duracionDias} 
+                onChange={e => setPlanFormData({...planFormData, duracionDias: e.target.value})} 
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === '.') e.preventDefault(); }}
+              />
             </div>
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Precio Público (S/)</label>
-              <input required type="number" min="0.01" step="0.01" placeholder="Ej: 99.00" value={planFormData.precio} onChange={e => setPlanFormData({...planFormData, precio: e.target.value})} />
+              <input 
+                required 
+                type="number" 
+                min="0.01" 
+                step="0.01" 
+                placeholder="Ej: 99.00" 
+                value={planFormData.precio} 
+                onChange={e => setPlanFormData({...planFormData, precio: e.target.value})} 
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+              />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Costo Cuota Fraccionada (S/ - Opcional)</label>
-              <input type="number" min="0" step="0.01" placeholder="Ej: 33.00" value={planFormData.precioCuota} onChange={e => setPlanFormData({...planFormData, precioCuota: e.target.value})} />
+              <input 
+                type="number" 
+                min="0" 
+                step="0.01" 
+                placeholder="Ej: 33.00" 
+                value={planFormData.precioCuota} 
+                onChange={e => setPlanFormData({...planFormData, precioCuota: e.target.value})} 
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+              />
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>* Útil para pagos segmentados.</p>
             </div>
             <div>

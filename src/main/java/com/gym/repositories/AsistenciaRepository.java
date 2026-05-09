@@ -7,10 +7,6 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * Repositorio JPA para la entidad {@link Asistencia}.
- * Gestiona el historial de ingresos de los socios al gimnasio.
- */
 @Repository
 public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
 

@@ -25,8 +25,6 @@ public class SecurityConfig {
             .cors(withDefaults())
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(authz -> authz
-                // Permite acceso libre a todas las rutas por ahora para no romper el front-end,
-                // usando la validación de contraseñas de BCrypt a nivel de controlador.
                 .anyRequest().permitAll()
             );
         return http.build();

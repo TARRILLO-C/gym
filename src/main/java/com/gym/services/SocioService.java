@@ -83,6 +83,7 @@ public class SocioService {
      */
     @Transactional
     public Socio registrar(Socio socio) {
+        normalizarDatos(socio);
         if (socioRepository.existsByDni(socio.getDni())) {
             throw new DuplicateResourceException("Ya existe un socio con DNI: " + socio.getDni());
         }
@@ -109,6 +110,7 @@ public class SocioService {
      */
     @Transactional
     public Socio actualizar(Long id, Socio datosNuevos) {
+        normalizarDatos(datosNuevos);
         Socio existente = buscarPorId(id);
 
         // Verificar DNI duplicado
@@ -166,5 +168,39 @@ public class SocioService {
         socio.setEstado(nuevoEstado);
         log.info("Socio ID {} → estado cambiado a {}", id, nuevoEstado);
         return socioRepository.save(socio);
+    }
+
+    /**
+     * Normaliza los datos del socio:
+     * - Trimea campos de texto.
+     * - Convierte cadenas vacías en campos opcionales únicos (RUC, Email) a null.
+     */
+    private void normalizarDatos(Socio socio) {
+        if (socio.getNombreCompleto() != null) {
+            socio.setNombreCompleto(socio.getNombreCompleto().trim());
+        }
+        if (socio.getDni() != null) {
+            socio.setDni(socio.getDni().trim());
+        }
+        
+        // Manejo de RUC: si está vacío o solo tiene espacios, convertir a null
+        if (socio.getRuc() != null) {
+            String rucTrim = socio.getRuc().trim();
+            socio.setRuc(rucTrim.isEmpty() ? null : rucTrim);
+        }
+
+        // Manejo de Email: si está vacío o solo tiene espacios, convertir a null
+        if (socio.getEmail() != null) {
+            String emailTrim = socio.getEmail().trim();
+            socio.setEmail(emailTrim.isEmpty() ? null : emailTrim);
+        }
+
+        if (socio.getTelefono() != null) {
+            socio.setTelefono(socio.getTelefono().trim());
+        }
+        
+        if (socio.getRazonSocial() != null) {
+            socio.setRazonSocial(socio.getRazonSocial().trim());
+        }
     }
 }

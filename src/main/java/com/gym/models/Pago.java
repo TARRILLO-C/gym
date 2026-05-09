@@ -7,9 +7,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * Entidad que registra un pago realizado por un socio.
- */
 @Entity
 @Table(name = "pagos")
 @Data

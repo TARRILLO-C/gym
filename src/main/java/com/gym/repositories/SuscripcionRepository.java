@@ -11,18 +11,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repositorio JPA para la entidad {@link Suscripcion}.
- * Permite consultar el historial de suscripciones por socio, estado de pago y vigencia.
- */
 @Repository
 public interface SuscripcionRepository extends JpaRepository<Suscripcion, Long> {
 
     /**
      * Retorna todas las suscripciones de un socio específico.
      *
-     * @param socioId ID del socio
-     * @return lista de suscripciones del socio
+    @param socioId I
+     @return 
      */
     List<Suscripcion> findBySocioId(Long socioId);
 

@@ -7,10 +7,6 @@ import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 
-/**
- * Entidad que representa un tipo de Membresía disponible en el gimnasio.
- * Ejemplo: Mensual, Trimestral, Anual.
- */
 @Entity
 @Table(name = "membresias")
 @Data
@@ -42,12 +38,14 @@ public class Membresia {
     /**
      * Monto fraccionado para el cobro por cuotas.
      */
+    @DecimalMin(value = "0.0", inclusive = true, message = "El precio de la cuota no puede ser negativo")
     @Column(name = "precio_cuota", precision = 10, scale = 2)
     private BigDecimal precioCuota;
 
     /**
      * Días que abarca cada ciclo de facturación de la cuota (ej: 7, 15, 30).
      */
+    @Min(value = 1, message = "La frecuencia de cobro debe ser de al menos 1 día")
     @Column(name = "frecuencia_cobro_dias")
     private Integer frecuenciaCobroDias;
 

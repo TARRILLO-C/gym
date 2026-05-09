@@ -17,12 +17,12 @@ public class Usuario {
 
     @NotBlank(message = "La contraseña es obligatoria")
     @Column(nullable = false)
-    private String password; // Simplificado en texto plano para el inicio, de ser requerido se puede usar BCrypt luego
+    private String password; 
 
     @NotBlank(message = "El rol es obligatorio")
     @Column(nullable = false)
-    private String rol; // "ADMINISTRADOR" o "RECEPCIONISTA"
-
+    private String rol; 
+    
     @Column(nullable = false)
     private boolean activo = true;
 

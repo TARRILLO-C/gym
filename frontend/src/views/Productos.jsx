@@ -204,7 +204,6 @@ const Productos = () => {
     if (cart.length === 0 || isSubmitting) return;
     setIsSubmitting(true);
 
-<<<<<<< HEAD
     // VALIDACIONES SUNAT
     const doc = checkoutForm.clienteDocumento ? checkoutForm.clienteDocumento.trim() : '';
     const nom = checkoutForm.clienteNombre ? checkoutForm.clienteNombre.trim() : '';
@@ -212,25 +211,30 @@ const Productos = () => {
     if (checkoutForm.tipoComprobante === 'FACTURA') {
       if (doc.length !== 11 || !/^(10|20)\d{9}$/.test(doc)) {
         showAlert("Error Fiscal (SUNAT)", "El RUC de la factura debe tener 11 dígitos exactos y comenzar con '10' o '20'.");
+        setIsSubmitting(false);
         return;
       }
       if (nom === '') {
         showAlert("Error Fiscal (SUNAT)", "La Razón Social es estrictamente obligatoria para emitir Factura.");
+        setIsSubmitting(false);
         return;
       }
     } else if (checkoutForm.tipoComprobante === 'BOLETA') {
       if (cartTotal > 700) {
         if (doc.length !== 8 || !/^\d{8}$/.test(doc)) {
           showAlert("Error Fiscal (SUNAT)", "Por normativas SUNAT, las ventas mayores a S/ 700.00 exigen DNI de 8 dígitos obligatoriamente.");
+          setIsSubmitting(false);
           return;
         }
         if (nom === '') {
           showAlert("Error Fiscal (SUNAT)", "Al superar S/ 700.00, el nombre completo del cliente es obligatorio.");
+          setIsSubmitting(false);
           return;
         }
       } else if (doc.length > 0) {
         if (doc.length !== 8 || !/^\d{8}$/.test(doc)) {
           showAlert("Error de Formato", "Si ingresa un DNI voluntariamente, debe tener exactamente 8 dígitos.");
+          setIsSubmitting(false);
           return;
         }
       }
@@ -239,23 +243,30 @@ const Productos = () => {
     if (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '') {
       if (parseFloat(checkoutForm.montoRecibido) < cartTotal) {
         showAlert("Atención", "El efectivo recibido (S/ " + checkoutForm.montoRecibido + ") es menor al Total a Pagar (S/ " + cartTotal.toFixed(2) + ").");
+        setIsSubmitting(false);
         return;
       }
     }
 
-    if (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) {
-      showAlert("Atención", "Debe ingresar un número de tarjeta válido o comprobante de POS.");
-=======
-    if (checkoutForm.metodoPago === 'TARJETA' && checkoutForm.numeroTarjeta.length !== 16) {
-      showAlert("Atención", "Debe ingresar exactamente los 16 dígitos de la Tarjeta.");
-      setIsSubmitting(false);
->>>>>>> b304a0c (Mis cambios locales)
-      return;
+    if (checkoutForm.metodoPago === 'TARJETA') {
+        if (!checkoutForm.numeroTarjeta || checkoutForm.numeroTarjeta.length !== 16) {
+          showAlert("Atención", "Debe ingresar exactamente los 16 dígitos de la Tarjeta.");
+          setIsSubmitting(false);
+          return;
+        }
     }
+
     if (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) {
       showAlert("Atención", "Debe ingresar el número de operación de la transferencia.");
       setIsSubmitting(false);
       return;
+    }
+    if (checkoutForm.metodoPago === 'YAPE_PLIN' && checkoutForm.numeroOperacion) {
+      if (checkoutForm.numeroOperacion.length !== 9) {
+        showAlert("Atención", "El Nº de Celular (Yape/Plin) debe tener exactamente 9 dígitos.");
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
@@ -689,11 +700,9 @@ const Productos = () => {
                 <div 
                   key={tipo.id} 
                   onClick={() => {
-                    const isFactura = tipo.id === 'FACTURA';
                     setCheckoutForm({
                       ...checkoutForm, 
                       tipoComprobante: tipo.id,
-                      // Limpiar o mantener según socio
                       clienteDocumento: '',
                       clienteNombre: ''
                     });
@@ -781,9 +790,8 @@ const Productos = () => {
             
             {checkoutForm.metodoPago === 'YAPE_PLIN' && (
               <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Captura de Pantalla / Voucher (Opcional)</label>
-                <input type="file" accept="image/*" style={{ border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', padding: '10px', borderRadius: '12px', color: 'var(--text-main)' }} />
-                <input type="text" maxLength="9" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value.replace(/\D/g, '')})} placeholder="Nº Operación o Celular (Máx 9 dígitos)" />
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Celular Referencia (9 dígitos)</label>
+                <input required type="text" maxLength="9" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value.replace(/\D/g, '')})} placeholder="Nº Operación o Celular (Máx 9 dígitos)" />
               </div>
             )}
 
@@ -792,19 +800,20 @@ const Productos = () => {
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Total a Pagar</div>
             <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</div>
           </div>
-<<<<<<< HEAD
           
           <button 
             type="submit" 
             className="btn-primary" 
             disabled={
+              isSubmitting ||
               // Validaciones dinámicas que bloquean el botón:
               (checkoutForm.tipoComprobante === 'FACTURA' && (checkoutForm.clienteDocumento.length !== 11 || !checkoutForm.clienteNombre.trim())) ||
               (checkoutForm.tipoComprobante === 'BOLETA' && cartTotal > 700 && (checkoutForm.clienteDocumento.length !== 8 || !checkoutForm.clienteNombre.trim())) ||
               (checkoutForm.tipoComprobante === 'BOLETA' && checkoutForm.clienteDocumento.length > 0 && checkoutForm.clienteDocumento.length !== 8) ||
               (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '' && parseFloat(checkoutForm.montoRecibido) < cartTotal) ||
-              (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) ||
+              (checkoutForm.metodoPago === 'TARJETA' && checkoutForm.numeroTarjeta.length !== 16) ||
               (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) ||
+              (checkoutForm.metodoPago === 'YAPE_PLIN' && checkoutForm.numeroOperacion.length > 0 && checkoutForm.numeroOperacion.length !== 9) ||
               cart.length === 0
             }
             style={{ 
@@ -812,30 +821,28 @@ const Productos = () => {
               padding: '18px', 
               fontSize: '1.1rem',
               opacity: (
+                isSubmitting ||
                 (checkoutForm.tipoComprobante === 'FACTURA' && (checkoutForm.clienteDocumento.length !== 11 || !checkoutForm.clienteNombre.trim())) ||
                 (checkoutForm.tipoComprobante === 'BOLETA' && cartTotal > 700 && (checkoutForm.clienteDocumento.length !== 8 || !checkoutForm.clienteNombre.trim())) ||
                 (checkoutForm.tipoComprobante === 'BOLETA' && checkoutForm.clienteDocumento.length > 0 && checkoutForm.clienteDocumento.length !== 8) ||
                 (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '' && parseFloat(checkoutForm.montoRecibido) < cartTotal) ||
-                (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) ||
+                (checkoutForm.metodoPago === 'TARJETA' && checkoutForm.numeroTarjeta.length !== 16) ||
                 (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) ||
                 cart.length === 0
               ) ? 0.5 : 1,
               cursor: (
+                isSubmitting ||
                 (checkoutForm.tipoComprobante === 'FACTURA' && (checkoutForm.clienteDocumento.length !== 11 || !checkoutForm.clienteNombre.trim())) ||
                 (checkoutForm.tipoComprobante === 'BOLETA' && cartTotal > 700 && (checkoutForm.clienteDocumento.length !== 8 || !checkoutForm.clienteNombre.trim())) ||
                 (checkoutForm.tipoComprobante === 'BOLETA' && checkoutForm.clienteDocumento.length > 0 && checkoutForm.clienteDocumento.length !== 8) ||
                 (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '' && parseFloat(checkoutForm.montoRecibido) < cartTotal) ||
-                (checkoutForm.metodoPago === 'TARJETA' && !checkoutForm.numeroTarjeta) ||
+                (checkoutForm.metodoPago === 'TARJETA' && checkoutForm.numeroTarjeta.length !== 16) ||
                 (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) ||
                 cart.length === 0
               ) ? 'not-allowed' : 'pointer'
             }}
           >
-            CONFIRMAR Y PAGAR
-=======
-          <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ width: '100%', padding: '18px', fontSize: '1.1rem', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
             {isSubmitting ? 'PROCESANDO...' : 'CONFIRMAR Y PAGAR'}
->>>>>>> b304a0c (Mis cambios locales)
           </button>
         </form>
       </Modal>
