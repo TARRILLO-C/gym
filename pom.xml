@@ -64,7 +64,6 @@
             <scope>test</scope>
         </dependency>
 
-<<<<<<< HEAD
         <!-- Encriptación de contraseñas -->
         <dependency>
             <groupId>org.mindrot</groupId>
@@ -76,12 +75,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
-=======
+        </dependency>
+
         <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
->>>>>>> b304a0c (Mis cambios locales)
         </dependency>
 
     </dependencies>

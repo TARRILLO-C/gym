@@ -388,10 +388,7 @@ const Socios = () => {
               <input 
                 type="text" 
                 maxLength="9"
-<<<<<<< HEAD
                 placeholder="Ej: 987654321"
-=======
->>>>>>> b304a0c (Mis cambios locales)
                 value={formData.telefono}
                 onChange={e => setFormData({...formData, telefono: e.target.value.replace(/\D/g, '')})}
               />

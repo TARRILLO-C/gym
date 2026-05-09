@@ -179,13 +179,8 @@ const Usuarios = () => {
                     </button>
                     {u.activo !== false ? (
                       <button 
-<<<<<<< HEAD
                         onClick={() => handleDeleteUsuario(u)} 
-                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: u.rol === 'ADMINISTRADOR' ? 0.3 : 1 }}
-=======
-                        onClick={() => handleDeleteUsuario(u.id, u.username)} 
-                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: (u.username.toLowerCase() === 'admin' || (currentUser && u.username.toLowerCase() === currentUser.toLowerCase())) ? 0.3 : 1 }}
->>>>>>> b304a0c (Mis cambios locales)
+                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: (u.rol === 'ADMINISTRADOR' || u.username.toLowerCase() === 'admin' || (currentUser && u.username.toLowerCase() === currentUser.toLowerCase())) ? 0.3 : 1 }}
                         title="Eliminar Acceso"
                       >
                         <UserX size={18} />

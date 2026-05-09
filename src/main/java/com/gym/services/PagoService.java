@@ -34,7 +34,6 @@ public class PagoService {
             pago.setFechaPago(LocalDateTime.now());
         }
 
-<<<<<<< HEAD
         // Actualizar estado financiero de la suscripción a PAGADO
         sus.setEstadoPago(Suscripcion.EstadoPago.PAGADO);
 
@@ -58,13 +57,6 @@ public class PagoService {
             // Plan de Pago Único: Un pago aquí simplemente significa que está completando la deuda de este paquete.
             // En el modelo de Encolamiento, NUNCA debemos extender la fechaFin al cobrar. Se respeta el contrato inicial.
             if (sus.getFechaFin() != null) {
-=======
-        // Si es un pago fraccionado, extender la fecha de próximo cobro
-        if (sus.getMembresia().getPrecioCuota() != null && sus.getFechaProximoCobro() != null && sus.getMembresia().getFrecuenciaCobroDias() != null) {
-            sus.setFechaProximoCobro(sus.getFechaProximoCobro().plusDays(sus.getMembresia().getFrecuenciaCobroDias()));
-            // Asegurarse de no exceder la fecha de fin de la suscripción
-            if (sus.getFechaFin() != null && sus.getFechaProximoCobro().isAfter(sus.getFechaFin())) {
->>>>>>> b304a0c (Mis cambios locales)
                 sus.setFechaProximoCobro(sus.getFechaFin());
             }
         }
