@@ -9,6 +9,8 @@ import Productos from './views/Productos';
 import Ventas from './views/Ventas';
 import Usuarios from './views/Usuarios';
 import Login from './views/Login';
+import ConfiguracionCatalogo from './views/ConfiguracionCatalogo';
+import CatalogoVirtual from './views/CatalogoVirtual';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import './App.css';
@@ -26,14 +28,17 @@ class ErrorBoundary extends React.Component {
 const AppLayout = () => {
   const location = useLocation();
   const isLoginPage = location.pathname === '/login';
+  const isCatalogoPage = location.pathname === '/catalogo';
+  const isPublicPage = isLoginPage || isCatalogoPage;
 
   return (
     <div className="app-container" style={{ display: 'flex' }}>
-      {!isLoginPage && <Sidebar />}
-      <main className="main-content" style={isLoginPage ? { width: '100%', marginLeft: 0, padding: 0 } : {}}>
+      {!isPublicPage && <Sidebar />}
+      <main className="main-content" style={isPublicPage ? { width: '100%', maxWidth: 'none', marginLeft: 0, padding: 0 } : {}}>
         <ErrorBoundary>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/catalogo" element={<CatalogoVirtual />} />
             
             <Route path="/" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Dashboard /></ProtectedRoute>} />
             <Route path="/asistencia" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Asistencia /></ProtectedRoute>} />
@@ -42,6 +47,7 @@ const AppLayout = () => {
             <Route path="/productos" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Productos /></ProtectedRoute>} />
             <Route path="/ventas" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Ventas /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Usuarios /></ProtectedRoute>} />
+            <Route path="/configuracion-catalogo" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><ConfiguracionCatalogo /></ProtectedRoute>} />
           </Routes>
         </ErrorBoundary>
       </main>
