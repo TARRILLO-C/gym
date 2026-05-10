@@ -1,7 +1,4 @@
-git add .
-git commit -m "Mis cambios locales"
-git pull origin master
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, LogIn, ShieldCheck, User, Lock, Eye, EyeOff } from 'lucide-react';
 import '../App.css';
@@ -13,7 +10,22 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch('http://localhost:8080/api/web-config')
+      .then(res => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then(data => {
+        if (data && data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        }
+      })
+      .catch(err => console.error('Error fetching logo:', err));
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -73,9 +85,13 @@ const Login = () => {
         <div className="login-card">
           <div className="login-header">
             <div className="login-logo">
-              <div className="logo-circle">
-                <Dumbbell size={40} color="white" strokeWidth={2.5} />
-              </div>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" style={{ height: '80px', width: '80px', objectFit: 'contain', borderRadius: '15px' }} />
+              ) : (
+                <div className="logo-circle">
+                  <Dumbbell size={40} color="white" strokeWidth={2.5} />
+                </div>
+              )}
             </div>
             <h1 className="login-title text-gradient">THE JUNGLE</h1>
             <p className="login-subtitle">GESTIÓN DE ALTO RENDIMIENTO</p>

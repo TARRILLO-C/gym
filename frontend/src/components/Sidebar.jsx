@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -11,13 +11,29 @@ import {
   Moon,
   LogOut,
   UserCog,
-  Receipt
+  Receipt,
+  Store
 } from 'lucide-react';
 import { ThemeContext } from '../context/ThemeContext';
 
 const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
+  const [logoUrl, setLogoUrl] = useState('');
+
+  useEffect(() => {
+    fetch('http://localhost:8080/api/web-config')
+      .then(res => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then(data => {
+        if (data && data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        }
+      })
+      .catch(err => console.error('Error fetching logo:', err));
+  }, []);
 
   const role = sessionStorage.getItem('role');
 
@@ -29,6 +45,7 @@ const Sidebar = () => {
     { name: 'Productos', path: '/productos', icon: Package, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
     { name: 'Ventas', path: '/ventas', icon: Receipt, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
     { name: 'Personal', path: '/usuarios', icon: UserCog, roles: ['ADMINISTRADOR'] },
+    { name: 'Catálogo Web', path: '/configuracion-catalogo', icon: Store, roles: ['ADMINISTRADOR'] },
   ].filter(item => item.roles.includes(role));
 
   const handleLogout = () => {
@@ -40,17 +57,21 @@ const Sidebar = () => {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">
-        <div style={{ 
-          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-          padding: '10px',
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <Dumbbell size={24} color="white" />
-        </div>
+      <div className="sidebar-header" style={{ minHeight: '64px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {logoUrl ? (
+          <img src={logoUrl} alt="Logo de la empresa" style={{ height: '40px', width: '40px', objectFit: 'contain', borderRadius: '8px' }} />
+        ) : (
+          <div style={{ 
+            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+            padding: '10px',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Dumbbell size={24} color="white" />
+          </div>
+        )}
         <h1 className="sidebar-text" style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>
           THE <span className="text-gradient">JUNGLE</span>
         </h1>
