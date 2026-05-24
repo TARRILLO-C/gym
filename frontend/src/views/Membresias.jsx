@@ -20,6 +20,7 @@ import {
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
+import PrintTicket from '../components/ui/PrintTicket';
 
 const Membresias = () => {
   const [activeTab, setActiveTab] = useState('suscripciones');
@@ -42,6 +43,8 @@ const Membresias = () => {
   
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [promptValue, setPromptValue] = useState("");
+  const [lastVentaData, setLastVentaData] = useState(null);
+  const [isSearchingDoc, setIsSearchingDoc] = useState(false);
 
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
@@ -61,8 +64,65 @@ const Membresias = () => {
     membresiaId: '',
     fechaInicio: new Date().toISOString().split('T')[0],
     estadoPago: 'PAGADO',
-    pagoTotal: true
+    pagoTotal: true,
+    generarComprobante: false,
+    tipoComprobante: 'BOLETA',
+    clienteNombre: '',
+    clienteDocumento: '',
+    metodoPago: 'EFECTIVO'
   });
+
+  // Auto-llenar campos de comprobante cuando cambia socio o tipo de comprobante
+  useEffect(() => {
+    if (susFormData.socioId) {
+      const s = socios.find(soc => soc.id.toString() === susFormData.socioId);
+      if (s) {
+        if (susFormData.tipoComprobante === 'FACTURA') {
+          setSusFormData(prev => ({
+            ...prev,
+            clienteDocumento: s.ruc || '',
+            clienteNombre: s.razonSocial || s.nombreCompleto || ''
+          }));
+        } else {
+          setSusFormData(prev => ({
+            ...prev,
+            clienteDocumento: s.dni || '',
+            clienteNombre: s.nombreCompleto || ''
+          }));
+        }
+      }
+    } else {
+      setSusFormData(prev => ({
+        ...prev,
+        clienteDocumento: '',
+        clienteNombre: ''
+      }));
+    }
+  }, [susFormData.socioId, susFormData.tipoComprobante, socios]);
+
+  const handleDocumentLookup = async () => {
+    const isFactura = susFormData.tipoComprobante === 'FACTURA';
+    const doc = susFormData.clienteDocumento || '';
+    if (doc.length === 8 && !isFactura) {
+      setIsSearchingDoc(true);
+      try {
+        const res = await api.get(`/consultas/dni/${doc}`);
+        if (res.data && res.data.nombreCompleto) {
+          setSusFormData(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        }
+      } catch (err) { console.error("Error dni:", err); }
+      setIsSearchingDoc(false);
+    } else if (doc.length === 11 && isFactura) {
+      setIsSearchingDoc(true);
+      try {
+        const res = await api.get(`/consultas/ruc/${doc}`);
+        if (res.data && res.data.nombreCompleto) {
+          setSusFormData(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        }
+      } catch (err) { console.error("Error ruc:", err); }
+      setIsSearchingDoc(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -234,13 +294,86 @@ const Membresias = () => {
 
   const handleCreateSus = async (e) => {
     e.preventDefault();
+
+    // Validaciones fiscales antes del post de suscripción si tiene comprobante
+    if (susFormData.generarComprobante) {
+      const doc = susFormData.clienteDocumento ? susFormData.clienteDocumento.trim() : '';
+      const nom = susFormData.clienteNombre ? susFormData.clienteNombre.trim() : '';
+      const selectedMembresia = membresias.find(m => m.id.toString() === susFormData.membresiaId);
+      const planPrecio = selectedMembresia ? (susFormData.pagoTotal ? selectedMembresia.precio : (selectedMembresia.precioCuota || selectedMembresia.precio)) : 0;
+
+      if (susFormData.tipoComprobante === 'FACTURA') {
+        if (doc.length !== 11 || !/^(10|20)\d{9}$/.test(doc)) {
+          showAlert("Error Fiscal (SUNAT)", "El RUC de la factura debe tener 11 dígitos exactos y comenzar con '10' o '20'.");
+          return;
+        }
+        if (nom === '') {
+          showAlert("Error Fiscal (SUNAT)", "La Razón Social es estrictamente obligatoria para emitir Factura.");
+          return;
+        }
+      } else if (susFormData.tipoComprobante === 'BOLETA') {
+        if (planPrecio > 700) {
+          if (doc.length !== 8 || !/^\d{8}$/.test(doc)) {
+            showAlert("Error Fiscal (SUNAT)", "Por normativas SUNAT, las ventas mayores a S/ 700.00 exigen DNI de 8 dígitos obligatoriamente.");
+            return;
+          }
+          if (nom === '') {
+            showAlert("Error Fiscal (SUNAT)", "Al superar S/ 700.00, el nombre completo del cliente es obligatorio.");
+            return;
+          }
+        } else if (doc.length > 0) {
+          if (doc.length !== 8 || !/^\d{8}$/.test(doc)) {
+            showAlert("Error de Formato", "Si ingresa un DNI voluntariamente, debe tener exactamente 8 dígitos.");
+            return;
+          }
+        }
+      }
+    }
+
     try {
-      await api.post('/suscripciones', susFormData);
+      const res = await api.post('/suscripciones', susFormData);
+      const newSus = res.data;
+      
       setShowSusModal(false);
       setSocioSearch('');
       fetchData();
+
+      // Buscar el pago y la venta generada
+      try {
+        const pagosRes = await api.get(`/pagos/suscripcion/${newSus.id}`);
+        if (pagosRes.data && pagosRes.data.length > 0) {
+          const pago = pagosRes.data[pagosRes.data.length - 1]; // Obtener el último pago
+          if (pago.venta) {
+            const ventaRealData = pago.venta;
+            setLastVentaData(ventaRealData);
+            setDialogConfig({
+              isOpen: true,
+              type: 'alert',
+              title: '¡Venta de Plan Registrada!',
+              message: ventaRealData.enlacePdfTicket ? 'El comprobante oficial ha sido generado por SUNAT.' : 'La transacción se procesó correctamente.',
+              btnConfirmText: 'CERRAR',
+              extraContent: (
+                <div>
+                  {ventaRealData.enlacePdfTicket ? (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                      <button type="button" onClick={() => window.open(ventaRealData.enlacePdfTicket, '_blank')} style={{ flex: 1, padding: '12px', background: 'var(--accent-primary)', color: '#fff', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>🖨️ VER TICKET (80mm)</button>
+                      <button type="button" onClick={() => window.open(ventaRealData.enlacePdfA4, '_blank')} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📄 VER PDF (A4)</button>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '15px' }}>
+                      <button type="button" onClick={() => { setDialogConfig(prev => ({...prev, isOpen: false})); setTimeout(() => window.print(), 350); }} style={{ width: '100%', padding: '12px', background: 'var(--accent-secondary)', color: '#fff', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>IMPRIMIR TICKET INTERNO</button>
+                    </div>
+                  )}
+                </div>
+              )
+            });
+          }
+        }
+      } catch (errComp) {
+        console.error("Error al obtener comprobante:", errComp);
+      }
     } catch (err) {
-      showAlert("Error", "Error al registrar suscripción");
+      showAlert("Error", "Error al registrar suscripción: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -252,13 +385,16 @@ const Membresias = () => {
     setSusFormData({
       socioId: sus.socio.id.toString(),
       membresiaId: sus.membresia.id.toString(),
-      // Si la suscripción está vencida, la nueva arranca hoy.
-      // Si aún no vence, la nueva debe arrancar cuando vence la actual.
       fechaInicio: (sus.fechaFin && new Date(sus.fechaFin) > new Date()) 
                      ? sus.fechaFin 
                      : new Date().toISOString().split('T')[0],
       estadoPago: 'PAGADO',
-      pagoTotal: true
+      pagoTotal: true,
+      generarComprobante: false,
+      tipoComprobante: 'BOLETA',
+      clienteNombre: sus.socio.nombreCompleto,
+      clienteDocumento: sus.socio.dni,
+      metodoPago: 'EFECTIVO'
     });
     
     setShowSusModal(true);
@@ -677,7 +813,16 @@ const Membresias = () => {
                   filteredSociosForModal.map(s => (
                     <div 
                       key={s.id} 
-                      onClick={() => { setSusFormData({...susFormData, socioId: s.id.toString()}); setSocioSearch(s.nombreCompleto); setShowSocioList(false); }}
+                      onClick={() => { 
+                        setSusFormData({
+                          ...susFormData, 
+                          socioId: s.id.toString(),
+                          clienteNombre: susFormData.tipoComprobante === 'FACTURA' ? (s.razonSocial || s.nombreCompleto || '') : s.nombreCompleto,
+                          clienteDocumento: susFormData.tipoComprobante === 'FACTURA' ? (s.ruc || '') : s.dni
+                        }); 
+                        setSocioSearch(s.nombreCompleto); 
+                        setShowSocioList(false); 
+                      }}
                       style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}
                     >
                       <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{s.nombreCompleto}</div>
@@ -722,8 +867,134 @@ const Membresias = () => {
 
           <div>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Fecha de Inicio</label>
-            <input type="date" value={susFormData.fechaInicio} onChange={e => setSusFormData({...susFormData, fechaInicio: e.target.value})} />
+            <input type="date" value={susFormData.fechaInicio} onChange={e => setSusFormData({...susFormData, fechaInicio: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }} />
           </div>
+
+          {/* Checkbox/Switch para Comprobante Electrónico */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            marginTop: '8px', 
+            padding: '12px', 
+            background: 'rgba(59, 130, 246, 0.05)', 
+            border: '1px solid rgba(59, 130, 246, 0.2)', 
+            borderRadius: '12px' 
+          }}>
+            <input 
+              type="checkbox" 
+              id="generarComprobante"
+              checked={susFormData.generarComprobante || false} 
+              onChange={e => setSusFormData({...susFormData, generarComprobante: e.target.checked})}
+              style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#3b82f6' }}
+            />
+            <label htmlFor="generarComprobante" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer', fontWeight: '500' }}>
+              Generar Comprobante Electrónico (Boleta/Factura)
+            </label>
+          </div>
+
+          {/* Sección colapsable de Facturación */}
+          {susFormData.generarComprobante && (
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '12px', 
+              padding: '16px', 
+              background: 'var(--bg-color)', 
+              borderRadius: '12px', 
+              border: '1px solid var(--panel-border)',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+            }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Método de Pago</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px' }}>
+                  {['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'YAPE_PLIN'].map(metodo => (
+                    <div 
+                      key={metodo} 
+                      onClick={() => setSusFormData({...susFormData, metodoPago: metodo})} 
+                      style={{ 
+                        padding: '10px', 
+                        borderRadius: '8px', 
+                        textAlign: 'center', 
+                        cursor: 'pointer', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 'bold', 
+                        background: susFormData.metodoPago === metodo ? 'rgba(255, 62, 62, 0.1)' : 'var(--panel-bg)', 
+                        border: susFormData.metodoPago === metodo ? '1px solid var(--accent-primary)' : '1px solid var(--panel-border)', 
+                        color: susFormData.metodoPago === metodo ? 'var(--accent-primary)' : 'var(--text-main)' 
+                      }}
+                    >
+                      {metodo.replace('_', ' / ')}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tipo de Comprobante</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '6px' }}>
+                  {[
+                    { id: 'BOLETA', label: 'Boleta' }, 
+                    { id: 'FACTURA', label: 'Factura' }
+                  ].map(tipo => (
+                    <div 
+                      key={tipo.id} 
+                      onClick={() => setSusFormData({...susFormData, tipoComprobante: tipo.id})} 
+                      style={{ 
+                        padding: '10px', 
+                        borderRadius: '8px', 
+                        textAlign: 'center', 
+                        cursor: 'pointer', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 'bold', 
+                        background: susFormData.tipoComprobante === tipo.id ? 'rgba(59, 130, 246, 0.1)' : 'var(--panel-bg)', 
+                        border: susFormData.tipoComprobante === tipo.id ? '1px solid #3b82f6' : '1px solid var(--panel-border)', 
+                        color: susFormData.tipoComprobante === tipo.id ? '#3b82f6' : 'var(--text-main)' 
+                      }}
+                    >
+                      {tipo.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {susFormData.tipoComprobante === 'FACTURA' ? 'RUC (11 dígitos)' : 'DNI (8 dígitos)'}
+                </label>
+                <div style={{ position: 'relative', marginTop: '4px' }}>
+                  <input 
+                    type="text" 
+                    value={susFormData.clienteDocumento || ''} 
+                    onChange={e => setSusFormData({...susFormData, clienteDocumento: e.target.value.replace(/\D/g, '')})} 
+                    onBlur={handleDocumentLookup} 
+                    maxLength={susFormData.tipoComprobante === 'FACTURA' ? "11" : "8"} 
+                    placeholder={susFormData.tipoComprobante === 'FACTURA' ? "Ej: 20601234567" : "Ej: 71234567"} 
+                    style={{ width: '100%', color: 'var(--text-main)', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '10px 12px' }}
+                  />
+                  {isSearchingDoc && (
+                    <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6', fontWeight: 'bold' }}>
+                      Buscando...
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {susFormData.tipoComprobante === 'FACTURA' ? 'Razón Social' : 'Nombre Completo'}
+                </label>
+                <input 
+                  type="text" 
+                  value={susFormData.clienteNombre || ''} 
+                  onChange={e => setSusFormData({...susFormData, clienteNombre: e.target.value})} 
+                  placeholder={susFormData.tipoComprobante === 'FACTURA' ? "Ej: Mi Empresa S.A.C." : "Ej: Juan Pérez"} 
+                  style={{ width: '100%', marginTop: '4px', color: 'var(--text-main)', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '10px 12px' }}
+                />
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
             <button type="button" onClick={() => { setShowSusModal(false); setSocioSearch(''); }} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)' }}>CANCELAR</button>
             <button type="submit" className="btn-primary" disabled={!susFormData.socioId || !susFormData.membresiaId} style={{ flex: 1, opacity: (!susFormData.socioId || !susFormData.membresiaId) ? 0.5 : 1 }}>
@@ -778,6 +1049,8 @@ const Membresias = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <p style={{ color: 'var(--text-main)', fontSize: '1rem', margin: 0 }}>{dialogConfig.message}</p>
           
+          {dialogConfig.extraContent}
+
           {dialogConfig.type === 'prompt' && (
             <input 
               type="text" 
@@ -813,11 +1086,18 @@ const Membresias = () => {
               }} 
               style={{ padding: '10px 24px' }}
             >
-              {dialogConfig.type === 'alert' ? 'Aceptar' : 'Confirmar'}
+              {dialogConfig.btnConfirmText || (dialogConfig.type === 'alert' ? 'Aceptar' : 'Confirmar')}
             </button>
           </div>
         </div>
       </Modal>
+
+      {/* Impresión de ticket local */}
+      {lastVentaData && (
+        <div style={{ display: 'none' }}>
+          <PrintTicket venta={lastVentaData} />
+        </div>
+      )}
 
     </PageLayout>
   );

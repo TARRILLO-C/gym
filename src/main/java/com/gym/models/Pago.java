@@ -25,7 +25,7 @@ public class Pago {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "suscripcion_id", nullable = false)
-    @JsonIgnoreProperties({"socio", "membresia", "hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Suscripcion suscripcion;
 
     @Column(name = "monto", nullable = false, precision = 10, scale = 2)
@@ -40,6 +40,23 @@ public class Pago {
 
     @Column(name = "comentario", length = 255)
     private String comentario;
+
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "venta_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Venta venta;
+
+    @Transient
+    private Boolean generarComprobante;
+
+    @Transient
+    private String tipoComprobante;
+
+    @Transient
+    private String clienteNombre;
+
+    @Transient
+    private String clienteDocumento;
 
     public enum MetodoPago {
         EFECTIVO,

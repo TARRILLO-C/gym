@@ -54,6 +54,10 @@ public class MembresiaService {
         membresia.setPermiteCongelamiento(detalles.getPermiteCongelamiento());
         membresia.setPrecioCuota(detalles.getPrecioCuota());
         membresia.setFrecuenciaCobroDias(detalles.getFrecuenciaCobroDias());
+        membresia.setImagenUrl(detalles.getImagenUrl());
+        if (detalles.getMostrarEnCatalogo() != null) {
+            membresia.setMostrarEnCatalogo(detalles.getMostrarEnCatalogo());
+        }
         return membresiaRepository.save(membresia);
     }
 

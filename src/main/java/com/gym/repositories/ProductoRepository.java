@@ -42,4 +42,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
      * Retorna productos por categoría.
      */
     List<Producto> findByCategoria(Producto.CategoriaProducto categoria);
+
+    /**
+     * Busca un producto por su nombre exacto.
+     */
+    java.util.Optional<Producto> findByNombre(String nombre);
 }

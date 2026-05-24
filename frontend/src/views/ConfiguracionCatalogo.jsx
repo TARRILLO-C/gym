@@ -3,7 +3,9 @@ import { Upload, Image as ImageIcon, Plus, Trash2, ExternalLink } from 'lucide-r
 
 const ConfiguracionCatalogo = () => {
   const [logoUrl, setLogoUrl] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [sliders, setSliders] = useState([]);
+  const [membresias, setMembresias] = useState([]);
   
   // States for new slider
   const [newSlider, setNewSlider] = useState({
@@ -30,6 +32,7 @@ const ConfiguracionCatalogo = () => {
   useEffect(() => {
     fetchConfig();
     fetchSliders();
+    fetchMembresias();
   }, []);
 
   const fetchConfig = async () => {
@@ -38,6 +41,7 @@ const ConfiguracionCatalogo = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
+        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -53,6 +57,18 @@ const ConfiguracionCatalogo = () => {
       }
     } catch (error) {
       console.error('Error fetching sliders:', error);
+    }
+  };
+
+  const fetchMembresias = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/membresias');
+      if (response.ok) {
+        const data = await response.json();
+        setMembresias(data.filter(m => m.estado === 'DISPONIBLE'));
+      }
+    } catch (error) {
+      console.error('Error fetching membresias:', error);
     }
   };
 
@@ -75,26 +91,34 @@ const ConfiguracionCatalogo = () => {
     return null;
   };
 
-  const handleSaveLogo = async () => {
-    if (!logoFile) return;
+  const handleSaveConfig = async () => {
     setLoading(true);
-    const uploadedUrl = await handleUploadImage(logoFile);
+    let currentLogoUrl = logoUrl;
     
-    if (uploadedUrl) {
-      try {
-        const response = await fetch('http://localhost:8080/api/web-config', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ logoUrl: uploadedUrl }),
-        });
-        if (response.ok) {
-          setLogoUrl(uploadedUrl);
-          setLogoFile(null);
-          showToast('Logo actualizado correctamente');
-        }
-      } catch (error) {
-        console.error('Error saving logo config:', error);
+    if (logoFile) {
+      const uploadedUrl = await handleUploadImage(logoFile);
+      if (uploadedUrl) {
+        currentLogoUrl = uploadedUrl;
       }
+    }
+    
+    try {
+      const response = await fetch('http://localhost:8080/api/web-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          logoUrl: currentLogoUrl,
+          whatsappNumber: whatsappNumber
+        }),
+      });
+      if (response.ok) {
+        setLogoUrl(currentLogoUrl);
+        setLogoFile(null);
+        showToast('Configuración general actualizada correctamente');
+      }
+    } catch (error) {
+      console.error('Error saving config:', error);
+      showToast('Error al actualizar configuración', 'error');
     }
     setLoading(false);
   };
@@ -155,6 +179,52 @@ const ConfiguracionCatalogo = () => {
     }
   };
 
+  const handleUpdateMembresiaImage = async (membresiaId, file) => {
+    if (!file) return;
+    setLoading(true);
+    const uploadedUrl = await handleUploadImage(file);
+    if (uploadedUrl) {
+      try {
+        const membresiaToUpdate = membresias.find(m => m.id === membresiaId);
+        const response = await fetch(`http://localhost:8080/api/membresias/${membresiaId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...membresiaToUpdate, imagenUrl: uploadedUrl }),
+        });
+        if (response.ok) {
+          const updated = await response.json();
+          setMembresias(membresias.map(m => m.id === membresiaId ? updated : m));
+          showToast('Imagen del plan actualizada');
+        }
+      } catch (error) {
+        console.error('Error updating membresia image:', error);
+        showToast('Error al actualizar imagen', 'error');
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleToggleMostrarCatalogo = async (membresiaId, currentState) => {
+    setLoading(true);
+    try {
+      const membresiaToUpdate = membresias.find(m => m.id === membresiaId);
+      const response = await fetch(`http://localhost:8080/api/membresias/${membresiaId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...membresiaToUpdate, mostrarEnCatalogo: !currentState }),
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setMembresias(membresias.map(m => m.id === membresiaId ? updated : m));
+        showToast(updated.mostrarEnCatalogo ? 'Plan añadido al catálogo' : 'Plan ocultado del catálogo');
+      }
+    } catch (error) {
+      console.error('Error toggling mostrarEnCatalogo:', error);
+      showToast('Error al actualizar visibilidad', 'error');
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="view-container">
       <div className="header-actions">
@@ -163,10 +233,10 @@ const ConfiguracionCatalogo = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', marginTop: '20px' }}>
         
-        {/* Sección del Logo */}
+        {/* Sección de Configuración General */}
         <div className="card glass" style={{ padding: '20px' }}>
           <h2 style={{ fontSize: '1.2rem', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-            Logo del Sitio
+            Configuración General
           </h2>
           
           <div style={{ marginBottom: '20px' }}>
@@ -197,13 +267,24 @@ const ConfiguracionCatalogo = () => {
             />
           </div>
 
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de WhatsApp (Ej: 51987654321)</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={whatsappNumber}
+              onChange={(e) => setWhatsappNumber(e.target.value)}
+              placeholder="Número de WhatsApp para recibir pedidos"
+            />
+          </div>
+
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
             <button 
               className="btn-primary" 
-              onClick={handleSaveLogo}
-              disabled={!logoFile || loading}
+              onClick={handleSaveConfig}
+              disabled={loading}
             >
-              {loading ? 'SUBIENDO...' : 'SUBIR LOGO'}
+              {loading ? 'GUARDANDO...' : 'GUARDAR CONFIGURACIÓN'}
             </button>
             <button 
               className="btn-secondary"
@@ -211,6 +292,71 @@ const ConfiguracionCatalogo = () => {
             >
               VISITAR PÁGINA
             </button>
+          </div>
+        </div>
+
+        {/* Sección de Planes / Membresías */}
+        <div className="card glass" style={{ padding: '20px', gridColumn: '1 / -1' }}>
+          <h2 style={{ fontSize: '1.2rem', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+            Configuración de Imágenes de Planes
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
+            {membresias.map(plan => (
+              <div key={plan.id} style={{
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                padding: '15px',
+                backgroundColor: 'var(--bg-secondary)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>{plan.nombre}</h3>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '5px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={plan.mostrarEnCatalogo || false}
+                      onChange={() => handleToggleMostrarCatalogo(plan.id, plan.mostrarEnCatalogo)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mostrar</span>
+                  </label>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>S/ {plan.precio.toFixed(2)} - {plan.duracionDias} días</p>
+                <div style={{
+                  width: '100%', height: '180px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '1px solid var(--border-color)'
+                }}>
+                  {plan.imagenUrl ? (
+                    <img src={plan.imagenUrl} alt={plan.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <ImageIcon size={40} color="#cbd5e1" />
+                  )}
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '5px', display: 'block' }}>Actualizar Imagen</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="form-control"
+                    style={{ fontSize: '0.8rem', padding: '5px' }}
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        handleUpdateMembresiaImage(plan.id, e.target.files[0]);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            {membresias.length === 0 && (
+              <p style={{ color: 'var(--text-muted)' }}>No hay planes disponibles.</p>
+            )}
           </div>
         </div>
 

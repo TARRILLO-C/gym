@@ -64,20 +64,22 @@ public class VentaService {
         for (DetalleVenta item : detalles) {
             Producto p = productoService.buscarPorId(item.getProducto().getId());
 
-            // Validación de Stock
-            if (p.getStock() < item.getCantidad()) {
-                throw new IllegalStateException("Stock insuficiente para: " + p.getNombre() + 
-                        " (Pedido: " + item.getCantidad() + ", Disponible: " + p.getStock() + ")");
+            // Validación y Descuento de Stock (excepto para Servicios de Membresía)
+            if (!p.getNombre().startsWith("Servicio de Membresía")) {
+                if (p.getStock() < item.getCantidad()) {
+                    throw new IllegalStateException("Stock insuficiente para: " + p.getNombre() + 
+                            " (Pedido: " + item.getCantidad() + ", Disponible: " + p.getStock() + ")");
+                }
+                p.setStock(p.getStock() - item.getCantidad());
+                productoService.crear(p); // Actualizar producto
             }
-
-            // Descuento de Stock
-            p.setStock(p.getStock() - item.getCantidad());
-            productoService.crear(p); // Actualizar producto
 
             // Configurar ítem del detalle
             item.setProducto(p);
-            item.setPrecioUnitario(p.getPrecio());
-            BigDecimal subtotalItem = p.getPrecio().multiply(BigDecimal.valueOf(item.getCantidad()));
+            if (item.getPrecioUnitario() == null) {
+                item.setPrecioUnitario(p.getPrecio());
+            }
+            BigDecimal subtotalItem = item.getPrecioUnitario().multiply(BigDecimal.valueOf(item.getCantidad()));
             item.setSubtotal(subtotalItem);
             
             subtotalGeneral = subtotalGeneral.add(subtotalItem);

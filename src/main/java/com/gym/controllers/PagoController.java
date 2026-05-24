@@ -31,4 +31,9 @@ public class PagoController {
     public ResponseEntity<List<Pago>> listarPorSocio(@PathVariable Long socioId) {
         return ResponseEntity.ok(pagoService.listarPorSocio(socioId));
     }
+
+    @GetMapping
+    public ResponseEntity<List<Pago>> listarTodos() {
+        return ResponseEntity.ok(pagoService.listarTodos());
+    }
 }

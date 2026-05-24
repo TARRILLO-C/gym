@@ -66,11 +66,24 @@ public class Membresia {
     private String descripcion;
 
     /**
+     * URL de la imagen representativa del plan.
+     */
+    @Column(name = "imagen_url", length = 500)
+    private String imagenUrl;
+
+    /**
      * Indica si este plan de membresía permite que sus suscripciones sean congeladas.
      */
     @Column(name = "permite_congelamiento", nullable = false)
     @Builder.Default
     private Boolean permiteCongelamiento = true;
+
+    /**
+     * Indica si la membresía debe mostrarse en el catálogo virtual público.
+     */
+    @Column(name = "mostrar_en_catalogo", nullable = false)
+    @Builder.Default
+    private Boolean mostrarEnCatalogo = false;
 
     /**
      * Estado actual de la membresía en el catálogo.

@@ -6,6 +6,7 @@ import com.gym.models.Congelamiento;
 import com.gym.models.Membresia;
 import com.gym.models.Socio;
 import com.gym.models.Suscripcion;
+import com.gym.models.Pago;
 import com.gym.models.Suscripcion.EstadoPago;
 import com.gym.repositories.CongelamientoRepository;
 import com.gym.repositories.MembresiaRepository;
@@ -37,6 +38,7 @@ public class SuscripcionService {
     private final MembresiaRepository   membresiaRepository;
     private final CongelamientoRepository congelamientoRepository;
     private final EmailService          emailService;
+    private final PagoService           pagoService;
 
     // ── Consultas ─────────────────────────────────────────────────────────────
 
@@ -175,6 +177,14 @@ public class SuscripcionService {
     @Transactional
     public Suscripcion crear(Long socioId, Long membresiaId,
                              LocalDate fechaInicio, EstadoPago estadoPago, Boolean pagoTotal) {
+        return crear(socioId, membresiaId, fechaInicio, estadoPago, pagoTotal, false, null, null, null, null);
+    }
+
+    @Transactional
+    public Suscripcion crear(Long socioId, Long membresiaId,
+                             LocalDate fechaInicio, EstadoPago estadoPago, Boolean pagoTotal,
+                             Boolean generarComprobante, String tipoComprobante, 
+                             String clienteNombre, String clienteDocumento, String metodoPago) {
 
         if (socioId == null || membresiaId == null) {
             throw new IllegalArgumentException("El ID del socio y de la membresía son obligatorios.");
@@ -228,6 +238,34 @@ public class SuscripcionService {
         }
 
         Suscripcion guardada = suscripcionRepository.save(suscripcion);
+        
+        // Registrar el pago inicial si el estado es PAGADO
+        if (guardada.getEstadoPago() == EstadoPago.PAGADO) {
+            java.math.BigDecimal montoPago = (pagoTotal != null && pagoTotal) ? 
+                    membresia.getPrecio() : 
+                    (membresia.getPrecioCuota() != null ? membresia.getPrecioCuota() : membresia.getPrecio());
+
+            Pago.MetodoPago metodo = Pago.MetodoPago.EFECTIVO;
+            if (metodoPago != null) {
+                try {
+                    metodo = Pago.MetodoPago.valueOf(metodoPago);
+                } catch (Exception e) {
+                    log.warn("Método de pago inválido: {}, usando EFECTIVO", metodoPago);
+                }
+            }
+
+            Pago pago = Pago.builder()
+                    .monto(montoPago)
+                    .metodoPago(metodo)
+                    .comentario("Pago inicial de suscripción")
+                    .generarComprobante(generarComprobante)
+                    .tipoComprobante(tipoComprobante)
+                    .clienteNombre(clienteNombre)
+                    .clienteDocumento(clienteDocumento)
+                    .build();
+
+            pagoService.registrarPago(guardada.getId(), pago);
+        }
         
         // Enviar correo de confirmación de compra
         emailService.enviarConfirmacionCompra(guardada);

@@ -28,6 +28,10 @@ const Ventas = () => {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
 
+  const [activeTab, setActiveTab] = useState('productos');
+  const [pagos, setPagos] = useState([]);
+  const [loadingPagos, setLoadingPagos] = useState(false);
+
   const buscarDatos = async (doc, tipo) => {
     const isDni = tipo === 'BOLETA' && doc.length === 8;
     const isRuc = tipo === 'FACTURA' && doc.length === 11;
@@ -78,8 +82,22 @@ const Ventas = () => {
     }
   };
 
+  const fetchPagos = async () => {
+    setLoadingPagos(true);
+    try {
+      const resp = await api.get('/pagos');
+      setPagos(Array.isArray(resp.data) ? resp.data : []);
+    } catch (err) {
+      console.error("Error al cargar /pagos:", err);
+      setPagos([]);
+    } finally {
+      setLoadingPagos(false);
+    }
+  };
+
   useEffect(() => {
     fetchVentas();
+    fetchPagos();
   }, []);
 
   const handleImprimir = (venta) => {
@@ -173,11 +191,56 @@ const Ventas = () => {
       return socioNombre.includes(term) || metodo.includes(term);
     });
 
+  const filteredPagos = pagos
+    .filter(p => {
+      const term = search.toLowerCase();
+      const socioNombre = p.suscripcion?.socio?.nombreCompleto?.toLowerCase() || '';
+      const planNombre = p.suscripcion?.membresia?.nombre?.toLowerCase() || '';
+      const metodo = p.metodoPago?.toLowerCase() || '';
+      const comentario = p.comentario?.toLowerCase() || '';
+      return socioNombre.includes(term) || planNombre.includes(term) || metodo.includes(term) || comentario.includes(term);
+    });
+
   return (<>
     <PageLayout
       title={<span>Historial de <span className="text-gradient">Ventas</span></span>}
-      subtitle="Revisa todas las transacciones realizadas en la tiendita."
+      subtitle="Revisa todas las transacciones realizadas en el gimnasio."
     >
+      <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+        <button 
+          onClick={() => setActiveTab('productos')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: activeTab === 'productos' ? 'var(--accent-primary)' : 'var(--panel-bg)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.3s',
+            boxShadow: activeTab === 'productos' ? '0 4px 12px rgba(255, 62, 62, 0.2)' : 'none'
+          }}
+        >
+          Ventas de Productos
+        </button>
+        <button 
+          onClick={() => setActiveTab('planes')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: activeTab === 'planes' ? 'var(--accent-primary)' : 'var(--panel-bg)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.3s',
+            boxShadow: activeTab === 'planes' ? '0 4px 12px rgba(255, 62, 62, 0.2)' : 'none'
+          }}
+        >
+          Ventas de Planes (Suscripciones)
+        </button>
+      </div>
+
       <div className="card" style={{ padding: '0 24px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '24px 0', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ position: 'relative', flex: '1 1 250px' }}>
@@ -188,140 +251,201 @@ const Ventas = () => {
             />
             <input
               type="text"
-              placeholder="Buscar por socio o método de pago..."
+              placeholder={activeTab === 'productos' ? "Buscar por socio o método de pago..." : "Buscar por socio, membresía o método..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{ paddingLeft: '40px', width: '100%', background: 'var(--panel-bg)', color: 'var(--text-main)' }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button 
-              onClick={() => setFilterMode('ALL')}
-              style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
-            >
-              Todos
-            </button>
-            <button 
-              onClick={() => setFilterMode('ACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
-            >
-              Válidas
-            </button>
-            <button 
-              onClick={() => setFilterMode('INACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
-            >
-              Anuladas
-            </button>
-          </div>
+          {activeTab === 'productos' && (
+            <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setFilterMode('ALL')}
+                style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
+              >
+                Todos
+              </button>
+              <button 
+                onClick={() => setFilterMode('ACTIVO')}
+                style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
+              >
+                Válidas
+              </button>
+              <button 
+                onClick={() => setFilterMode('INACTIVO')}
+                style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
+              >
+                Anuladas
+              </button>
+            </div>
+          )}
         </div>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando historial...</div>
-        ) : (
-          <table className="responsive-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>FECHA</th>
-                <th>CLIENTE</th>
-                <th>MÉTODO PAGO</th>
-                <th>TOTAL</th>
-                <th style={{ textAlign: 'right' }}>ACCIONES</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredVentas.map(venta => (
-                <tr key={venta.id}>
-                  <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', marginBottom: '2px' }}>{venta.tipoComprobante}</div>
-                    <div>{venta.serie && venta.correlativo ? `${venta.serie}-${venta.correlativo}` : `#${venta.id}`}</div>
-                  </td>
-                  <td data-label="FECHA">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Calendar size={14} color="var(--text-muted)" />
-                      {new Date(venta.fecha).toLocaleString()}
-                    </div>
-                  </td>
-                  <td data-label="CLIENTE" style={{ fontWeight: '600' }}>
-                    {venta.socio?.nombreCompleto || 'Cliente General'}
-                  </td>
-                  <td data-label="MÉTODO PAGO">
-                    <span className="badge" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
-                      {venta.metodoPago}
-                    </span>
-                  </td>
-                  <td data-label="TOTAL" style={{ fontWeight: '800', color: 'var(--accent-primary)' }}>
-                    S/ {parseFloat(venta.total).toFixed(2)}
-                  </td>
-                  <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      {venta.activo !== false ? (
-                        <>
-                          {venta.enlacePdfTicket ? (
-                            <>
-                              <button
-                                onClick={() => window.open(venta.enlacePdfTicket, '_blank')}
-                                title="Ver Ticket de Venta (80mm)"
-                                style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
-                              >
-                                <Printer size={14} /> TICKET
-                              </button>
-                              <button
-                                onClick={() => window.open(venta.enlacePdfA4, '_blank')}
-                                title="Ver PDF (A4)"
-                                style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
-                              >
-                                <FileText size={14} /> A4
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => handleImprimir(venta)}
-                                title="Reimprimir Comprobante Interno"
-                                style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
-                              >
-                                <Printer size={16} /> INTERNO
-                              </button>
-                              {venta.tipoComprobante === 'NOTA_VENTA' && (
-                                <button
-                                  onClick={() => handleOpenEmitModal(venta.id)}
-                                  title="Emitir Comprobante"
-                                  style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
-                                >
-                                  <FilePlus size={16} /> EMITIR
-                                </button>
-                              )}
-                            </>
-                          )}
-                          <button 
-                            onClick={() => handleAnularVenta(venta)}
-                            title="Anular Comprobante"
-                            style={{ background: 'transparent', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px' }}
-                          >
-                            <Ban size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '8px', border: '1px dashed var(--panel-border)' }}>
-                          ANULADA
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredVentas.length === 0 && (
+        {activeTab === 'productos' ? (
+          loading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando historial...</div>
+          ) : (
+            <table className="responsive-table">
+              <thead>
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    No se encontraron ventas con este criterio.
-                  </td>
+                  <th>ID</th>
+                  <th>FECHA</th>
+                  <th>CLIENTE</th>
+                  <th>MÉTODO PAGO</th>
+                  <th>TOTAL</th>
+                  <th style={{ textAlign: 'right' }}>ACCIONES</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredVentas.map(venta => (
+                  <tr key={venta.id}>
+                    <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', marginBottom: '2px' }}>{venta.tipoComprobante}</div>
+                      <div>{venta.serie && venta.correlativo ? `${venta.serie}-${venta.correlativo}` : `#${venta.id}`}</div>
+                    </td>
+                    <td data-label="FECHA">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Calendar size={14} color="var(--text-muted)" />
+                        {new Date(venta.fecha).toLocaleString()}
+                      </div>
+                    </td>
+                    <td data-label="CLIENTE" style={{ fontWeight: '600' }}>
+                      {venta.socio?.nombreCompleto || 'Cliente General'}
+                    </td>
+                    <td data-label="MÉTODO PAGO">
+                      <span className="badge" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
+                        {venta.metodoPago}
+                      </span>
+                    </td>
+                    <td data-label="TOTAL" style={{ fontWeight: '800', color: 'var(--accent-primary)' }}>
+                      S/ {parseFloat(venta.total).toFixed(2)}
+                    </td>
+                    <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        {venta.activo !== false ? (
+                          <>
+                            {venta.enlacePdfTicket ? (
+                              <>
+                                <button
+                                  onClick={() => window.open(venta.enlacePdfTicket, '_blank')}
+                                  title="Ver Ticket de Venta (80mm)"
+                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                >
+                                  <Printer size={14} /> TICKET
+                                </button>
+                                <button
+                                  onClick={() => window.open(venta.enlacePdfA4, '_blank')}
+                                  title="Ver PDF (A4)"
+                                  style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                >
+                                  <FileText size={14} /> A4
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleImprimir(venta)}
+                                  title="Reimprimir Comprobante Interno"
+                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                >
+                                  <Printer size={16} /> INTERNO
+                                </button>
+                                {venta.tipoComprobante === 'NOTA_VENTA' && (
+                                  <button
+                                    onClick={() => handleOpenEmitModal(venta.id)}
+                                    title="Emitir Comprobante"
+                                    style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                  >
+                                    <FilePlus size={16} /> EMITIR
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            <button 
+                              onClick={() => handleAnularVenta(venta)}
+                              title="Anular Comprobante"
+                              style={{ background: 'transparent', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px' }}
+                            >
+                              <Ban size={16} />
+                            </button>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '8px', border: '1px dashed var(--panel-border)' }}>
+                            ANULADA
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredVentas.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                      No se encontraron ventas con este criterio.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )
+        ) : (
+          loadingPagos ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando pagos de planes...</div>
+          ) : (
+            <table className="responsive-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>FECHA</th>
+                  <th>SOCIO</th>
+                  <th>PLAN / MEMBRESÍA</th>
+                  <th>MÉTODO PAGO</th>
+                  <th>MONTO</th>
+                  <th>COMENTARIO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPagos.map(pago => (
+                  <tr key={pago.id}>
+                    <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
+                      #{pago.id}
+                    </td>
+                    <td data-label="FECHA">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Calendar size={14} color="var(--text-muted)" />
+                        {new Date(pago.fechaPago).toLocaleString()}
+                      </div>
+                    </td>
+                    <td data-label="SOCIO" style={{ fontWeight: '600' }}>
+                      {pago.suscripcion?.socio?.nombreCompleto || 'Desconocido'}
+                    </td>
+                    <td data-label="PLAN / MEMBRESÍA" style={{ fontWeight: '600', color: 'var(--accent-secondary)' }}>
+                      {pago.suscripcion?.membresia?.nombre || 'Plan Especial'}
+                    </td>
+                    <td data-label="MÉTODO PAGO">
+                      <span className="badge" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
+                        {pago.metodoPago}
+                      </span>
+                    </td>
+                    <td data-label="MONTO" style={{ fontWeight: '800', color: '#00ff7f' }}>
+                      S/ {parseFloat(pago.monto).toFixed(2)}
+                    </td>
+                    <td data-label="COMENTARIO" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {pago.comentario || '-'}
+                    </td>
+                  </tr>
+                ))}
+                {filteredPagos.length === 0 && (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                      No se encontraron pagos de planes con este criterio.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )
         )}
       </div>
     </PageLayout>
