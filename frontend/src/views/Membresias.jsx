@@ -367,7 +367,9 @@ const Membresias = () => {
       // Si no hay venta, mostrar alerta simple
       showAlert('¡Éxito!', 'Suscripción registrada correctamente.');
     } catch (err) {
-      showAlert("Error", "Error al registrar suscripción: " + (err.response?.data?.message || err.message));
+      const serverMessage = err.response?.data?.mensaje || err.response?.data?.message;
+      const errorDetails = err.response?.data?.errores ? JSON.stringify(err.response.data.errores) : '';
+      showAlert("Error", "Error al registrar suscripción: " + (serverMessage || err.message) + " " + errorDetails);
     } finally {
       setIsRegistering(false);
     }
