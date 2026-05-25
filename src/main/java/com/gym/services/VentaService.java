@@ -89,7 +89,13 @@ public class VentaService {
         venta.setTotal(subtotalGeneral);
 
         // Generar Facturación Electrónica (Series y Correlativos)
-        facturacionService.procesarComprobante(venta);
+        // El try-catch garantiza que un fallo de la API externa NUNCA revierte la venta
+        try {
+            facturacionService.procesarComprobante(venta);
+        } catch (Exception apiEx) {
+            log.error("Fallo al procesar comprobante electrónico (venta se guarda igualmente): {}", apiEx.getMessage());
+            venta.setEstadoSunat("ERROR_API");
+        }
 
         Venta guardada = ventaRepository.save(venta);
         
@@ -171,8 +177,13 @@ public class VentaService {
             venta.setClienteNombre(nombre);
         }
         
-        // Disparar proceso de SUNAT
-        facturacionService.procesarComprobante(venta);
+        // Disparar proceso de SUNAT (con protección ante fallo de API)
+        try {
+            facturacionService.procesarComprobante(venta);
+        } catch (Exception apiEx) {
+            log.error("Fallo al emitir comprobante SUNAT (venta se guarda igualmente): {}", apiEx.getMessage());
+            venta.setEstadoSunat("ERROR_API");
+        }
         
         log.info("Nota de Venta ID {} promovida a {} {}", id, nuevoTipo, venta.getSerie() + "-" + venta.getCorrelativo());
         return ventaRepository.save(venta);

@@ -44,7 +44,9 @@ const Membresias = () => {
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [promptValue, setPromptValue] = useState("");
   const [lastVentaData, setLastVentaData] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSearchingDoc, setIsSearchingDoc] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
@@ -330,6 +332,7 @@ const Membresias = () => {
       }
     }
 
+    setIsRegistering(true);
     try {
       const res = await api.post('/suscripciones', susFormData);
       const newSus = res.data;
@@ -338,42 +341,26 @@ const Membresias = () => {
       setSocioSearch('');
       fetchData();
 
-      // Buscar el pago y la venta generada
+      // Buscar el pago y la venta generada para mostrar el modal de éxito
       try {
         const pagosRes = await api.get(`/pagos/suscripcion/${newSus.id}`);
         if (pagosRes.data && pagosRes.data.length > 0) {
-          const pago = pagosRes.data[pagosRes.data.length - 1]; // Obtener el último pago
+          const pago = pagosRes.data[pagosRes.data.length - 1];
           if (pago.venta) {
-            const ventaRealData = pago.venta;
-            setLastVentaData(ventaRealData);
-            setDialogConfig({
-              isOpen: true,
-              type: 'alert',
-              title: '¡Venta de Plan Registrada!',
-              message: ventaRealData.enlacePdfTicket ? 'El comprobante oficial ha sido generado por SUNAT.' : 'La transacción se procesó correctamente.',
-              btnConfirmText: 'CERRAR',
-              extraContent: (
-                <div>
-                  {ventaRealData.enlacePdfTicket ? (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                      <button type="button" onClick={() => window.open(ventaRealData.enlacePdfTicket, '_blank')} style={{ flex: 1, padding: '12px', background: 'var(--accent-primary)', color: '#fff', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>🖨️ VER TICKET (80mm)</button>
-                      <button type="button" onClick={() => window.open(ventaRealData.enlacePdfA4, '_blank')} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📄 VER PDF (A4)</button>
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: '15px' }}>
-                      <button type="button" onClick={() => { setDialogConfig(prev => ({...prev, isOpen: false})); setTimeout(() => window.print(), 350); }} style={{ width: '100%', padding: '12px', background: 'var(--accent-secondary)', color: '#fff', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>IMPRIMIR TICKET INTERNO</button>
-                    </div>
-                  )}
-                </div>
-              )
-            });
+            setLastVentaData(pago.venta);
+            setShowSuccessModal(true);
+            return;
           }
         }
       } catch (errComp) {
         console.error("Error al obtener comprobante:", errComp);
       }
+      // Si no hay venta, mostrar alerta simple
+      showAlert('¡Éxito!', 'Suscripción registrada correctamente.');
     } catch (err) {
       showAlert("Error", "Error al registrar suscripción: " + (err.response?.data?.message || err.message));
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -997,8 +984,28 @@ const Membresias = () => {
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
             <button type="button" onClick={() => { setShowSusModal(false); setSocioSearch(''); }} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)' }}>CANCELAR</button>
-            <button type="submit" className="btn-primary" disabled={!susFormData.socioId || !susFormData.membresiaId} style={{ flex: 1, opacity: (!susFormData.socioId || !susFormData.membresiaId) ? 0.5 : 1 }}>
-              REGISTRAR VENTA
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={!susFormData.socioId || !susFormData.membresiaId || isRegistering}
+              style={{
+                flex: 1,
+                opacity: (!susFormData.socioId || !susFormData.membresiaId || isRegistering) ? 0.7 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                cursor: isRegistering ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isRegistering ? (
+                <>
+                  <span style={{
+                    width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)',
+                    borderTopColor: '#fff', borderRadius: '50%',
+                    display: 'inline-block',
+                    animation: 'spin 0.8s linear infinite'
+                  }} />
+                  Procesando...
+                </>
+              ) : 'REGISTRAR VENTA'}
             </button>
           </div>
         </form>
@@ -1092,12 +1099,183 @@ const Membresias = () => {
         </div>
       </Modal>
 
+      {/* ── Modal de Éxito: igual al de Ventas ── */}
+      {showSuccessModal && lastVentaData && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--panel-border)',
+            borderRadius: '20px',
+            padding: '32px',
+            maxWidth: '460px',
+            width: '90%',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+            animation: 'fadeIn 0.25s ease-out'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                ¡Venta Registrada con Éxito!
+              </h2>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.4rem', lineHeight: 1, padding: '0 4px' }}
+              >×</button>
+            </div>
+
+            {/* Mensaje */}
+            <p style={{ margin: '0 0 24px', color: 'var(--text-main)', fontSize: '1rem' }}>
+              {lastVentaData.enlacePdfTicket
+                ? 'El comprobante oficial ha sido generado por SUNAT.'
+                : 'La transacción se procesó correctamente.'}
+            </p>
+
+            {/* Botones de comprobante */}
+            {lastVentaData.enlacePdfTicket ? (
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                <button
+                  onClick={() => window.open(lastVentaData.enlacePdfTicket, '_blank')}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: '12px', border: 'none',
+                    background: 'var(--accent-primary)', color: '#fff',
+                    fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    boxShadow: '0 4px 14px rgba(255,62,62,0.35)'
+                  }}
+                >
+                  🖨️ VER TICKET (80mm)
+                </button>
+                <button
+                  onClick={() => window.open(lastVentaData.enlacePdfA4, '_blank')}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: '12px',
+                    border: '1px solid var(--panel-border)',
+                    background: 'transparent', color: 'var(--text-main)',
+                    fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                  }}
+                >
+                  📄 VER PDF (A4)
+                </button>
+              </div>
+            ) : (
+              <div style={{ marginBottom: '20px' }}>
+                <button
+                  onClick={() => { setShowSuccessModal(false); setTimeout(() => window.print(), 350); }}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+                    background: 'var(--accent-secondary)', color: '#fff',
+                    fontWeight: '700', fontSize: '0.9rem', cursor: 'pointer'
+                  }}
+                >
+                  🖨️ IMPRIMIR TICKET INTERNO
+                </button>
+              </div>
+            )}
+
+            {/* Botón NUEVA VENTA */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  setLastVentaData(null);
+                  setSusFormData({
+                    socioId: '', membresiaId: '',
+                    fechaInicio: new Date().toISOString().split('T')[0],
+                    estadoPago: 'PAGADO', pagoTotal: true,
+                    generarComprobante: false, tipoComprobante: 'BOLETA',
+                    clienteNombre: '', clienteDocumento: '', metodoPago: 'EFECTIVO'
+                  });
+                  setSocioSearch('');
+                  setShowSusModal(true);
+                }}
+                style={{
+                  padding: '12px 28px', borderRadius: '12px', border: 'none',
+                  background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                  color: '#fff', fontWeight: '700', fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(249,115,22,0.4)'
+                }}
+              >
+                NUEVA VENTA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Impresión de ticket local */}
       {lastVentaData && (
         <div style={{ display: 'none' }}>
           <PrintTicket venta={lastVentaData} />
         </div>
       )}
+
+      {/* ── Overlay de Carga mientras se procesa la venta ── */}
+      {isRegistering && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0, 0, 0, 0.82)',
+          backdropFilter: 'blur(8px)',
+          gap: '24px'
+        }}>
+          {/* Spinner animado */}
+          <div style={{
+            width: '64px', height: '64px',
+            border: '5px solid rgba(255,255,255,0.15)',
+            borderTopColor: 'var(--accent-primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.9s linear infinite'
+          }} />
+          {/* Texto pulsante */}
+          <div style={{ textAlign: 'center' }}>
+            <p style={{
+              color: '#fff', fontSize: '1.15rem',
+              fontWeight: '700', margin: '0 0 6px',
+              letterSpacing: '0.5px'
+            }}>
+              Registrando venta...
+            </p>
+            <p style={{
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.85rem', margin: 0
+            }}>
+              Generando comprobante. Por favor espera.
+            </p>
+          </div>
+          {/* Barra de progreso animada */}
+          <div style={{
+            width: '220px', height: '4px',
+            background: 'rgba(255,255,255,0.1)',
+            borderRadius: '99px', overflow: 'hidden'
+          }}>
+            <div style={{
+              height: '100%', width: '40%',
+              background: 'var(--accent-primary)',
+              borderRadius: '99px',
+              animation: 'progress 1.4s ease-in-out infinite'
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Keyframes para animaciones */}
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes progress {
+          0%   { transform: translateX(-100%); }
+          50%  { transform: translateX(150%); }
+          100% { transform: translateX(350%); }
+        }
+      `}</style>
 
     </PageLayout>
   );

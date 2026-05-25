@@ -33,11 +33,12 @@ public class ProductoService {
     }
 
     /**
-     * Retorna solo los productos con stock disponible (stock > 0).
+     * Retorna solo los productos ACTIVOS con stock disponible (activo=true y stock > 0).
+     * Usado en el catálogo virtual para excluir productos dados de baja (borrado lógico).
      */
     @Transactional(readOnly = true)
     public List<Producto> listarConStock() {
-        return productoRepository.findByStockGreaterThan(0);
+        return productoRepository.findByActivoTrueAndStockGreaterThan(0);
     }
 
     /**

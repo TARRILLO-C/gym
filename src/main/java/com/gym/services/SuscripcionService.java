@@ -8,6 +8,7 @@ import com.gym.models.Socio;
 import com.gym.models.Suscripcion;
 import com.gym.models.Pago;
 import com.gym.models.Suscripcion.EstadoPago;
+import com.gym.models.Venta;
 import com.gym.repositories.CongelamientoRepository;
 import com.gym.repositories.MembresiaRepository;
 import com.gym.repositories.SocioRepository;
@@ -229,20 +230,25 @@ public class SuscripcionService {
             // Pagó el total de golpe (promo), su próximo cobro es cuando acabe el plan
             suscripcion.setFechaProximoCobro(suscripcion.getFechaFin());
             suscripcion.setEstadoPago(EstadoPago.PAGADO);
-        } else if (membresia.getPrecioCuota() != null && membresia.getFrecuenciaCobroDias() != null) {
-            LocalDate baseCobro = (suscripcion.getFechaInicio() != null) ? suscripcion.getFechaInicio() : LocalDate.now();
+        } else if (membresia.getPrecioCuota() != null
+                && membresia.getFrecuenciaCobroDias() != null
+                && membresia.getFrecuenciaCobroDias() > 0) {
+            // Plan fraccionado: siguiente cobro = fechaInicio + frecuencia
+            LocalDate baseCobro = suscripcion.getFechaInicio() != null ? suscripcion.getFechaInicio() : LocalDate.now();
             suscripcion.setFechaProximoCobro(baseCobro.plusDays(membresia.getFrecuenciaCobroDias()));
             if (estadoPago == null) suscripcion.setEstadoPago(EstadoPago.PENDIENTE);
         } else {
+            // Plan de pago único o frecuencia 0: próximo cobro = fecha fin del plan
             suscripcion.setFechaProximoCobro(suscripcion.getFechaFin());
         }
 
         Suscripcion guardada = suscripcionRepository.save(suscripcion);
         
         // Registrar el pago inicial si el estado es PAGADO
+        // PASO 1: siempre NOTA_VENTA (igual que ventas de productos) → nunca llama a API de SUNAT aquí
         if (guardada.getEstadoPago() == EstadoPago.PAGADO) {
-            java.math.BigDecimal montoPago = (pagoTotal != null && pagoTotal) ? 
-                    membresia.getPrecio() : 
+            java.math.BigDecimal montoPago = (pagoTotal != null && pagoTotal) ?
+                    membresia.getPrecio() :
                     (membresia.getPrecioCuota() != null ? membresia.getPrecioCuota() : membresia.getPrecio());
 
             Pago.MetodoPago metodo = Pago.MetodoPago.EFECTIVO;
@@ -258,17 +264,41 @@ public class SuscripcionService {
                     .monto(montoPago)
                     .metodoPago(metodo)
                     .comentario("Pago inicial de suscripción")
-                    .generarComprobante(generarComprobante)
-                    .tipoComprobante(tipoComprobante)
+                    .generarComprobante(false)   // siempre false → guarda como NOTA_VENTA
+                    .tipoComprobante(null)
                     .clienteNombre(clienteNombre)
                     .clienteDocumento(clienteDocumento)
                     .build();
 
-            pagoService.registrarPago(guardada.getId(), pago);
+            Pago pagoPersistido = pagoService.registrarPago(guardada.getId(), pago);
+
+            // PASO 2: Emitir comprobante electrónico por separado (igual que "EMITIR" en ventas de productos)
+            // Solo si el usuario pidió boleta/factura Y hay una venta generada
+            if (Boolean.TRUE.equals(generarComprobante)
+                    && tipoComprobante != null
+                    && pagoPersistido.getVenta() != null) {
+                try {
+                    Venta.TipoComprobante tipo = Venta.TipoComprobante.valueOf(tipoComprobante);
+                    pagoService.emitirComprobanteEnVenta(
+                            pagoPersistido.getVenta().getId(),
+                            tipo,
+                            clienteDocumento,
+                            clienteNombre
+                    );
+                    log.info("Comprobante {} emitido para suscripción {}", tipoComprobante, guardada.getId());
+                } catch (Exception apiEx) {
+                    log.error("Fallo al emitir comprobante (suscripción guardada igualmente): {}", apiEx.getMessage());
+                }
+            }
         }
         
-        // Enviar correo de confirmación de compra
-        emailService.enviarConfirmacionCompra(guardada);
+        // Enviar correo de confirmación de compra (sin bloquear si falla el SMTP)
+        try {
+            emailService.enviarConfirmacionCompra(guardada);
+        } catch (Exception mailEx) {
+            log.warn("No se pudo enviar correo de confirmación (la suscripción fue guardada): {}", mailEx.getMessage());
+        }
+
         
         log.info("Suscripción procesada exitosamente: socio={}, membresía={}, fin={}", socioId, membresiaId, suscripcion.getFechaFin());
         return guardada;

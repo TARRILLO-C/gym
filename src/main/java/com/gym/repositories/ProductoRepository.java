@@ -30,6 +30,12 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findByStockGreaterThan(Integer stock);
 
     /**
+     * Retorna solo los productos ACTIVOS con stock disponible.
+     * Usado en el catálogo virtual: excluye borrados lógicos (activo=false).
+     */
+    List<Producto> findByActivoTrueAndStockGreaterThan(Integer stock);
+
+    /**
      * Retorna productos con stock igual o menor al mínimo indicado.
      * Útil para alertas de reabastecimiento.
      *
@@ -44,7 +50,8 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findByCategoria(Producto.CategoriaProducto categoria);
 
     /**
-     * Busca un producto por su nombre exacto.
+     * Busca un producto por su nombre exacto. Usa findFirst para evitar
+     * NonUniqueResultException si existen duplicados (por reinicios previos).
      */
-    java.util.Optional<Producto> findByNombre(String nombre);
+    java.util.Optional<Producto> findFirstByNombre(String nombre);
 }

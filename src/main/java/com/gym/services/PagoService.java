@@ -80,13 +80,13 @@ public class PagoService {
         }
 
         // Obtener o crear el producto genérico para membresías
-        Producto membresiaProduct = productoRepository.findByNombre("Servicio de Membresía")
+        Producto membresiaProduct = productoRepository.findFirstByNombre("Servicio de Membresía")
                 .orElseGet(() -> {
                     Producto dummy = Producto.builder()
                             .nombre("Servicio de Membresía")
                             .categoria(Producto.CategoriaProducto.OTRO)
                             .descripcion("Servicio de venta de plan de membresía")
-                            .precio(BigDecimal.ZERO)
+                            .precio(BigDecimal.ONE)  // precio simbólico; el precio real va en DetalleVenta
                             .stock(999999)
                             .activo(true)
                             .build();
@@ -94,9 +94,10 @@ public class PagoService {
                 });
 
         // Crear detalle de venta con el precio del plan pagado
+        BigDecimal monto = pago.getMonto() != null ? pago.getMonto() : BigDecimal.ONE;
         DetalleVenta detalle = DetalleVenta.builder()
                 .producto(membresiaProduct)
-                .precioUnitario(pago.getMonto())
+                .precioUnitario(monto)
                 .cantidad(1)
                 .build();
 
@@ -118,14 +119,20 @@ public class PagoService {
             clienteDoc = sus.getSocio().getDni();
         }
 
-        Venta venta = ventaService.registrarVenta(
-                sus.getSocio().getId(),
-                metodo,
-                java.util.List.of(detalle),
-                tipoComp,
-                clienteNom,
-                clienteDoc
-        );
+        Venta venta;
+        try {
+            venta = ventaService.registrarVenta(
+                    sus.getSocio().getId(),
+                    metodo,
+                    java.util.List.of(detalle),
+                    tipoComp,
+                    clienteNom,
+                    clienteDoc
+            );
+        } catch (Exception e) {
+            log.error("ERROR CRITICO en registrarVenta: {} | clase: {}", e.getMessage(), e.getClass().getName(), e);
+            throw e;  // re-lanzar para no silenciar, pero ahora veremos el stack trace completo
+        }
 
         pago.setVenta(venta);
 
@@ -133,17 +140,31 @@ public class PagoService {
         Pago guardado = pagoRepository.save(pago);
         log.info("Pago registrado para suscripción {}: {}", suscripcionId, guardado.getMonto());
         return guardado;
+
     }
 
     public List<Pago> listarPorSuscripcion(Long suscripcionId) {
         return pagoRepository.findBySuscripcionId(suscripcionId);
     }
-    
+
     public List<Pago> listarPorSocio(Long socioId) {
         return pagoRepository.findBySuscripcionSocioId(socioId);
     }
 
     public List<Pago> listarTodos() {
         return pagoRepository.findAll();
+    }
+
+    /**
+     * Emite un comprobante electrónico sobre una venta existente.
+     * Mismo flujo que el botón "EMITIR" en ventas de productos.
+     */
+    @Transactional
+    public com.gym.models.Venta emitirComprobanteEnVenta(
+            Long ventaId,
+            com.gym.models.Venta.TipoComprobante tipo,
+            String documento,
+            String nombre) {
+        return ventaService.emitirComprobante(ventaId, tipo, documento, nombre);
     }
 }
