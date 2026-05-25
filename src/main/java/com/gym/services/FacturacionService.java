@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -33,11 +34,15 @@ public class FacturacionService {
     @Value("${facturacion.api.key}")
     private String apiKey;
 
+    @Value("${facturacion.ruc.emisor}")
+    private String rucEmisor;
+
     @Value("${consulta.api.token}")
     private String tokenJwt;
 
     /**
      * Procesa una venta y la envía a la API Cloud.
+     * Si falla, registra el error pero NO lanza excepción para no bloquear la suscripción.
      */
     @Transactional
     public void procesarComprobante(Venta venta) {
@@ -54,12 +59,14 @@ public class FacturacionService {
             FacturacionRequest request = mapearAVentaRequest(venta);
 
             // 3. Llamada HTTP
-            log.info("Enviando comprobante {}-{} a la API cloud...", venta.getSerie(), venta.getCorrelativo());
-            
+            log.info("Enviando comprobante {}-{} a la API cloud... RUC emisor: {}",
+                    venta.getSerie(), venta.getCorrelativo(), rucEmisor);
+
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.set("Authorization", "Bearer " + tokenJwt);
-            // application/json is set by default for objects, but we can be explicit if we want.
-            org.springframework.http.HttpEntity<FacturacionRequest> entity = new org.springframework.http.HttpEntity<>(request, headers);
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<FacturacionRequest> entity =
+                    new org.springframework.http.HttpEntity<>(request, headers);
 
             org.springframework.http.ResponseEntity<FacturacionApiResponse> responseEntity = restTemplate.exchange(
                     apiUrl,
@@ -67,9 +74,8 @@ public class FacturacionService {
                     entity,
                     FacturacionApiResponse.class
             );
-            
+
             FacturacionApiResponse response = responseEntity.getBody();
-            
             log.info("Respuesta de API recibida: {}", response);
 
             // 4. Actualizar estado y asignar enlaces completos
@@ -78,14 +84,18 @@ public class FacturacionService {
                 venta.setEnlacePdfA4(response.getRespuesta().getPdfA4());
                 venta.setEnlaceXmlSinFirmar(response.getRespuesta().getXmlSinFirmar());
                 venta.setEnlaceXmlFirmado(response.getRespuesta().getXmlFirmado());
-                
-                venta.setCodigoHash("API_SUCCESS_" + java.util.UUID.randomUUID().toString().substring(0,8));
+                venta.setCodigoHash("API_SUCCESS_" + java.util.UUID.randomUUID().toString().substring(0, 8));
                 venta.setEstadoSunat(Boolean.TRUE.equals(response.getRespuesta().getSuccess()) ? "ACEPTADO" : "OBSERVADO");
             } else {
                 venta.setEstadoSunat("ERROR_API");
             }
+        } catch (HttpClientErrorException e) {
+            // Error 400/401/etc. desde miapi.cloud → loguear cuerpo de respuesta para diagnóstico
+            log.error("Error HTTP {} al enviar comprobante a miapi.cloud. Respuesta del servidor: {}",
+                    e.getStatusCode(), e.getResponseBodyAsString());
+            venta.setEstadoSunat("ERROR_API_" + e.getStatusCode().value());
         } catch (Exception e) {
-            log.error("Error al comunicar con la API de facturación: {}", e.getMessage());
+            log.error("Error inesperado al comunicar con la API de facturación: {}", e.getMessage(), e);
             venta.setEstadoSunat("ERROR_API");
         }
     }
@@ -121,11 +131,11 @@ public class FacturacionService {
 
         // Si no hay datos manuales, intentar obtenerlos del socio
         if ((documento == null || documento.isBlank()) && venta.getSocio() != null) {
-            documento = (venta.getTipoComprobante() == TipoComprobante.FACTURA) ? 
+            documento = (venta.getTipoComprobante() == TipoComprobante.FACTURA) ?
                          venta.getSocio().getRuc() : venta.getSocio().getDni();
         }
         if ((nombre == null || nombre.isBlank()) && venta.getSocio() != null) {
-            nombre = (venta.getTipoComprobante() == TipoComprobante.FACTURA) ? 
+            nombre = (venta.getTipoComprobante() == TipoComprobante.FACTURA) ?
                       venta.getSocio().getRazonSocial() : venta.getSocio().getNombreCompleto();
         }
 
@@ -163,10 +173,11 @@ public class FacturacionService {
 
         return FacturacionRequest.builder()
                 .claveSecreta(apiKey)
+                .ruc(rucEmisor)           // <-- RUC emisor requerido por miapi.cloud
                 .comprobante(comprobante)
                 .cliente(cliente)
                 .items(items)
-                .descuentos(new java.util.ArrayList<>()) // Agregado para cumplir estructura JSON
+                .descuentos(new java.util.ArrayList<>())
                 .build();
     }
 }

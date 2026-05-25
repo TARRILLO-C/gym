@@ -1,5 +1,6 @@
 package com.gym.exceptions;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,6 +14,7 @@ import java.util.Map;
 
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     // ── 404 Not Found ────────────────────────────────────────────────────────
@@ -64,8 +66,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
+        // Log completo con stack trace para diagnosticar el error
+        log.error("ERROR 500 no manejado: {} | Clase: {}", ex.getMessage(), ex.getClass().getName(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                "Error interno del servidor: " + ex.getMessage());
+                "Error interno: " + ex.getClass().getSimpleName() + " - " + ex.getMessage());
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────

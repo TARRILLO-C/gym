@@ -62,7 +62,11 @@ const CatalogoVirtual = () => {
       const response = await fetch('http://localhost:8080/api/productos/disponibles');
       if (response.ok) {
         const data = await response.json();
-        setProductos(data);
+        // Filtro de seguridad: solo activos y excluir producto interno de membresías
+        setProductos(data.filter(p =>
+          p.activo !== false &&
+          p.nombre !== 'Servicio de Membresía'
+        ));
       }
     } catch (error) {
       console.error('Error fetching productos:', error);
