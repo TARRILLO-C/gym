@@ -3,10 +3,13 @@ import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2 } from 'lucide-react
 
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [sliders, setSliders] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [membresias, setMembresias] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('productos');
   
   // Cart state
   const [cart, setCart] = useState([]);
@@ -16,6 +19,7 @@ const CatalogoVirtual = () => {
     fetchConfig();
     fetchSliders();
     fetchProductos();
+    fetchMembresias();
   }, []);
 
   // Simple auto-slide
@@ -34,6 +38,7 @@ const CatalogoVirtual = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
+        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -61,6 +66,18 @@ const CatalogoVirtual = () => {
       }
     } catch (error) {
       console.error('Error fetching productos:', error);
+    }
+  };
+
+  const fetchMembresias = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/membresias');
+      if (response.ok) {
+        const data = await response.json();
+        setMembresias(data.filter(m => m.estado === 'DISPONIBLE' && m.mostrarEnCatalogo === true));
+      }
+    } catch (error) {
+      console.error('Error fetching membresias:', error);
     }
   };
 
@@ -115,11 +132,36 @@ const CatalogoVirtual = () => {
     });
     text += `\n*Total a pagar: S/ ${cartTotal.toFixed(2)}*`;
     
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    if (whatsappNumber) {
+      url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
+    }
+    window.open(url, '_blank');
   };
 
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '50px' }}>
+      <style>{`
+        .plan-card-img-container {
+          height: 300px;
+          background-color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border-bottom: 1px solid #f1f5f9;
+          overflow: hidden;
+        }
+        .plan-card-img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .plan-card:hover .plan-card-img {
+          transform: scale(1.80);
+        }
+      `}</style>
       {/* Navbar Público */}
       <nav style={{ 
         backgroundColor: 'white', 
@@ -133,11 +175,36 @@ const CatalogoVirtual = () => {
         zIndex: 100
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          {logoUrl ? (
+          {logoUrl && (
             <img src={logoUrl} alt="Logo" style={{ height: '50px', objectFit: 'contain' }} />
-          ) : (
-            <h2 style={{ margin: 0, color: 'var(--accent-primary)', fontWeight: 'bold' }}>THE JUNGLE</h2>
           )}
+          <h2 style={{ margin: 0, color: 'var(--accent-primary)', fontWeight: 'bold' }}>THE JUNGLE</h2>
+        </div>
+
+        {/* Navigation links */}
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+          <button 
+            onClick={() => setActiveTab('productos')}
+            style={{ 
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: activeTab === 'productos' ? 'var(--accent-primary)' : '#1e293b', 
+              fontWeight: 'bold', fontSize: '1.1rem',
+              borderBottom: activeTab === 'productos' ? '2px solid var(--accent-primary)' : 'none'
+            }}
+          >
+            Productos
+          </button>
+          <button 
+            onClick={() => setActiveTab('planes')}
+            style={{ 
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: activeTab === 'planes' ? 'var(--accent-primary)' : '#1e293b', 
+              fontWeight: 'bold', fontSize: '1.1rem',
+              borderBottom: activeTab === 'planes' ? '2px solid var(--accent-primary)' : 'none'
+            }}
+          >
+            Planes
+          </button>
         </div>
         
         {/* Cart Icon */}
@@ -188,78 +255,225 @@ const CatalogoVirtual = () => {
         </div>
       </nav>
 
-      {/* Slider Hero */}
-      {sliders.length > 0 && (
-        <div style={{ position: 'relative', height: '60vh', width: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
-          {sliders.map((slider, index) => (
-            <div 
-              key={slider.id} 
-              style={{
-                position: 'absolute',
-                top: 0, left: 0, width: '100%', height: '100%',
-                opacity: index === currentSlide ? 1 : 0,
-                transition: 'opacity 1s ease-in-out',
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url(${slider.imagenUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                color: 'white',
-                textAlign: 'center',
-                padding: '0 20px'
-              }}
-            >
-              <h1 style={{ fontSize: '4rem', fontWeight: 'bold', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
-                {slider.titulo}
-              </h1>
-              <p style={{ fontSize: '1.5rem', maxWidth: '800px', marginBottom: '30px', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
-                {slider.descripcion}
-              </p>
-              {slider.textoBoton && slider.enlaceUrl && (
-                <a 
-                  href={slider.enlaceUrl} 
+      {/* Contenido condicional según activeTab */}
+      {activeTab === 'productos' && (
+        <>
+          {/* Slider Hero */}
+          {sliders.length > 0 && (
+            <div style={{ position: 'relative', height: '60vh', width: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
+              {sliders.map((slider, index) => (
+                <div 
+                  key={slider.id} 
                   style={{
-                    backgroundColor: 'var(--accent-primary)',
-                    color: 'white',
-                    padding: '15px 40px',
-                    borderRadius: '30px',
-                    textDecoration: 'none',
-                    fontSize: '1.2rem',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 15px rgba(255, 62, 62, 0.4)',
-                    transition: 'transform 0.2s'
+                    position: 'absolute',
+                    top: 0, left: 0, width: '100%', height: '100%',
+                    opacity: index === currentSlide ? 1 : 0,
+                    transition: 'opacity 1s ease-in-out',
+                    overflow: 'hidden',
+                    backgroundColor: '#000'
                   }}
-                  onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-                  onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                 >
-                  {slider.textoBoton}
-                </a>
-              )}
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: 0, left: 0, width: '100%', height: '100%',
+                      backgroundImage: `url(${slider.imagenUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  />
+                  {/* Overlay only if there is text */}
+                  {(slider.titulo || slider.descripcion || slider.textoBoton) && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0, left: 0, width: '100%', height: '100%',
+                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      color: 'white',
+                      textAlign: 'center',
+                      padding: '0 20px',
+                    }}>
+                      {slider.titulo && (
+                        <h1 style={{ fontSize: '4rem', fontWeight: 'bold', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                          {slider.titulo}
+                        </h1>
+                      )}
+                      {slider.descripcion && (
+                        <p style={{ fontSize: '1.5rem', maxWidth: '800px', marginBottom: '30px', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                          {slider.descripcion}
+                        </p>
+                      )}
+                      {slider.textoBoton && slider.enlaceUrl && (
+                        <a 
+                          href={slider.enlaceUrl} 
+                          style={{
+                            backgroundColor: 'var(--accent-primary)',
+                            color: 'white',
+                            padding: '15px 40px',
+                            borderRadius: '30px',
+                            textDecoration: 'none',
+                            fontSize: '1.2rem',
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 15px rgba(255, 62, 62, 0.4)',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                          onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                        >
+                          {slider.textoBoton}
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* Slider Controls */}
+              <div style={{ position: 'absolute', bottom: '20px', width: '100%', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                {sliders.map((_, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => setCurrentSlide(idx)}
+                    style={{
+                      width: '12px', height: '12px', borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: idx === currentSlide ? 'var(--accent-primary)' : 'rgba(255,255,255,0.5)',
+                      cursor: 'pointer'
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          ))}
-          
-          {/* Slider Controls */}
-          <div style={{ position: 'absolute', bottom: '20px', width: '100%', display: 'flex', justifyContent: 'center', gap: '10px' }}>
-            {sliders.map((_, idx) => (
-              <button 
-                key={idx} 
-                onClick={() => setCurrentSlide(idx)}
-                style={{
-                  width: '12px', height: '12px', borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: idx === currentSlide ? 'var(--accent-primary)' : 'rgba(255,255,255,0.5)',
-                  cursor: 'pointer'
-                }}
-              />
-            ))}
+          )}
+        </>
+      )}
+
+      {/* Grid de Planes / Membresías */}
+      {activeTab === 'planes' && (
+        <>
+          {/* Banner de Planes */}
+          <div style={{ 
+            width: '100%', 
+            background: 'linear-gradient(135deg, #ff3e3e 0%, #ff8a00 100%)', 
+            padding: '40px 0', 
+            textAlign: 'center',
+            marginBottom: '40px',
+            boxShadow: '0 4px 20px rgba(255, 62, 62, 0.15)'
+          }}>
+            <h1 style={{ 
+              color: 'white', 
+              fontSize: '3rem', 
+              fontStyle: 'italic', 
+              fontWeight: '900', 
+              margin: 0,
+              letterSpacing: '2px',
+              textTransform: 'uppercase'
+            }}>
+              NUESTROS PLANES
+            </h1>
           </div>
-        </div>
+
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px 20px' }}>
+            {membresias.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '50px', color: '#64748b' }}>
+                <Info size={50} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
+                <h3>No hay planes disponibles en el catálogo en este momento.</h3>
+              </div>
+            ) : (
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+                gap: '30px' 
+              }}>
+                {membresias.map(plan => (
+                  <div 
+                    key={plan.id} 
+                    className="plan-card"
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                      transition: 'transform 0.3s ease, boxShadow 0.3s ease',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-5px)';
+                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+                    }}
+                  >
+                    <div className="plan-card-img-container">
+                      {plan.imagenUrl ? (
+                        <img className="plan-card-img" src={plan.imagenUrl} alt={plan.nombre} />
+                      ) : (
+                        <div style={{ color: '#cbd5e1', fontSize: '4rem', fontWeight: 'bold' }}>PLAN</div>
+                      )}
+                    </div>
+                    <div style={{ padding: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b' }}>{plan.nombre}</h3>
+                        <span style={{ 
+                          backgroundColor: 'rgba(255, 62, 62, 0.1)', 
+                          color: 'var(--accent-primary)', 
+                          padding: '4px 8px', 
+                          borderRadius: '12px',
+                          fontSize: '0.85rem',
+                          fontWeight: 'bold'
+                        }}>
+                          S/ {plan.precio.toFixed(2)}
+                        </span>
+                      </div>
+                      <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '15px' }}>
+                        {plan.descripcion || `Plan de ${plan.duracionDias} días`}
+                      </p>
+                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px', display: 'flex', justifyContent: 'center' }}>
+                        <button 
+                          onClick={() => {
+                            let text = `Hola, estoy interesado en adquirir el plan: *${plan.nombre}* por S/ ${plan.precio.toFixed(2)}`;
+                            let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                            if (whatsappNumber) {
+                              url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
+                            }
+                            window.open(url, '_blank');
+                          }}
+                          style={{
+                            backgroundColor: '#25D366',
+                            color: 'white',
+                            border: 'none',
+                            padding: '10px 20px',
+                            borderRadius: '20px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'transform 0.2s',
+                            width: '100%',
+                            justifyContent: 'center'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          Solicitar por WhatsApp
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Grid de Productos */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+      {activeTab === 'productos' && (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
           <h2 style={{ fontSize: '2rem', color: 'var(--text-primary)', margin: 0 }}>Nuestros Productos</h2>
           
@@ -378,6 +592,8 @@ const CatalogoVirtual = () => {
           </div>
         )}
       </div>
+      )}
+
 
       {/* Cart Sidebar (Drawer) */}
       <div style={{

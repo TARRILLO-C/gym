@@ -55,7 +55,12 @@ public class SuscripcionController {
                 request.getMembresiaId(),
                 request.getFechaInicio() != null ? request.getFechaInicio() : LocalDate.now(),
                 request.getEstadoPago(),
-                request.getPagoTotal()
+                request.getPagoTotal(),
+                request.getGenerarComprobante(),
+                request.getTipoComprobante(),
+                request.getClienteNombre(),
+                request.getClienteDocumento(),
+                request.getMetodoPago()
         );
         return new ResponseEntity<>(nueva, HttpStatus.CREATED);
     }
@@ -98,6 +103,11 @@ public class SuscripcionController {
         private LocalDate fechaInicio;
         private Suscripcion.EstadoPago estadoPago;
         private Boolean pagoTotal;
+        private Boolean generarComprobante;
+        private String tipoComprobante;
+        private String clienteNombre;
+        private String clienteDocumento;
+        private String metodoPago;
     }
 
     @Data

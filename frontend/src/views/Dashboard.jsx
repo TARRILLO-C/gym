@@ -20,6 +20,8 @@ const Dashboard = () => {
     totalProductos: 0,
     totalVentasCount: 0,
     montoVendidoTotal: 0,
+    montoVendidoPlanes: 0,
+    montoTotalCaja: 0,
     ultimosMiembros: []
   });
   const [loading, setLoading] = useState(true);
@@ -28,13 +30,17 @@ const Dashboard = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const [socios, ingresos, productos, ventas] = await Promise.all([
+        const [socios, ingresos, productos, ventas, pagos] = await Promise.all([
           api.get('/socios'),
           api.get('/asistencias/hoy'),
           api.get('/productos'),
-          api.get('/ventas')
+          api.get('/ventas'),
+          api.get('/pagos')
         ]);
         
+        const totalVentas = (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
+        const totalPlanes = (pagos.data || []).reduce((acc, p) => acc + parseFloat(p.monto || 0), 0);
+
         setStats({
           totalSocios: socios.data.length || 0,
           ingresosHoy: ingresos.data.length || 0,
@@ -42,7 +48,9 @@ const Dashboard = () => {
           productosBajoStock: productos.data.filter(p => !p.activo || p.stock < 5).length || 0,
           totalProductos: productos.data.length || 0,
           totalVentasCount: ventas.data.length || 0,
-          montoVendidoTotal: (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0),
+          montoVendidoTotal: totalVentas,
+          montoVendidoPlanes: totalPlanes,
+          montoTotalCaja: totalVentas + totalPlanes,
           ultimosMiembros: socios.data.slice(-4).reverse() || []
         });
       } catch (err) {
@@ -99,28 +107,28 @@ const Dashboard = () => {
           color="var(--accent-primary)" 
         />
         <Card 
-          title="Ventas Totales" 
-          value={stats.totalVentasCount} 
-          icon={ShoppingBag} 
-          color="#3b82f6" 
-        />
-        <Card 
-          title="Monto Vendido" 
-          value={`S/ ${stats.montoVendidoTotal.toFixed(2)}`} 
+          title="Caja Total" 
+          value={`S/ ${stats.montoTotalCaja.toFixed(2)}`} 
           icon={DollarSign} 
           color="#00ff7f" 
         />
         <Card 
-          title="Productos" 
-          value={stats.totalProductos} 
-          icon={Package} 
-          color="rgba(180, 100, 246, 0.8)" 
+          title="Ventas Planes" 
+          value={`S/ ${stats.montoVendidoPlanes.toFixed(2)}`} 
+          icon={Calendar} 
+          color="#f59e0b" 
+        />
+        <Card 
+          title="Ventas Productos" 
+          value={`S/ ${stats.montoVendidoTotal.toFixed(2)}`} 
+          icon={ShoppingBag} 
+          color="#3b82f6" 
         />
         <Card 
           title="Planes Activos" 
           value={stats.membresiasActivas} 
-          icon={Calendar} 
-          color="rgba(74, 144, 226, 0.8)" 
+          icon={Users} 
+          color="rgba(180, 100, 246, 0.8)" 
         />
       </section>
 

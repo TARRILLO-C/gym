@@ -15,5 +15,8 @@ public class ConfiguracionWeb {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "whatsapp_number")
+    private String whatsappNumber;
+
     // We can add other fields in the future like site name, primary color, etc.
 }
