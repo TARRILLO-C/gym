@@ -15,6 +15,19 @@ const CatalogoVirtual = () => {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // Solicitud state
+  const [isSolicitudModalOpen, setIsSolicitudModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [solicitudForm, setSolicitudForm] = useState({
+    dni: '',
+    nombreCompleto: '',
+    telefono: '',
+    email: '',
+  });
+  const [solicitudFile, setSolicitudFile] = useState(null);
+  const [isSubmittingSolicitud, setIsSubmittingSolicitud] = useState(false);
+  const [solicitudSuccess, setSolicitudSuccess] = useState(false);
+
   useEffect(() => {
     fetchConfig();
     fetchSliders();
@@ -141,6 +154,96 @@ const CatalogoVirtual = () => {
       url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
     }
     window.open(url, '_blank');
+  };
+
+  // Solicitud Functions
+  const handleOpenSolicitud = (plan) => {
+    setSelectedPlan(plan);
+    setSolicitudForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
+    setSolicitudFile(null);
+    setSolicitudSuccess(false);
+    setIsSolicitudModalOpen(true);
+  };
+
+  const handleDniChange = async (e) => {
+    const dni = e.target.value.replace(/\D/g, ''); // only allow digits
+    setSolicitudForm(prev => ({ ...prev, dni }));
+
+    if (dni.length === 8) {
+      try {
+        const res = await fetch(`http://localhost:8080/api/consultas/dni/${dni}`);
+        if (res.ok) {
+          const data = await res.json();
+          // Intentar obtener de nombreCompleto (del getter), o armarlo manualmente
+          if (data.nombreCompleto) {
+            setSolicitudForm(prev => ({ ...prev, nombreCompleto: data.nombreCompleto }));
+          } else if (data.nombres) {
+            const apellidoPat = data.ape_paterno || data.apellidoPaterno || '';
+            const apellidoMat = data.ape_materno || data.apellidoMaterno || '';
+            setSolicitudForm(prev => ({
+              ...prev,
+              nombreCompleto: `${data.nombres} ${apellidoPat} ${apellidoMat}`.trim()
+            }));
+          } else if (data.datos && data.datos.nombres) {
+             const datos = data.datos;
+             const apellidoPat = datos.ape_paterno || datos.apellidoPaterno || '';
+             const apellidoMat = datos.ape_materno || datos.apellidoMaterno || '';
+             setSolicitudForm(prev => ({
+              ...prev,
+              nombreCompleto: `${datos.nombres} ${apellidoPat} ${apellidoMat}`.trim()
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching DNI:", error);
+      }
+    }
+  };
+
+  const handleSolicitudSubmit = async (e) => {
+    e.preventDefault();
+    if (!solicitudFile) {
+      alert("Debe subir un comprobante de pago");
+      return;
+    }
+    setIsSubmittingSolicitud(true);
+    try {
+      // 1. Subir imagen
+      const formData = new FormData();
+      formData.append('file', solicitudFile);
+      const uploadRes = await fetch('http://localhost:8080/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error("Error subiendo el archivo");
+      const uploadData = await uploadRes.json();
+      const fileUrl = uploadData.url;
+
+      // 2. Crear solicitud
+      const solicitudData = {
+        dni: solicitudForm.dni,
+        nombreCompleto: solicitudForm.nombreCompleto,
+        telefono: solicitudForm.telefono,
+        email: solicitudForm.email,
+        numeroOperacion: solicitudForm.numeroOperacion,
+        membresiaId: selectedPlan.id,
+        comprobanteUrl: fileUrl
+      };
+
+      const solRes = await fetch('http://localhost:8080/api/solicitudes-membresia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(solicitudData)
+      });
+      if (!solRes.ok) throw new Error("Error creando la solicitud");
+
+      setSolicitudSuccess(true);
+    } catch (error) {
+      console.error(error);
+      alert("Hubo un problema al enviar la solicitud: " + error.message);
+    } finally {
+      setIsSubmittingSolicitud(false);
+    }
   };
 
   return (
@@ -435,18 +538,11 @@ const CatalogoVirtual = () => {
                       <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '15px' }}>
                         {plan.descripcion || `Plan de ${plan.duracionDias} días`}
                       </p>
-                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px', display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <button 
-                          onClick={() => {
-                            let text = `Hola, estoy interesado en adquirir el plan: *${plan.nombre}* por S/ ${plan.precio.toFixed(2)}`;
-                            let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-                            if (whatsappNumber) {
-                              url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
-                            }
-                            window.open(url, '_blank');
-                          }}
+                          onClick={() => handleOpenSolicitud(plan)}
                           style={{
-                            backgroundColor: '#25D366',
+                            backgroundColor: 'var(--accent-primary)',
                             color: 'white',
                             border: 'none',
                             padding: '10px 20px',
@@ -463,7 +559,7 @@ const CatalogoVirtual = () => {
                           onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
                           onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
                         >
-                          Solicitar por WhatsApp
+                          Adquirir Plan
                         </button>
                       </div>
                     </div>
@@ -713,6 +809,157 @@ const CatalogoVirtual = () => {
             backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 999
           }}
         />
+      )}
+
+      {/* Full Screen Checkout Overlay */}
+      {isSolicitudModalOpen && selectedPlan && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto'
+        }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px', position: 'relative' }}>
+            
+            <button onClick={() => setIsSolicitudModalOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+              <X size={24} color="#64748b" />
+            </button>
+
+            <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', color: 'var(--text-primary)' }}>Detalles de pago</h1>
+
+            {/* Stepper Visual */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '50px', position: 'relative' }}>
+              <div style={{ position: 'absolute', height: '2px', backgroundColor: '#e2e8f0', width: '60%', zIndex: 1, top: '20px' }}></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '70%', zIndex: 2 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>1</div>
+                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Planes</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>2</div>
+                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Revisar Plan</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: '4px solid #f8fafc', marginTop: '-5px', boxShadow: '0 0 0 2px var(--accent-primary)' }}>3</div>
+                  <span style={{ marginTop: '10px', fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>Pago</span>
+                </div>
+              </div>
+            </div>
+
+            {solicitudSuccess ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+                <div style={{ width: '80px', height: '80px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <h2 style={{ color: '#166534', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
+                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su activación como socio.</p>
+                <button onClick={() => setIsSolicitudModalOpen(false)} className="btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem' }}>
+                  Volver al Catálogo
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSolicitudSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                
+                {/* Lado Izquierdo: Detalles de facturación */}
+                <div>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Detalles de facturación</h3>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>DNI *</label>
+                    <input type="text" required maxLength="8" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                      value={solicitudForm.dni} onChange={handleDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Nombre Completo *</label>
+                    <input type="text" required style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                      value={solicitudForm.nombreCompleto} onChange={e => setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value})} placeholder="Se autocompletará si el DNI es válido" />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Teléfono *</label>
+                    <input type="text" required maxLength="15" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                      value={solicitudForm.telefono} onChange={e => setSolicitudForm({...solicitudForm, telefono: e.target.value})} />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Dirección de correo electrónico</label>
+                    <input type="email" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                      value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} />
+                  </div>
+                </div>
+
+                {/* Lado Derecho: Tu Pedido */}
+                <div>
+                  <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Tu pedido</h3>
+                    
+                    {/* Summary Table */}
+                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      <span>PRODUCTO</span>
+                      <span>SUBTOTAL</span>
+                    </div>
+                    
+                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre} × 1</p>
+                      </div>
+                      <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                    </div>
+
+                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
+                      <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                    </div>
+
+                    <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
+                      <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Total</span>
+                      <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                    </div>
+
+                    {/* Metodos de pago (Yape/Transferencia) */}
+                    <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
+                        Realiza el pago a nuestras cuentas y adjunta el comprobante para habilitar tu suscripción.
+                      </p>
+                      
+                      <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
+                        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
+                        <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>939 868 702 <span style={{fontSize:'0.9rem', color:'#64748b', fontWeight:'normal'}}>(Carlos B.)</span></p>
+                      </div>
+
+                      <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>BCP</p>
+                        <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>191-0000000-0-00</p>
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Número de Operación *</label>
+                        <input type="text" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '1rem' }}
+                          value={solicitudForm.numeroOperacion} onChange={e => setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value})} placeholder="Ej: 0123456" />
+                      </div>
+                      
+                      <div style={{ marginBottom: '30px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Comprobante de Pago *</label>
+                        <input type="file" accept="image/*,.pdf" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px dashed #cbd5e1', backgroundColor: 'white', cursor: 'pointer' }}
+                          onChange={e => setSolicitudFile(e.target.files[0])} />
+                      </div>
+
+                      <button type="submit" disabled={isSubmittingSolicitud} style={{
+                        width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
+                        padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
+                        cursor: isSubmittingSolicitud ? 'not-allowed' : 'pointer', opacity: isSubmittingSolicitud ? 0.7 : 1,
+                        transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                      }}>
+                        {isSubmittingSolicitud ? 'Procesando...' : 'Finalizar Pedido'}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+
+              </form>
+            )}
+          </div>
+        </div>
       )}
 
     </div>

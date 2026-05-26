@@ -12,7 +12,8 @@ import {
   LogOut,
   UserCog,
   Receipt,
-  Store
+  Store,
+  FileText
 } from 'lucide-react';
 import { ThemeContext } from '../context/ThemeContext';
 
@@ -40,6 +41,7 @@ const Sidebar = () => {
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR'] },
     { name: 'Control de Acceso', path: '/asistencia', icon: ShieldCheck, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+    { name: 'Solicitudes', path: '/solicitudes', icon: FileText, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
     { name: 'Socios', path: '/socios', icon: Users, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
     { name: 'Membresías', path: '/membresias', icon: CreditCard, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
     { name: 'Productos', path: '/productos', icon: Package, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
