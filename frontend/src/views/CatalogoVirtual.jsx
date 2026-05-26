@@ -17,6 +17,7 @@ const CatalogoVirtual = () => {
 
   // Solicitud state
   const [isSolicitudModalOpen, setIsSolicitudModalOpen] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState(2);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [solicitudForm, setSolicitudForm] = useState({
     dni: '',
@@ -162,6 +163,7 @@ const CatalogoVirtual = () => {
     setSolicitudForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
     setSolicitudFile(null);
     setSolicitudSuccess(false);
+    setCheckoutStep(2);
     setIsSolicitudModalOpen(true);
   };
 
@@ -815,31 +817,49 @@ const CatalogoVirtual = () => {
       {isSolicitudModalOpen && selectedPlan && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto'
+          backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto',
+          transition: 'background-color 0.3s ease'
         }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px', position: 'relative' }}>
+          {/* Header para Paso 2 */}
+          {checkoutStep === 2 && (
+            <div style={{ width: '100%', padding: '40px 20px 40px', textAlign: 'center' }}>
+              <h1 style={{ color: 'var(--text-primary)', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
+            </div>
+          )}
+
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px', position: 'relative' }}>
             
             <button onClick={() => setIsSolicitudModalOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
               <X size={24} color="#64748b" />
             </button>
 
-            <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', color: 'var(--text-primary)' }}>Detalles de pago</h1>
+            {checkoutStep === 3 && (
+               <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: 'var(--text-primary)' }}>Detalles de pago</h1>
+            )}
 
             {/* Stepper Visual */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '50px', position: 'relative' }}>
-              <div style={{ position: 'absolute', height: '2px', backgroundColor: '#e2e8f0', width: '60%', zIndex: 1, top: '20px' }}></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '70%', zIndex: 2 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>1</div>
+              <div style={{ position: 'absolute', height: '2px', backgroundColor: checkoutStep === 2 ? '#cbd5e1' : '#e2e8f0', width: '60%', zIndex: 1, top: '20px' }}></div>
+              <div style={{ position: 'absolute', height: '2px', backgroundColor: 'var(--accent-primary)', width: checkoutStep === 2 ? '30%' : '60%', zIndex: 2, top: '20px', left: '20%', transition: 'width 0.3s ease' }}></div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '70%', zIndex: 3 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsSolicitudModalOpen(false)}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  </div>
                   <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Planes</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>2</div>
-                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Revisar Plan</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }} onClick={() => setCheckoutStep(2)}>
+                  <div style={{ width: checkoutStep === 2 ? '50px' : '40px', height: checkoutStep === 2 ? '50px' : '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 2 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 2 ? '-5px' : '0', boxShadow: checkoutStep === 2 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                  </div>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: 'var(--text-primary)', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>Revisar Plan</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: '4px solid #f8fafc', marginTop: '-5px', boxShadow: '0 0 0 2px var(--accent-primary)' }}>3</div>
-                  <span style={{ marginTop: '10px', fontSize: '1rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>Pago</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: checkoutStep === 3 ? 'pointer' : 'not-allowed' }} onClick={() => { if(checkoutStep === 3) setCheckoutStep(3) }}>
+                  <div style={{ width: checkoutStep === 3 ? '50px' : '40px', height: checkoutStep === 3 ? '50px' : '40px', borderRadius: '50%', backgroundColor: checkoutStep === 3 ? 'var(--accent-primary)' : '#334155', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 3 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 3 ? '-5px' : '0', boxShadow: checkoutStep === 3 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                  </div>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 3 ? '1rem' : '0.9rem', color: checkoutStep === 2 ? '#94a3b8' : 'var(--text-primary)', fontWeight: checkoutStep === 3 ? 'bold' : '500' }}>Pago</span>
                 </div>
               </div>
             </div>
@@ -856,107 +876,178 @@ const CatalogoVirtual = () => {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSolicitudSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
-                
-                {/* Lado Izquierdo: Detalles de facturación */}
-                <div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Detalles de facturación</h3>
-                  
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>DNI *</label>
-                    <input type="text" required maxLength="8" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                      value={solicitudForm.dni} onChange={handleDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Nombre Completo *</label>
-                    <input type="text" required style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                      value={solicitudForm.nombreCompleto} onChange={e => setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value})} placeholder="Se autocompletará si el DNI es válido" />
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Teléfono *</label>
-                    <input type="text" required maxLength="15" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                      value={solicitudForm.telefono} onChange={e => setSolicitudForm({...solicitudForm, telefono: e.target.value})} />
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Dirección de correo electrónico</label>
-                    <input type="email" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                      value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} />
-                  </div>
-                </div>
-
-                {/* Lado Derecho: Tu Pedido */}
-                <div>
-                  <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
-                    <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Tu pedido</h3>
+              <>
+                {/* ----------------- PASO 2: REVISAR PLAN ----------------- */}
+                {checkoutStep === 2 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
                     
-                    {/* Summary Table */}
-                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                      <span>PRODUCTO</span>
-                      <span>SUBTOTAL</span>
-                    </div>
-                    
-                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre} × 1</p>
-                      </div>
-                      <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                    {/* Tabla de Productos */}
+                    <div style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0' }}>
+                          <tr>
+                            <th style={{ padding: '20px', textAlign: 'left', color: '#64748b', fontSize: '0.9rem', width: '50px' }}></th>
+                            <th style={{ padding: '20px', textAlign: 'left', color: '#64748b', fontSize: '0.9rem' }}>Producto</th>
+                            <th style={{ padding: '20px', textAlign: 'left', color: '#64748b', fontSize: '0.9rem' }}>Precio</th>
+                            <th style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>Cantidad</th>
+                            <th style={{ padding: '20px', textAlign: 'right', color: '#64748b', fontSize: '0.9rem' }}>Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ padding: '20px', textAlign: 'center' }}>
+                              <button onClick={() => setIsSolicitudModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
+                            </td>
+                            <td style={{ padding: '20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div style={{ width: '50px', height: '50px', backgroundColor: '#1e293b', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', padding: '5px' }}>
+                                  PLAN<br/>GYM
+                                </div>
+                                <div>
+                                  <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre}</p>
+                                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>MESES: {selectedPlan.duracionMeses}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '20px', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                            <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>1</td>
+                            <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
 
-                    <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
-                      <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
-                    </div>
-
-                    <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
-                      <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Total</span>
-                      <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
-                    </div>
-
-                    {/* Metodos de pago (Yape/Transferencia) */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                      <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
-                        Realiza el pago a nuestras cuentas y adjunta el comprobante para habilitar tu suscripción.
-                      </p>
+                    {/* Totales del Carrito */}
+                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Totales del carrito</h3>
                       
-                      <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
-                        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                        <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>939 868 702 <span style={{fontSize:'0.9rem', color:'#64748b', fontWeight:'normal'}}>(Carlos B.)</span></p>
+                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>SUBTOTAL</span>
+                        <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                       </div>
 
-                      <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
-                        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>BCP</p>
-                        <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>191-0000000-0-00</p>
+                      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>TOTAL</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.2rem' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Número de Operación *</label>
-                        <input type="text" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '1rem' }}
-                          value={solicitudForm.numeroOperacion} onChange={e => setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value})} placeholder="Ej: 0123456" />
-                      </div>
-                      
-                      <div style={{ marginBottom: '30px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Comprobante de Pago *</label>
-                        <input type="file" accept="image/*,.pdf" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px dashed #cbd5e1', backgroundColor: 'white', cursor: 'pointer' }}
-                          onChange={e => setSolicitudFile(e.target.files[0])} />
-                      </div>
-
-                      <button type="submit" disabled={isSubmittingSolicitud} style={{
+                      <button onClick={() => setCheckoutStep(3)} style={{
                         width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
-                        padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
-                        cursor: isSubmittingSolicitud ? 'not-allowed' : 'pointer', opacity: isSubmittingSolicitud ? 0.7 : 1,
-                        transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                        padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem',
+                        cursor: 'pointer', transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
                       }}>
-                        {isSubmittingSolicitud ? 'Procesando...' : 'Finalizar Pedido'}
+                        FINALIZAR COMPRA
                       </button>
                     </div>
 
                   </div>
-                </div>
+                )}
 
-              </form>
+                {/* ----------------- PASO 3: PAGO ----------------- */}
+                {checkoutStep === 3 && (
+                  <form onSubmit={handleSolicitudSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                    
+                    {/* Lado Izquierdo: Detalles de facturación */}
+                    <div>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Detalles de facturación</h3>
+                      
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>DNI *</label>
+                        <input type="text" required maxLength="8" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                          value={solicitudForm.dni} onChange={handleDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Nombre Completo *</label>
+                        <input type="text" required style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                          value={solicitudForm.nombreCompleto} onChange={e => setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value})} placeholder="Se autocompletará si el DNI es válido" />
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Teléfono *</label>
+                        <input type="text" required maxLength="15" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                          value={solicitudForm.telefono} onChange={e => setSolicitudForm({...solicitudForm, telefono: e.target.value})} />
+                      </div>
+
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Dirección de correo electrónico</label>
+                        <input type="email" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                          value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} />
+                      </div>
+                    </div>
+
+                    {/* Lado Derecho: Tu Pedido */}
+                    <div>
+                      <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
+                        <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Tu pedido</h3>
+                        
+                        {/* Summary Table */}
+                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                          <span>PRODUCTO</span>
+                          <span>SUBTOTAL</span>
+                        </div>
+                        
+                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre} × 1</p>
+                          </div>
+                          <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        </div>
+
+                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        </div>
+
+                        <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Total</span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        </div>
+
+                        {/* Metodos de pago (Yape/Transferencia) */}
+                        <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
+                            Realiza el pago a nuestras cuentas y adjunta el comprobante para habilitar tu suscripción.
+                          </p>
+                          
+                          <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>939 868 702 <span style={{fontSize:'0.9rem', color:'#64748b', fontWeight:'normal'}}>(Carlos B.)</span></p>
+                          </div>
+
+                          <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>BCP</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>191-0000000-0-00</p>
+                          </div>
+
+                          <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Número de Operación *</label>
+                            <input type="text" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '1rem' }}
+                              value={solicitudForm.numeroOperacion} onChange={e => setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value})} placeholder="Ej: 0123456" />
+                          </div>
+                          
+                          <div style={{ marginBottom: '30px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Comprobante de Pago *</label>
+                            <input type="file" accept="image/*,.pdf" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px dashed #cbd5e1', backgroundColor: 'white', cursor: 'pointer' }}
+                              onChange={e => setSolicitudFile(e.target.files[0])} />
+                          </div>
+
+                          <button type="submit" disabled={isSubmittingSolicitud} style={{
+                            width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
+                            padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
+                            cursor: isSubmittingSolicitud ? 'not-allowed' : 'pointer', opacity: isSubmittingSolicitud ? 0.7 : 1,
+                            transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                          }}>
+                            {isSubmittingSolicitud ? 'Procesando...' : 'Finalizar Pedido'}
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+
+                  </form>
+                )}
+              </>
             )}
           </div>
         </div>

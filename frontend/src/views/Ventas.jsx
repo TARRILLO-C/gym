@@ -212,7 +212,7 @@ const Ventas = () => {
           style={{
             padding: '12px 24px',
             backgroundColor: activeTab === 'productos' ? 'var(--accent-primary)' : 'var(--panel-bg)',
-            color: 'white',
+            color: activeTab === 'productos' ? 'white' : 'var(--text-main)',
             border: 'none',
             borderRadius: '12px',
             fontWeight: 'bold',
@@ -228,7 +228,7 @@ const Ventas = () => {
           style={{
             padding: '12px 24px',
             backgroundColor: activeTab === 'planes' ? 'var(--accent-primary)' : 'var(--panel-bg)',
-            color: 'white',
+            color: activeTab === 'planes' ? 'white' : 'var(--text-main)',
             border: 'none',
             borderRadius: '12px',
             fontWeight: 'bold',
