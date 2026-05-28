@@ -78,33 +78,137 @@ const SolicitudesMembresia = () => {
     return date.toLocaleString();
   };
 
+  const getActiveColor = () => {
+    if (activeTab === 'PENDIENTE') return '#f59e0b';
+    if (activeTab === 'APROBADA') return '#22c55e';
+    if (activeTab === 'RECHAZADA') return '#ef4444';
+    return 'var(--accent-primary)';
+  };
+
   return (
     <div className="fade-in">
+      <style>{`
+        .tab-btn-pendiente {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: 1px solid #f59e0b;
+          background-color: transparent;
+          color: #f59e0b;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-btn-pendiente.active {
+          background-color: #f59e0b;
+          color: white;
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+        .tab-btn-pendiente:hover {
+          background-color: rgba(245, 158, 11, 0.1);
+        }
+        .tab-btn-pendiente.active:hover {
+          background-color: #d97706;
+          border-color: #d97706;
+        }
+
+        .tab-btn-aprobada {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: 1px solid #22c55e;
+          background-color: transparent;
+          color: #22c55e;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-btn-aprobada.active {
+          background-color: #22c55e;
+          color: white;
+          box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        .tab-btn-aprobada:hover {
+          background-color: rgba(34, 197, 94, 0.1);
+        }
+        .tab-btn-aprobada.active:hover {
+          background-color: #16a34a;
+          border-color: #16a34a;
+        }
+
+        .tab-btn-rechazada {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: 1px solid #ef4444;
+          background-color: transparent;
+          color: #ef4444;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-btn-rechazada.active {
+          background-color: #ef4444;
+          color: white;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        .tab-btn-rechazada:hover {
+          background-color: rgba(239, 68, 68, 0.1);
+        }
+        .tab-btn-rechazada.active:hover {
+          background-color: #dc2626;
+          border-color: #dc2626;
+        }
+
+        .btn-update {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: none;
+          color: white;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-update:hover {
+          transform: translateY(-2px);
+          filter: brightness(1.1);
+        }
+        .btn-update:active {
+          transform: translateY(0);
+        }
+      `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FileText size={28} color="var(--accent-primary)" />
           Solicitudes de Membresía
         </h2>
-        <button className="btn-secondary" onClick={fetchSolicitudes} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <button 
+          className="btn-update" 
+          onClick={fetchSolicitudes} 
+          style={{ 
+            backgroundColor: getActiveColor(),
+            boxShadow: `0 4px 12px ${getActiveColor()}44`
+          }}
+        >
           <RefreshCw size={18} /> Actualizar
         </button>
       </div>
 
       <div className="card glass" style={{ marginBottom: '20px', padding: '10px', display: 'flex', gap: '10px' }}>
         <button 
-          className={activeTab === 'PENDIENTE' ? 'btn-primary' : 'btn-secondary'}
+          className={`tab-btn-pendiente ${activeTab === 'PENDIENTE' ? 'active' : ''}`}
           onClick={() => setActiveTab('PENDIENTE')}
         >
           Pendientes
         </button>
         <button 
-          className={activeTab === 'APROBADA' ? 'btn-primary' : 'btn-secondary'}
+          className={`tab-btn-aprobada ${activeTab === 'APROBADA' ? 'active' : ''}`}
           onClick={() => setActiveTab('APROBADA')}
         >
           Aprobadas
         </button>
         <button 
-          className={activeTab === 'RECHAZADA' ? 'btn-primary' : 'btn-secondary'}
+          className={`tab-btn-rechazada ${activeTab === 'RECHAZADA' ? 'active' : ''}`}
           onClick={() => setActiveTab('RECHAZADA')}
         >
           Rechazadas
