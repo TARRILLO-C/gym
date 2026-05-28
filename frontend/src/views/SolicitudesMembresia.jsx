@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Eye, RefreshCw, FileText } from 'lucide-react';
+import Modal from '../components/ui/Modal';
 
 const SolicitudesMembresia = () => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('PENDIENTE');
+  const [notification, setNotification] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   useEffect(() => {
     fetchSolicitudes();
@@ -33,43 +36,60 @@ const SolicitudesMembresia = () => {
     }
   };
 
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
   const handleAprobar = async (id) => {
-    if (!window.confirm("¿Está seguro de aprobar esta solicitud? Se creará el socio y se registrará su pago automáticamente.")) return;
-    
-    try {
-      const res = await fetch(`http://localhost:8080/api/solicitudes-membresia/${id}/aprobar`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        alert("Solicitud aprobada con éxito. El socio ha sido registrado.");
-        fetchSolicitudes();
-      } else {
-        const err = await res.text();
-        alert("Error al aprobar: " + err);
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Confirmar Acción',
+      message: "¿Está seguro de aprobar esta solicitud? Se creará el socio y se registrará su pago automáticamente.",
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false });
+        try {
+          const res = await fetch(`http://localhost:8080/api/solicitudes-membresia/${id}/aprobar`, {
+            method: 'POST'
+          });
+          if (res.ok) {
+            showNotification("Solicitud aprobada con éxito. El socio ha sido registrado.", 'success');
+            fetchSolicitudes();
+          } else {
+            const err = await res.text();
+            showNotification("Error al aprobar: " + err, 'error');
+          }
+        } catch (error) {
+          console.error(error);
+          showNotification("Error de red", 'error');
+        }
       }
-    } catch (error) {
-      console.error(error);
-      alert("Error de red");
-    }
+    });
   };
 
   const handleRechazar = async (id) => {
-    if (!window.confirm("¿Está seguro de rechazar esta solicitud?")) return;
-    
-    try {
-      const res = await fetch(`http://localhost:8080/api/solicitudes-membresia/${id}/rechazar`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        alert("Solicitud rechazada.");
-        fetchSolicitudes();
-      } else {
-        alert("Error al rechazar.");
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Confirmar Acción',
+      message: "¿Está seguro de rechazar esta solicitud?",
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false });
+        try {
+          const res = await fetch(`http://localhost:8080/api/solicitudes-membresia/${id}/rechazar`, {
+            method: 'POST'
+          });
+          if (res.ok) {
+            showNotification("Solicitud rechazada.", 'success');
+            fetchSolicitudes();
+          } else {
+            showNotification("Error al rechazar.", 'error');
+          }
+        } catch (error) {
+          console.error(error);
+          showNotification("Error de red", 'error');
+        }
       }
-    } catch (error) {
-      console.error(error);
-      alert("Error de red");
-    }
+    });
   };
 
   const formatDate = (dateString) => {
@@ -176,6 +196,81 @@ const SolicitudesMembresia = () => {
         .btn-update:active {
           transform: translateY(0);
         }
+
+        .notification {
+          position: fixed;
+          top: 80px;
+          right: 20px;
+          padding: 16px 20px;
+          border-radius: 12px;
+          color: white;
+          font-weight: 600;
+          font-size: 0.95rem;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+          z-index: 2000;
+          animation: slideInRight 0.3s ease-out;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 320px;
+          max-width: 400px;
+          backdrop-filter: blur(8px);
+        }
+        .notification.success {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          border: 2px solid #047857;
+        }
+        .notification.error {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          border: 2px solid #b91c1c;
+        }
+        .notification.warning {
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          border: 2px solid #b45309;
+        }
+        .notification.info {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          border: 2px solid #1d4ed8;
+        }
+        @media (prefers-color-scheme: dark) {
+          .notification.success {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            border: 2px solid #065f46;
+          }
+          .notification.error {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            border: 2px solid #991b1b;
+          }
+          .notification.warning {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            border: 2px solid #92400e;
+          }
+          .notification.info {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            border: 2px solid #1e40af;
+          }
+        }
+        @keyframes slideInRight {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOutRight {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+
       `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -186,8 +281,8 @@ const SolicitudesMembresia = () => {
           className="btn-update" 
           onClick={fetchSolicitudes} 
           style={{ 
-            backgroundColor: getActiveColor(),
-            boxShadow: `0 4px 12px ${getActiveColor()}44`
+            backgroundColor: '#6b7280',
+            boxShadow: '0 4px 12px rgba(107, 114, 128, 0.3)'
           }}
         >
           <RefreshCw size={18} /> Actualizar
@@ -262,7 +357,7 @@ const SolicitudesMembresia = () => {
                          </span>
                       )}
                       {sol.comprobanteUrl ? (
-                        <a href={sol.comprobanteUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.9rem' }}>
+                        <a href={sol.comprobanteUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#3b82f6', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '500' }}>
                           <Eye size={16} /> Ver Comprobante
                         </a>
                       ) : (
@@ -296,6 +391,46 @@ const SolicitudesMembresia = () => {
           </table>
         )}
       </div>
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className={`notification ${notification.type}`}>
+          {notification.type === 'success' && <CheckCircle size={20} />}
+          {notification.type === 'error' && <XCircle size={20} />}
+          {notification.type === 'warning' && <RefreshCw size={20} />}
+          {notification.type === 'info' && <FileText size={20} />}
+          <span>{notification.message}</span>
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
+      <Modal 
+        isOpen={confirmDialog?.isOpen} 
+        onClose={() => setConfirmDialog({ isOpen: false })} 
+        title={confirmDialog?.title || 'Confirmar Acción'}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p style={{ color: 'var(--text-main)', fontSize: '1rem', margin: 0 }}>{confirmDialog?.message}</p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
+            <button 
+              onClick={() => setConfirmDialog({ isOpen: false })} 
+              style={{ padding: '10px 20px', background: 'transparent', color: 'var(--text-muted)' }}
+            >
+              Cancelar
+            </button>
+            <button 
+              className="btn-primary" 
+              onClick={() => {
+                if(confirmDialog?.onConfirm) confirmDialog.onConfirm();
+                setConfirmDialog({ isOpen: false });
+              }} 
+              style={{ padding: '10px 24px' }}
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

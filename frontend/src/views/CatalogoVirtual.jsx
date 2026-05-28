@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2 } from 'lucide-react';
+import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
@@ -28,6 +28,7 @@ const CatalogoVirtual = () => {
   const [solicitudFile, setSolicitudFile] = useState(null);
   const [isSubmittingSolicitud, setIsSubmittingSolicitud] = useState(false);
   const [solicitudSuccess, setSolicitudSuccess] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     fetchConfig();
@@ -163,6 +164,7 @@ const CatalogoVirtual = () => {
     setSolicitudForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
     setSolicitudFile(null);
     setSolicitudSuccess(false);
+    setValidationErrors({});
     setCheckoutStep(2);
     setIsSolicitudModalOpen(true);
   };
@@ -204,10 +206,39 @@ const CatalogoVirtual = () => {
 
   const handleSolicitudSubmit = async (e) => {
     e.preventDefault();
+    
+    const errors = {};
+    
+    // Validación de DNI
+    if (!solicitudForm.dni || solicitudForm.dni.length !== 8) {
+      errors.dni = "El DNI debe tener exactamente 8 dígitos";
+    }
+    
+    // Validación de nombre completo
+    if (!solicitudForm.nombreCompleto || solicitudForm.nombreCompleto.trim() === '') {
+      errors.nombreCompleto = "El nombre completo es requerido";
+    }
+    
+    // Validación de teléfono: exactamente 9 dígitos
+    if (!solicitudForm.telefono || solicitudForm.telefono.length !== 9) {
+      errors.telefono = "El teléfono debe tener exactamente 9 dígitos";
+    }
+    
+    // Validación de número de operación: máximo 6 dígitos
+    if (!solicitudForm.numeroOperacion || solicitudForm.numeroOperacion.length === 0 || solicitudForm.numeroOperacion.length > 6) {
+      errors.numeroOperacion = "El número de operación debe tener máximo 6 dígitos";
+    }
+    
     if (!solicitudFile) {
-      alert("Debe subir un comprobante de pago");
+      errors.comprobante = "Debe subir un comprobante de pago";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
+    
+    setValidationErrors({});
     setIsSubmittingSolicitud(true);
     try {
       // 1. Subir imagen
@@ -951,28 +982,132 @@ const CatalogoVirtual = () => {
                     <div>
                       <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Detalles de facturación</h3>
                       
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>DNI *</label>
-                        <input type="text" required maxLength="8" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.dni} onChange={handleDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type="text" required maxLength="8" style={{ 
+                            width: '100%', 
+                            padding: '14px 16px', 
+                            borderRadius: '10px', 
+                            border: validationErrors.dni ? '2px solid #dc2626' : solicitudForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                            backgroundColor: '#ffffff', 
+                            fontSize: '0.95rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: validationErrors.dni ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                          }}
+                            value={solicitudForm.dni} onChange={handleDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                          {solicitudForm.dni.length === 8 && !validationErrors.dni && (
+                            <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                          )}
+                        </div>
+                        {validationErrors.dni && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            color: '#dc2626', 
+                            fontSize: '0.85rem', 
+                            fontWeight: '500', 
+                            backgroundColor: '#fef2f2', 
+                            padding: '10px 14px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #fecaca'
+                          }}>
+                            <AlertCircle size={16} />
+                            <span>{validationErrors.dni}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Nombre Completo *</label>
-                        <input type="text" required style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.nombreCompleto} onChange={e => setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value})} placeholder="Se autocompletará si el DNI es válido" />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type="text" required style={{ 
+                            width: '100%', 
+                            padding: '14px 16px', 
+                            borderRadius: '10px', 
+                            border: validationErrors.nombreCompleto ? '2px solid #dc2626' : (solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                            backgroundColor: '#ffffff', 
+                            fontSize: '0.95rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: validationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                          }}
+                            value={solicitudForm.nombreCompleto} onChange={e => {setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value}); setValidationErrors({...validationErrors, nombreCompleto: null});}} placeholder="Se autocompletará si el DNI es válido" />
+                          {solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto && (
+                            <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                          )}
+                        </div>
+                        {validationErrors.nombreCompleto && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            color: '#dc2626', 
+                            fontSize: '0.85rem', 
+                            fontWeight: '500', 
+                            backgroundColor: '#fef2f2', 
+                            padding: '10px 14px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #fecaca'
+                          }}>
+                            <AlertCircle size={16} />
+                            <span>{validationErrors.nombreCompleto}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Teléfono *</label>
-                        <input type="text" required maxLength="15" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.telefono} onChange={e => setSolicitudForm({...solicitudForm, telefono: e.target.value})} />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type="text" required maxLength="9" style={{ 
+                            width: '100%', 
+                            padding: '14px 16px', 
+                            borderRadius: '10px', 
+                            border: validationErrors.telefono ? '2px solid #dc2626' : solicitudForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                            backgroundColor: '#ffffff', 
+                            fontSize: '0.95rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: validationErrors.telefono ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                          }}
+                            value={solicitudForm.telefono} onChange={e => {setSolicitudForm({...solicitudForm, telefono: e.target.value.replace(/\D/g, '')}); setValidationErrors({...validationErrors, telefono: null});}} placeholder="9 dígitos" />
+                          {solicitudForm.telefono.length === 9 && !validationErrors.telefono && (
+                            <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                          )}
+                        </div>
+                        {validationErrors.telefono && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            color: '#dc2626', 
+                            fontSize: '0.85rem', 
+                            fontWeight: '500', 
+                            backgroundColor: '#fef2f2', 
+                            padding: '10px 14px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #fecaca'
+                          }}>
+                            <AlertCircle size={16} />
+                            <span>{validationErrors.telefono}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Dirección de correo electrónico</label>
-                        <input type="email" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
+                        <input type="email" style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease'
+                        }}
+                          value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} placeholder="ejemplo@correo.com" />
                       </div>
                     </div>
 
@@ -1020,16 +1155,81 @@ const CatalogoVirtual = () => {
                             <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>191-0000000-0-00</p>
                           </div>
 
-                          <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Número de Operación *</label>
-                            <input type="text" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '1rem' }}
-                              value={solicitudForm.numeroOperacion} onChange={e => setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value})} placeholder="Ej: 0123456" />
+                          <div style={{ marginBottom: '24px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
+                            <div style={{ position: 'relative' }}>
+                              <input type="text" required maxLength="6" style={{ 
+                                width: '100%', 
+                                padding: '14px 16px', 
+                                borderRadius: '10px', 
+                                border: validationErrors.numeroOperacion ? '2px solid #dc2626' : (solicitudForm.numeroOperacion.length > 0 && solicitudForm.numeroOperacion.length <= 6) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                                backgroundColor: '#ffffff', 
+                                fontSize: '0.95rem',
+                                transition: 'all 0.2s ease',
+                                boxShadow: validationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                              }}
+                                value={solicitudForm.numeroOperacion} onChange={e => {setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setValidationErrors({...validationErrors, numeroOperacion: null});}} placeholder="Máx 6 dígitos" />
+                              {solicitudForm.numeroOperacion.length > 0 && solicitudForm.numeroOperacion.length <= 6 && !validationErrors.numeroOperacion && (
+                                <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                              )}
+                            </div>
+                            {validationErrors.numeroOperacion && (
+                              <div style={{ 
+                                marginTop: '8px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                color: '#dc2626', 
+                                fontSize: '0.85rem', 
+                                fontWeight: '500', 
+                                backgroundColor: '#fef2f2', 
+                                padding: '10px 14px', 
+                                borderRadius: '8px', 
+                                border: '1px solid #fecaca'
+                              }}>
+                                <AlertCircle size={16} />
+                                <span>{validationErrors.numeroOperacion}</span>
+                              </div>
+                            )}
                           </div>
                           
                           <div style={{ marginBottom: '30px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Comprobante de Pago *</label>
-                            <input type="file" accept="image/*,.pdf" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px dashed #cbd5e1', backgroundColor: 'white', cursor: 'pointer' }}
-                              onChange={e => setSolicitudFile(e.target.files[0])} />
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
+                            <div style={{ position: 'relative' }}>
+                              <input type="file" accept="image/*,.pdf" required style={{ 
+                                width: '100%', 
+                                padding: '14px 16px', 
+                                borderRadius: '10px', 
+                                border: validationErrors.comprobante ? '2px solid #dc2626' : solicitudFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
+                                backgroundColor: '#ffffff', 
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                transition: 'all 0.2s ease',
+                                boxShadow: validationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                              }}
+                                onChange={e => {setSolicitudFile(e.target.files[0]); setValidationErrors({...validationErrors, comprobante: null});}} />
+                              {solicitudFile && !validationErrors.comprobante && (
+                                <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                              )}
+                            </div>
+                            {validationErrors.comprobante && (
+                              <div style={{ 
+                                marginTop: '8px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                color: '#dc2626', 
+                                fontSize: '0.85rem', 
+                                fontWeight: '500', 
+                                backgroundColor: '#fef2f2', 
+                                padding: '10px 14px', 
+                                borderRadius: '8px', 
+                                border: '1px solid #fecaca'
+                              }}>
+                                <AlertCircle size={16} />
+                                <span>{validationErrors.comprobante}</span>
+                              </div>
+                            )}
                           </div>
 
                           <button type="submit" disabled={isSubmittingSolicitud} style={{
