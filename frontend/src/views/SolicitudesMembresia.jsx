@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Eye, RefreshCw, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, RefreshCw, FileText, X } from 'lucide-react';
 import Modal from '../components/ui/Modal';
 
 const SolicitudesMembresia = () => {
@@ -8,6 +8,13 @@ const SolicitudesMembresia = () => {
   const [activeTab, setActiveTab] = useState('PENDIENTE');
   const [notification, setNotification] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [imageError, setImageError] = useState(false);
+
+  const handleVerComprobante = (url, clientName) => {
+    setImageError(false);
+    setPreviewImage({ url, title: `Comprobante de ${clientName}` });
+  };
 
   useEffect(() => {
     fetchSolicitudes();
@@ -271,6 +278,14 @@ const SolicitudesMembresia = () => {
           }
         }
 
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
       `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -357,9 +372,23 @@ const SolicitudesMembresia = () => {
                          </span>
                       )}
                       {sol.comprobanteUrl ? (
-                        <a href={sol.comprobanteUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#3b82f6', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '500' }}>
+                        <button 
+                          onClick={() => handleVerComprobante(sol.comprobanteUrl, sol.nombreCompleto)}
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '5px', 
+                            color: '#3b82f6', 
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem', 
+                            fontWeight: '500',
+                            padding: 0
+                          }}
+                        >
                           <Eye size={16} /> Ver Comprobante
-                        </a>
+                        </button>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>No adjunto</span>
                       )}
@@ -431,6 +460,142 @@ const SolicitudesMembresia = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, left: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            background: 'rgba(0,0,0,0.85)', 
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(10px)',
+            animation: 'fadeIn 0.25s ease-out'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            style={{ 
+              position: 'relative',
+              background: 'var(--panel-bg, #1e293b)',
+              border: '1px solid var(--panel-border, #334155)',
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              width: '600px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              animation: 'scaleIn 0.25s ease-out'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-main, #f8fafc)', fontSize: '1.2rem', fontWeight: '700' }}>
+                {previewImage.title}
+              </h3>
+              <button 
+                onClick={() => setPreviewImage(null)}
+                style={{ 
+                  background: 'rgba(255,255,255,0.1)', 
+                  border: 'none', 
+                  borderRadius: '50%', 
+                  padding: '8px', 
+                  color: 'var(--text-muted, #94a3b8)', 
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ 
+              flex: 1, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              minHeight: '200px',
+              maxHeight: '60vh',
+              background: 'rgba(0,0,0,0.2)',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              padding: '10px',
+              border: '1px solid var(--panel-border, #334155)'
+            }}>
+              {imageError ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#ef4444' }}>
+                  <p style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '8px' }}>Error al cargar la imagen</p>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted, #94a3b8)', maxWidth: '300px' }}>
+                    El archivo de comprobante no se encuentra en el servidor. Esto suele ocurrir con registros antiguos si el archivo físico no fue conservado.
+                  </p>
+                </div>
+              ) : (
+                <img 
+                  src={previewImage.url} 
+                  alt="Comprobante" 
+                  onError={() => setImageError(true)}
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '55vh', 
+                    objectFit: 'contain',
+                    borderRadius: '8px'
+                  }} 
+                />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <a 
+                href={previewImage.url} 
+                target="_blank" 
+                rel="noreferrer"
+                className="btn-primary"
+                style={{ 
+                  padding: '10px 20px', 
+                  borderRadius: '10px', 
+                  textDecoration: 'none', 
+                  fontSize: '0.9rem', 
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                Abrir en pestaña nueva
+              </a>
+              <button 
+                onClick={() => setPreviewImage(null)}
+                style={{ 
+                  padding: '10px 20px', 
+                  background: 'transparent', 
+                  border: '1px solid var(--panel-border, #334155)',
+                  borderRadius: '10px',
+                  color: 'var(--text-main, #f8fafc)',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

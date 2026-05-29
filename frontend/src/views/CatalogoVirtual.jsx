@@ -865,7 +865,7 @@ const CatalogoVirtual = () => {
             </button>
 
             {checkoutStep === 3 && (
-               <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: 'var(--text-primary)' }}>Detalles de pago</h1>
+               <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de pago</h1>
             )}
 
             {/* Stepper Visual */}
@@ -878,19 +878,19 @@ const CatalogoVirtual = () => {
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Planes</span>
+                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: '#000000', fontWeight: '500' }}>Planes</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }} onClick={() => setCheckoutStep(2)}>
                   <div style={{ width: checkoutStep === 2 ? '50px' : '40px', height: checkoutStep === 2 ? '50px' : '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 2 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 2 ? '-5px' : '0', boxShadow: checkoutStep === 2 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: 'var(--text-primary)', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>Revisar Plan</span>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: '#000000', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>Revisar Plan</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: checkoutStep === 3 ? 'pointer' : 'not-allowed' }} onClick={() => { if(checkoutStep === 3) setCheckoutStep(3) }}>
                   <div style={{ width: checkoutStep === 3 ? '50px' : '40px', height: checkoutStep === 3 ? '50px' : '40px', borderRadius: '50%', backgroundColor: checkoutStep === 3 ? 'var(--accent-primary)' : '#334155', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 3 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 3 ? '-5px' : '0', boxShadow: checkoutStep === 3 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 3 ? '1rem' : '0.9rem', color: checkoutStep === 2 ? '#94a3b8' : 'var(--text-primary)', fontWeight: checkoutStep === 3 ? 'bold' : '500' }}>Pago</span>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 3 ? '1rem' : '0.9rem', color: checkoutStep === 2 ? '#94a3b8' : '#000000', fontWeight: checkoutStep === 3 ? 'bold' : '500' }}>Pago</span>
                 </div>
               </div>
             </div>
@@ -980,7 +980,7 @@ const CatalogoVirtual = () => {
                     
                     {/* Lado Izquierdo: Detalles de facturación */}
                     <div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Detalles de facturación</h3>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#000000' }}>Detalles de facturación</h3>
                       
                       <div style={{ marginBottom: '24px' }}>
                         <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
@@ -991,6 +991,7 @@ const CatalogoVirtual = () => {
                             borderRadius: '10px', 
                             border: validationErrors.dni ? '2px solid #dc2626' : solicitudForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
                             backgroundColor: '#ffffff', 
+                            color: '#000000',
                             fontSize: '0.95rem',
                             transition: 'all 0.2s ease',
                             boxShadow: validationErrors.dni ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1029,6 +1030,7 @@ const CatalogoVirtual = () => {
                             borderRadius: '10px', 
                             border: validationErrors.nombreCompleto ? '2px solid #dc2626' : (solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
                             backgroundColor: '#ffffff', 
+                            color: '#000000',
                             fontSize: '0.95rem',
                             transition: 'all 0.2s ease',
                             boxShadow: validationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1067,6 +1069,7 @@ const CatalogoVirtual = () => {
                             borderRadius: '10px', 
                             border: validationErrors.telefono ? '2px solid #dc2626' : solicitudForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
                             backgroundColor: '#ffffff', 
+                            color: '#000000',
                             fontSize: '0.95rem',
                             transition: 'all 0.2s ease',
                             boxShadow: validationErrors.telefono ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1104,6 +1107,7 @@ const CatalogoVirtual = () => {
                           borderRadius: '10px', 
                           border: '2px solid #e2e8f0', 
                           backgroundColor: '#ffffff', 
+                          color: '#000000',
                           fontSize: '0.95rem',
                           transition: 'all 0.2s ease'
                         }}
@@ -1114,7 +1118,7 @@ const CatalogoVirtual = () => {
                     {/* Lado Derecho: Tu Pedido */}
                     <div>
                       <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
-                        <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Tu pedido</h3>
+                        <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Tu pedido</h3>
                         
                         {/* Summary Table */}
                         <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
@@ -1147,12 +1151,12 @@ const CatalogoVirtual = () => {
                           
                           <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>939 868 702 <span style={{fontSize:'0.9rem', color:'#64748b', fontWeight:'normal'}}>(Carlos B.)</span></p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>939 868 702 <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>(Carlos B.)</span></p>
                           </div>
 
                           <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>BCP</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>191-0000000-0-00</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>191-0000000-0-00</p>
                           </div>
 
                           <div style={{ marginBottom: '24px' }}>
@@ -1164,6 +1168,7 @@ const CatalogoVirtual = () => {
                                 borderRadius: '10px', 
                                 border: validationErrors.numeroOperacion ? '2px solid #dc2626' : (solicitudForm.numeroOperacion.length > 0 && solicitudForm.numeroOperacion.length <= 6) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
                                 backgroundColor: '#ffffff', 
+                                color: '#000000',
                                 fontSize: '0.95rem',
                                 transition: 'all 0.2s ease',
                                 boxShadow: validationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
