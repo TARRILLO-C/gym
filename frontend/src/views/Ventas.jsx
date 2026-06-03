@@ -71,7 +71,7 @@ const Ventas = () => {
   const fetchVentas = async () => {
     setLoading(true);
     try {
-      const resp = await api.get('/ventas');
+      const resp = await api.get('/ventas/productos');
       // Asegurarse de que sea un arreglo.
       setVentas(Array.isArray(resp.data) ? resp.data : []);
     } catch (err) {
@@ -187,11 +187,19 @@ const Ventas = () => {
     .filter(v => {
       const term = search.toLowerCase();
       const socioNombre = v.socio?.nombreCompleto?.toLowerCase() || '';
+      const clienteNombre = v.clienteNombre?.toLowerCase() || '';
+      const clienteDoc = v.clienteDocumento?.toLowerCase() || '';
       const metodo = v.metodoPago?.toLowerCase() || '';
-      return socioNombre.includes(term) || metodo.includes(term);
+      const idStr = String(v.id);
+      return socioNombre.includes(term) || clienteNombre.includes(term) || clienteDoc.includes(term) || metodo.includes(term) || idStr.includes(term);
     });
 
   const filteredPagos = pagos
+    .filter(p => {
+      if (filterMode === 'ACTIVO') return p.venta?.activo !== false;
+      if (filterMode === 'INACTIVO') return p.venta?.activo === false;
+      return true;
+    })
     .filter(p => {
       const term = search.toLowerCase();
       const socioNombre = p.suscripcion?.socio?.nombreCompleto?.toLowerCase() || '';
@@ -258,28 +266,26 @@ const Ventas = () => {
             />
           </div>
 
-          {activeTab === 'productos' && (
-            <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <button 
-                onClick={() => setFilterMode('ALL')}
-                style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
-              >
-                Todos
-              </button>
-              <button 
-                onClick={() => setFilterMode('ACTIVO')}
-                style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
-              >
-                Válidas
-              </button>
-              <button 
-                onClick={() => setFilterMode('INACTIVO')}
-                style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
-              >
-                Anuladas
-              </button>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button 
+              onClick={() => setFilterMode('ALL')}
+              style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
+            >
+              Todos
+            </button>
+            <button 
+              onClick={() => setFilterMode('ACTIVO')}
+              style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
+            >
+              Válidas
+            </button>
+            <button 
+              onClick={() => setFilterMode('INACTIVO')}
+              style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
+            >
+              Anuladas
+            </button>
+          </div>
         </div>
 
         {activeTab === 'productos' ? (
@@ -311,7 +317,7 @@ const Ventas = () => {
                       </div>
                     </td>
                     <td data-label="CLIENTE" style={{ fontWeight: '600' }}>
-                      {venta.socio?.nombreCompleto || 'Cliente General'}
+                      {venta.socio?.nombreCompleto || venta.clienteNombre || 'Cliente General'}
                     </td>
                     <td data-label="MÉTODO PAGO">
                       <span className="badge" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>

@@ -43,7 +43,9 @@ public class WebConfigController {
             configToUpdate = configs.get(0);
         }
         configToUpdate.setLogoUrl(configData.getLogoUrl());
-        configToUpdate.setWhatsappNumber(configData.getWhatsappNumber());
+        configToUpdate.setYapeNumber(configData.getYapeNumber());
+        configToUpdate.setYapeNombre(configData.getYapeNombre());
+        configToUpdate.setCciNumber(configData.getCciNumber());
         return ResponseEntity.ok(configuracionWebRepository.save(configToUpdate));
     }
 

@@ -3,7 +3,9 @@ import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2, AlertCircle, CheckC
 
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [yapeNumber, setYapeNumber] = useState('');
+  const [yapeNombre, setYapeNombre] = useState('');
+  const [cciNumber, setCciNumber] = useState('');
   const [sliders, setSliders] = useState([]);
   const [productos, setProductos] = useState([]);
   const [membresias, setMembresias] = useState([]);
@@ -30,6 +32,21 @@ const CatalogoVirtual = () => {
   const [solicitudSuccess, setSolicitudSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
 
+  // Product checkout state
+  const [isProductCheckoutOpen, setIsProductCheckoutOpen] = useState(false);
+  const [productCheckoutStep, setProductCheckoutStep] = useState(1);
+  const [productForm, setProductForm] = useState({
+    dni: '',
+    nombreCompleto: '',
+    telefono: '',
+    email: '',
+    numeroOperacion: ''
+  });
+  const [productFile, setProductFile] = useState(null);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [productSuccess, setProductSuccess] = useState(false);
+  const [productValidationErrors, setProductValidationErrors] = useState({});
+
   useEffect(() => {
     fetchConfig();
     fetchSliders();
@@ -53,7 +70,9 @@ const CatalogoVirtual = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
-        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
+        if (data.yapeNumber) setYapeNumber(data.yapeNumber);
+        if (data.yapeNombre) setYapeNombre(data.yapeNombre);
+        if (data.cciNumber) setCciNumber(data.cciNumber);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -145,17 +164,133 @@ const CatalogoVirtual = () => {
   const handleCheckoutWhatsApp = () => {
     if (cart.length === 0) return;
     
-    let text = "Hola, deseo realizar el siguiente pedido:\n\n";
-    cart.forEach(item => {
-      text += `- ${item.cantidad}x ${item.producto.nombre} (S/ ${item.producto.precio.toFixed(2)} c/u) = S/ ${(item.producto.precio * item.cantidad).toFixed(2)}\n`;
-    });
-    text += `\n*Total a pagar: S/ ${cartTotal.toFixed(2)}*`;
-    
-    let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    if (whatsappNumber) {
-      url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
+    // Open product checkout modal instead of WhatsApp
+    setProductForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
+    setProductFile(null);
+    setProductSuccess(false);
+    setProductValidationErrors({});
+    setProductCheckoutStep(1);
+    setIsProductCheckoutOpen(true);
+  };
+
+  const handleProductDniChange = async (e) => {
+    const dni = e.target.value.replace(/\D/g, '');
+    setProductForm(prev => ({ ...prev, dni }));
+
+    if (dni.length === 8) {
+      try {
+        const res = await fetch(`http://localhost:8080/api/consultas/dni/${dni}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.nombreCompleto) {
+            setProductForm(prev => ({ ...prev, nombreCompleto: data.nombreCompleto }));
+          } else if (data.nombres) {
+            const apellidoPat = data.ape_paterno || data.apellidoPaterno || '';
+            const apellidoMat = data.ape_materno || data.apellidoMaterno || '';
+            setProductForm(prev => ({
+              ...prev,
+              nombreCompleto: `${data.nombres} ${apellidoPat} ${apellidoMat}`.trim()
+            }));
+          } else if (data.datos && data.datos.nombres) {
+             const datos = data.datos;
+             const apellidoPat = datos.ape_paterno || datos.apellidoPaterno || '';
+             const apellidoMat = datos.ape_materno || datos.apellidoMaterno || '';
+             setProductForm(prev => ({
+              ...prev,
+              nombreCompleto: `${datos.nombres} ${apellidoPat} ${apellidoMat}`.trim()
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching DNI:", error);
+      }
     }
-    window.open(url, '_blank');
+  };
+
+  const handleProductSubmit = async (e) => {
+    e.preventDefault();
+    
+    const errors = {};
+    
+    if (!productForm.dni || productForm.dni.length !== 8) {
+      errors.dni = "El DNI debe tener exactamente 8 dígitos";
+    }
+    
+    if (!productForm.nombreCompleto || productForm.nombreCompleto.trim() === '') {
+      errors.nombreCompleto = "El nombre completo es requerido";
+    }
+    
+    if (!productForm.telefono || productForm.telefono.length !== 9) {
+      errors.telefono = "El teléfono debe tener exactamente 9 dígitos";
+    }
+    
+    if (!productForm.numeroOperacion || productForm.numeroOperacion.length === 0 || productForm.numeroOperacion.length > 6) {
+      errors.numeroOperacion = "El número de operación debe tener máximo 6 dígitos";
+    }
+    
+    if (!productFile) {
+      errors.comprobante = "Debe subir un comprobante de pago";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setProductValidationErrors(errors);
+      return;
+    }
+    
+    setProductValidationErrors({});
+    setIsSubmittingProduct(true);
+    try {
+      // 1. Subir imagen
+      const formData = new FormData();
+      formData.append('file', productFile);
+      const uploadRes = await fetch('http://localhost:8080/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error("Error subiendo el archivo");
+      const uploadData = await uploadRes.json();
+      const fileUrl = uploadData.url;
+
+      // 2. Crear solicitud de compra de productos
+      const solicitudData = {
+        dni: productForm.dni,
+        nombreCompleto: productForm.nombreCompleto,
+        telefono: productForm.telefono,
+        email: productForm.email,
+        numeroOperacion: productForm.numeroOperacion,
+        items: cart.map(item => ({
+          productoId: item.producto.id,
+          cantidad: item.cantidad,
+          precioUnitario: item.producto.precio
+        })),
+        total: cartTotal,
+        comprobanteUrl: fileUrl
+      };
+
+      const solRes = await fetch('http://localhost:8080/api/solicitudes-producto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(solicitudData)
+      });
+      if (!solRes.ok) {
+        let errMsg = 'Error creando la solicitud';
+        try {
+          const errBody = await solRes.json();
+          errMsg = errBody.mensaje || errBody.message || errMsg;
+        } catch {
+          errMsg = await solRes.text() || errMsg;
+        }
+        throw new Error(errMsg);
+      }
+
+      setProductSuccess(true);
+      setCart([]);
+    } catch (error) {
+      console.error(error);
+      alert("Hubo un problema al enviar la solicitud: " + error.message);
+    } finally {
+      setIsSubmittingProduct(false);
+    }
   };
 
   // Solicitud Functions
@@ -615,14 +750,15 @@ const CatalogoVirtual = () => {
               type="text" 
               placeholder="Buscar producto..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, ''))}
               style={{
                 width: '100%',
                 padding: '12px 20px 12px 40px',
                 borderRadius: '25px',
                 border: '1px solid #e2e8f0',
                 outline: 'none',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                color: '#000'
               }}
             />
             <Search size={20} style={{ position: 'absolute', left: '15px', top: '12px', color: '#94a3b8' }} />
@@ -781,7 +917,7 @@ const CatalogoVirtual = () => {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f1f5f9', borderRadius: '20px', padding: '2px 8px' }}>
                         <button onClick={() => updateQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Minus size={14} /></button>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '20px', textAlign: 'center' }}>{item.cantidad}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '20px', textAlign: 'center', color: '#000' }}>{item.cantidad}</span>
                         <button onClick={() => updateQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Plus size={14} /></button>
                       </div>
                       <button 
@@ -809,7 +945,7 @@ const CatalogoVirtual = () => {
               onClick={handleCheckoutWhatsApp}
               style={{
                 width: '100%',
-                backgroundColor: '#25D366',
+                backgroundColor: 'var(--accent-primary)',
                 color: 'white',
                 border: 'none',
                 padding: '15px',
@@ -821,13 +957,13 @@ const CatalogoVirtual = () => {
                 justifyContent: 'center',
                 alignItems: 'center',
                 gap: '10px',
-                boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)',
+                boxShadow: '0 4px 15px rgba(255, 62, 62, 0.3)',
                 transition: 'transform 0.2s'
               }}
               onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
               onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              Finalizar Pedido por WhatsApp
+              Finalizar compra
             </button>
           </div>
         )}
@@ -854,7 +990,7 @@ const CatalogoVirtual = () => {
           {/* Header para Paso 2 */}
           {checkoutStep === 2 && (
             <div style={{ width: '100%', padding: '40px 20px 40px', textAlign: 'center' }}>
-              <h1 style={{ color: 'var(--text-primary)', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
+              <h1 style={{ color: '#000000', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
             </div>
           )}
 
@@ -950,7 +1086,7 @@ const CatalogoVirtual = () => {
 
                     {/* Totales del Carrito */}
                     <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Totales del carrito</h3>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Totales del carrito</h3>
                       
                       <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>SUBTOTAL</span>
@@ -1128,9 +1264,9 @@ const CatalogoVirtual = () => {
                         
                         <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre} × 1</p>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#000000' }}>{selectedPlan.nombre} × 1</p>
                           </div>
-                          <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                         </div>
 
                         <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
@@ -1139,7 +1275,7 @@ const CatalogoVirtual = () => {
                         </div>
 
                         <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
-                          <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Total</span>
+                          <span style={{ fontWeight: 'bold', color: '#000000' }}>Total</span>
                           <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                         </div>
 
@@ -1151,12 +1287,12 @@ const CatalogoVirtual = () => {
                           
                           <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>939 868 702 <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>(Carlos B.)</span></p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{yapeNumber || '---'} {yapeNombre ? <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>({yapeNombre})</span> : null}</p>
                           </div>
 
                           <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>BCP</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>191-0000000-0-00</p>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>CCI</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{cciNumber || '---'}</p>
                           </div>
 
                           <div style={{ marginBottom: '24px' }}>
@@ -1252,6 +1388,317 @@ const CatalogoVirtual = () => {
 
                   </form>
                 )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Product Checkout Modal */}
+      {isProductCheckoutOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto',
+          transition: 'background-color 0.3s ease'
+        }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px', position: 'relative' }}>
+            
+            <button onClick={() => setIsProductCheckoutOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+              <X size={24} color="#64748b" />
+            </button>
+
+            {productSuccess ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginTop: '40px' }}>
+                <div style={{ width: '80px', height: '80px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <h2 style={{ color: '#166534', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
+                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su pedido.</p>
+                <button onClick={() => setIsProductCheckoutOpen(false)} className="btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem' }}>
+                  Volver al Catálogo
+                </button>
+              </div>
+            ) : (
+              <>
+                <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de la compra</h1>
+                
+                <form onSubmit={handleProductSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                  
+                  {/* Lado Izquierdo: Detalles de facturación */}
+                  <div>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#000000' }}>Detalles de facturación</h3>
+                    
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
+                      <div style={{ position: 'relative' }}>
+                        <input type="text" required maxLength="8" style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: productValidationErrors.dni ? '2px solid #dc2626' : productForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          color: '#000000',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: productValidationErrors.dni ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                        }}
+                          value={productForm.dni} onChange={handleProductDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                        {productForm.dni.length === 8 && !productValidationErrors.dni && (
+                          <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                        )}
+                      </div>
+                      {productValidationErrors.dni && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          color: '#dc2626', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '500', 
+                          backgroundColor: '#fef2f2', 
+                          padding: '10px 14px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #fecaca'
+                        }}>
+                          <AlertCircle size={16} />
+                          <span>{productValidationErrors.dni}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
+                      <div style={{ position: 'relative' }}>
+                        <input type="text" required style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: productValidationErrors.nombreCompleto ? '2px solid #dc2626' : (productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          color: '#000000',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: productValidationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                        }}
+                          value={productForm.nombreCompleto} onChange={e => {setProductForm({...productForm, nombreCompleto: e.target.value}); setProductValidationErrors({...productValidationErrors, nombreCompleto: null});}} placeholder="Se autocompletará si el DNI es válido" />
+                        {productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto && (
+                          <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                        )}
+                      </div>
+                      {productValidationErrors.nombreCompleto && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          color: '#dc2626', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '500', 
+                          backgroundColor: '#fef2f2', 
+                          padding: '10px 14px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #fecaca'
+                        }}>
+                          <AlertCircle size={16} />
+                          <span>{productValidationErrors.nombreCompleto}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
+                      <div style={{ position: 'relative' }}>
+                        <input type="text" required maxLength="9" style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: productValidationErrors.telefono ? '2px solid #dc2626' : productForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          color: '#000000',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: productValidationErrors.telefono ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                        }}
+                          value={productForm.telefono} onChange={e => {setProductForm({...productForm, telefono: e.target.value.replace(/\D/g, '')}); setProductValidationErrors({...productValidationErrors, telefono: null});}} placeholder="9 dígitos" />
+                        {productForm.telefono.length === 9 && !productValidationErrors.telefono && (
+                          <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                        )}
+                      </div>
+                      {productValidationErrors.telefono && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          color: '#dc2626', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '500', 
+                          backgroundColor: '#fef2f2', 
+                          padding: '10px 14px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #fecaca'
+                        }}>
+                          <AlertCircle size={16} />
+                          <span>{productValidationErrors.telefono}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
+                      <input type="email" style={{ 
+                        width: '100%', 
+                        padding: '14px 16px', 
+                        borderRadius: '10px', 
+                        border: '2px solid #e2e8f0', 
+                        backgroundColor: '#ffffff', 
+                        color: '#000000',
+                        fontSize: '0.95rem',
+                        transition: 'all 0.2s ease'
+                      }}
+                        value={productForm.email} onChange={e => setProductForm({...productForm, email: e.target.value})} placeholder="ejemplo@correo.com" />
+                    </div>
+                  </div>
+
+                  {/* Lado Derecho: Tu Pedido */}
+                  <div>
+                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Tu pedido</h3>
+                      
+                      {/* Summary Table */}
+                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        <span>PRODUCTO</span>
+                        <span>SUBTOTAL</span>
+                      </div>
+                      
+                      {cart.map(item => (
+                        <div key={item.producto.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#000000' }}>{item.producto.nombre} × {item.cantidad}</p>
+                          </div>
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</span>
+                        </div>
+                      ))}
+
+                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
+                        <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {cartTotal.toFixed(2)}</span>
+                      </div>
+
+                      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
+                        <span style={{ fontWeight: 'bold', color: '#000000' }}>Total</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
+                      </div>
+
+                      {/* Metodos de pago (Yape/Transferencia) */}
+                      <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
+                          Realiza el pago a nuestras cuentas y adjunta el comprobante para procesar tu pedido.
+                        </p>
+                        
+                        <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{yapeNumber || '---'} {yapeNombre ? <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>({yapeNombre})</span> : null}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>CCI</p>
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{cciNumber || '---'}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '24px' }}>
+                          <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
+                          <div style={{ position: 'relative' }}>
+                            <input type="text" required maxLength="6" style={{ 
+                              width: '100%', 
+                              padding: '14px 16px', 
+                              borderRadius: '10px', 
+                              border: productValidationErrors.numeroOperacion ? '2px solid #dc2626' : (productForm.numeroOperacion.length > 0 && productForm.numeroOperacion.length <= 6) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                              backgroundColor: '#ffffff', 
+                              color: '#000000',
+                              fontSize: '0.95rem',
+                              transition: 'all 0.2s ease',
+                              boxShadow: productValidationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                            }}
+                              value={productForm.numeroOperacion} onChange={e => {setProductForm({...productForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setProductValidationErrors({...productValidationErrors, numeroOperacion: null});}} placeholder="Máx 6 dígitos" />
+                            {productForm.numeroOperacion.length > 0 && productForm.numeroOperacion.length <= 6 && !productValidationErrors.numeroOperacion && (
+                              <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                            )}
+                          </div>
+                          {productValidationErrors.numeroOperacion && (
+                            <div style={{ 
+                              marginTop: '8px', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '8px',
+                              color: '#dc2626', 
+                              fontSize: '0.85rem', 
+                              fontWeight: '500', 
+                              backgroundColor: '#fef2f2', 
+                              padding: '10px 14px', 
+                              borderRadius: '8px', 
+                              border: '1px solid #fecaca'
+                            }}>
+                              <AlertCircle size={16} />
+                              <span>{productValidationErrors.numeroOperacion}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div style={{ marginBottom: '30px' }}>
+                          <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
+                          <div style={{ position: 'relative' }}>
+                            <input type="file" accept="image/*,.pdf" required style={{ 
+                              width: '100%', 
+                              padding: '14px 16px', 
+                              borderRadius: '10px', 
+                              border: productValidationErrors.comprobante ? '2px solid #dc2626' : productFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
+                              backgroundColor: '#ffffff', 
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              transition: 'all 0.2s ease',
+                              boxShadow: productValidationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                            }}
+                              onChange={e => {setProductFile(e.target.files[0]); setProductValidationErrors({...productValidationErrors, comprobante: null});}} />
+                            {productFile && !productValidationErrors.comprobante && (
+                              <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                            )}
+                          </div>
+                          {productValidationErrors.comprobante && (
+                            <div style={{ 
+                              marginTop: '8px', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '8px',
+                              color: '#dc2626', 
+                              fontSize: '0.85rem', 
+                              fontWeight: '500', 
+                              backgroundColor: '#fef2f2', 
+                              padding: '10px 14px', 
+                              borderRadius: '8px', 
+                              border: '1px solid #fecaca'
+                            }}>
+                              <AlertCircle size={16} />
+                              <span>{productValidationErrors.comprobante}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <button type="submit" disabled={isSubmittingProduct} style={{
+                          width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
+                          padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
+                          cursor: isSubmittingProduct ? 'not-allowed' : 'pointer', opacity: isSubmittingProduct ? 0.7 : 1,
+                          transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                        }}>
+                          {isSubmittingProduct ? 'Procesando...' : 'Finalizar compra'}
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+
+                </form>
               </>
             )}
           </div>

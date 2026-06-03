@@ -1,5 +1,6 @@
 package com.gym.services;
 
+import com.gym.models.CategoriaProducto;
 import com.gym.models.Pago;
 import com.gym.models.Suscripcion;
 import com.gym.models.Venta;
@@ -28,6 +29,7 @@ public class PagoService {
     private final SuscripcionRepository suscripcionRepository;
     private final VentaService ventaService;
     private final ProductoRepository productoRepository;
+    private final CategoriaProductoService categoriaProductoService;
 
     @Transactional
     public Pago registrarPago(Long suscripcionId, Pago pago) {
@@ -85,11 +87,15 @@ public class PagoService {
         // Obtener o crear el producto genérico para membresías
         Producto membresiaProduct = productoRepository.findFirstByNombre("Servicio de Membresía")
                 .orElseGet(() -> {
+                    CategoriaProducto cat = categoriaProductoService.listarActivas().stream()
+                            .filter(c -> "OTRO".equalsIgnoreCase(c.getNombre()))
+                            .findFirst()
+                            .orElseGet(() -> categoriaProductoService.crear("OTRO"));
                     Producto dummy = Producto.builder()
                             .nombre("Servicio de Membresía")
-                            .categoria(Producto.CategoriaProducto.OTRO)
+                            .categoria(cat)
                             .descripcion("Servicio de venta de plan de membresía")
-                            .precio(BigDecimal.ONE)  // precio simbólico; el precio real va en DetalleVenta
+                            .precio(BigDecimal.ONE)
                             .stock(999999)
                             .activo(true)
                             .build();
@@ -154,8 +160,9 @@ public class PagoService {
         return pagoRepository.findBySuscripcionSocioId(socioId);
     }
 
+    @Transactional(readOnly = true)
     public List<Pago> listarTodos() {
-        return pagoRepository.findAll();
+        return pagoRepository.findAllWithRelaciones();
     }
 
     /**

@@ -31,6 +31,11 @@ public class VentaController {
         return ResponseEntity.ok(ventaService.listarTodas());
     }
 
+    @GetMapping("/productos")
+    public ResponseEntity<List<Venta>> listarVentasProductos() {
+        return ResponseEntity.ok(ventaService.listarVentasProductos());
+    }
+
     @PostMapping
     public ResponseEntity<Venta> registrarVenta(@Valid @RequestBody VentaRequest request) {
         Venta nueva = ventaService.registrarVenta(

@@ -66,20 +66,41 @@ CREATE TABLE `pagos` (
   `metodo_pago` enum('EFECTIVO','TARJETA','TRANSFERENCIA','YAPE_PLIN') NOT NULL,
   `monto` decimal(10,2) NOT NULL,
   `suscripcion_id` bigint NOT NULL,
+  `venta_id` bigint DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `FK_pago_suscripcion` (`suscripcion_id`),
-  CONSTRAINT `FK_pago_suscripcion` FOREIGN KEY (`suscripcion_id`) REFERENCES `suscripciones` (`id`)
+  KEY `FK_pago_venta` (`venta_id`),
+  CONSTRAINT `FK_pago_suscripcion` FOREIGN KEY (`suscripcion_id`) REFERENCES `suscripciones` (`id`),
+  CONSTRAINT `FK_pago_venta` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `categorias_producto` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) NOT NULL,
+  `activo` bit(1) NOT NULL DEFAULT b'1',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_categoria_nombre` (`nombre`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO `categorias_producto` (`nombre`, `activo`) VALUES
+  ('BEBIDA', 1),
+  ('SUPLEMENTO', 1),
+  ('ACCESORIO', 1),
+  ('ROPA', 1),
+  ('OTRO', 1);
 
 CREATE TABLE `productos` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `categoria` enum('BEBIDA','SUPLEMENTO','ACCESORIO','ROPA','OTRO') DEFAULT NULL,
+  `categoria_id` bigint DEFAULT NULL,
   `descripcion` varchar(500) DEFAULT NULL,
   `imagen_url` varchar(255) DEFAULT NULL,
   `nombre` varchar(150) NOT NULL,
   `precio` decimal(10,2) NOT NULL,
   `stock` int NOT NULL,
-  PRIMARY KEY (`id`)
+  `activo` bit(1) NOT NULL DEFAULT b'1',
+  PRIMARY KEY (`id`),
+  KEY `FK_producto_categoria` (`categoria_id`),
+  CONSTRAINT `FK_producto_categoria` FOREIGN KEY (`categoria_id`) REFERENCES `categorias_producto` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ventas` (
@@ -105,4 +126,50 @@ CREATE TABLE `detalle_ventas` (
   KEY `FK_detalle_venta` (`venta_id`),
   CONSTRAINT `FK_detalle_venta` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`id`),
   CONSTRAINT `FK_detalle_producto` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `solicitudes_membresia` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `dni` varchar(15) NOT NULL,
+  `nombre_completo` varchar(150) NOT NULL,
+  `telefono` varchar(15) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  `numero_operacion` varchar(50) DEFAULT NULL,
+  `membresia_id` bigint NOT NULL,
+  `comprobante_url` varchar(500) DEFAULT NULL,
+  `estado` enum('PENDIENTE','APROBADA','RECHAZADA') NOT NULL,
+  `fecha_solicitud` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `FK_solicitud_membresia` (`membresia_id`),
+  CONSTRAINT `FK_solicitud_membresia` FOREIGN KEY (`membresia_id`) REFERENCES `membresias` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `solicitudes_producto` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `dni` varchar(15) NOT NULL,
+  `nombre_completo` varchar(150) NOT NULL,
+  `telefono` varchar(15) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  `numero_operacion` varchar(50) DEFAULT NULL,
+  `total` decimal(10,2) NOT NULL,
+  `comprobante_url` varchar(500) DEFAULT NULL,
+  `estado` enum('PENDIENTE','APROBADA','RECHAZADA') NOT NULL,
+  `fecha_solicitud` datetime(6) NOT NULL,
+  `venta_id` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `FK_solicitud_producto_venta` (`venta_id`),
+  CONSTRAINT `FK_solicitud_producto_venta` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `detalle_solicitud_producto` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `producto_id` bigint NOT NULL,
+  `cantidad` int NOT NULL,
+  `precio_unitario` decimal(10,2) NOT NULL,
+  `solicitud_producto_id` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `FK_detalle_sol_producto` (`producto_id`),
+  KEY `FK_detalle_sol_solicitud` (`solicitud_producto_id`),
+  CONSTRAINT `FK_detalle_sol_producto` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`),
+  CONSTRAINT `FK_detalle_sol_solicitud` FOREIGN KEY (`solicitud_producto_id`) REFERENCES `solicitudes_producto` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

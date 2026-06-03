@@ -3,7 +3,9 @@ import { Upload, Image as ImageIcon, Plus, Trash2, ExternalLink } from 'lucide-r
 
 const ConfiguracionCatalogo = () => {
   const [logoUrl, setLogoUrl] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [yapeNumber, setYapeNumber] = useState('');
+  const [yapeNombre, setYapeNombre] = useState('');
+  const [cciNumber, setCciNumber] = useState('');
   const [sliders, setSliders] = useState([]);
   const [membresias, setMembresias] = useState([]);
   
@@ -41,7 +43,9 @@ const ConfiguracionCatalogo = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
-        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
+        if (data.yapeNumber) setYapeNumber(data.yapeNumber);
+        if (data.yapeNombre) setYapeNombre(data.yapeNombre);
+        if (data.cciNumber) setCciNumber(data.cciNumber);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -108,7 +112,9 @@ const ConfiguracionCatalogo = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           logoUrl: currentLogoUrl,
-          whatsappNumber: whatsappNumber
+          yapeNumber: yapeNumber,
+          yapeNombre: yapeNombre,
+          cciNumber: cciNumber
         }),
       });
       if (response.ok) {
@@ -228,7 +234,7 @@ const ConfiguracionCatalogo = () => {
   return (
     <div className="view-container">
       <div className="header-actions">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Configuración del Catálogo Virtual</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Configuración General</h1>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', marginTop: '20px' }}>
@@ -268,13 +274,39 @@ const ConfiguracionCatalogo = () => {
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de WhatsApp (Ej: 51987654321)</p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número Yape / Plin</p>
             <input 
               type="text" 
               className="form-control"
-              value={whatsappNumber}
-              onChange={(e) => setWhatsappNumber(e.target.value)}
-              placeholder="Número de WhatsApp para recibir pedidos"
+              value={yapeNumber}
+              onChange={(e) => setYapeNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
+              placeholder="9 dígitos"
+              maxLength={9}
+              inputMode="numeric"
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Nombre en el Yape</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={yapeNombre}
+              onChange={(e) => setYapeNombre(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
+              placeholder="Ej: Carlos B."
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de CCI</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={cciNumber}
+              onChange={(e) => setCciNumber(e.target.value.replace(/\D/g, '').slice(0, 20))}
+              placeholder="20 dígitos"
+              maxLength={20}
+              inputMode="numeric"
             />
           </div>
 

@@ -7,6 +7,14 @@ const api = axios.create({
   },
 });
 
+api.interceptors.request.use((config) => {
+  const role = sessionStorage.getItem('role');
+  if (role) {
+    config.headers['X-User-Role'] = role;
+  }
+  return config;
+});
+
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,

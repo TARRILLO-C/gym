@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Eye, RefreshCw, FileText, X } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, RefreshCw, FileText, X, Package, Users } from 'lucide-react';
 import Modal from '../components/ui/Modal';
+import api from '../services/api';
 
 const SolicitudesMembresia = () => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('PENDIENTE');
+  const [requestType, setRequestType] = useState('MEMBRESIA'); // 'MEMBRESIA' | 'PRODUCTO'
   const [notification, setNotification] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
@@ -18,29 +20,34 @@ const SolicitudesMembresia = () => {
 
   useEffect(() => {
     fetchSolicitudes();
-  }, [activeTab]);
+  }, [activeTab, requestType]);
+
+  const getBasePath = () =>
+    requestType === 'MEMBRESIA' ? '/solicitudes-membresia' : '/solicitudes-producto';
 
   const fetchSolicitudes = async () => {
     setLoading(true);
     try {
-      const url = activeTab === 'PENDIENTE' 
-        ? 'http://localhost:8080/api/solicitudes-membresia/pendientes'
-        : 'http://localhost:8080/api/solicitudes-membresia';
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        if (activeTab !== 'PENDIENTE') {
-          // If all, we might want to still filter or just show them
-          setSolicitudes(data.filter(s => s.estado === activeTab || activeTab === 'TODAS'));
-        } else {
-          setSolicitudes(data);
-        }
-      }
+      const basePath = getBasePath();
+      const url =
+        activeTab === 'PENDIENTE'
+          ? `${basePath}/pendientes`
+          : `${basePath}/por-estado/${activeTab}`;
+
+      const res = await api.get(url);
+      setSolicitudes(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('Error fetching solicitudes:', error);
+      setSolicitudes([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const switchRequestType = (type) => {
+    if (type === requestType) return;
+    setRequestType(type);
+    setActiveTab('PENDIENTE');
   };
 
   const showNotification = (message, type = 'success') => {
@@ -49,26 +56,27 @@ const SolicitudesMembresia = () => {
   };
 
   const handleAprobar = async (id) => {
+    const message = requestType === 'MEMBRESIA'
+      ? "¿Está seguro de aprobar esta solicitud? Se creará el socio y se registrará su pago automáticamente."
+      : "¿Está seguro de aprobar esta solicitud? Se reducirá el stock de los productos y se enviará el comprobante al correo del cliente.";
+    
     setConfirmDialog({
       isOpen: true,
       title: 'Confirmar Acción',
-      message: "¿Está seguro de aprobar esta solicitud? Se creará el socio y se registrará su pago automáticamente.",
+      message,
       onConfirm: async () => {
         setConfirmDialog({ isOpen: false });
         try {
-          const res = await fetch(`http://localhost:8080/api/solicitudes-membresia/${id}/aprobar`, {
-            method: 'POST'
-          });
-          if (res.ok) {
-            showNotification("Solicitud aprobada con éxito. El socio ha sido registrado.", 'success');
-            fetchSolicitudes();
-          } else {
-            const err = await res.text();
-            showNotification("Error al aprobar: " + err, 'error');
-          }
+          await api.post(`${getBasePath()}/${id}/aprobar`);
+          const successMessage = requestType === 'MEMBRESIA'
+            ? "Solicitud aprobada con éxito. El socio ha sido registrado."
+            : "Solicitud aprobada con éxito. El stock de los productos ha sido reducido.";
+          showNotification(successMessage, 'success');
+          fetchSolicitudes();
         } catch (error) {
           console.error(error);
-          showNotification("Error de red", 'error');
+          const msg = error.response?.data?.mensaje || error.message || 'Error de red';
+          showNotification("Error al aprobar: " + msg, 'error');
         }
       }
     });
@@ -82,18 +90,13 @@ const SolicitudesMembresia = () => {
       onConfirm: async () => {
         setConfirmDialog({ isOpen: false });
         try {
-          const res = await fetch(`http://localhost:8080/api/solicitudes-membresia/${id}/rechazar`, {
-            method: 'POST'
-          });
-          if (res.ok) {
-            showNotification("Solicitud rechazada.", 'success');
-            fetchSolicitudes();
-          } else {
-            showNotification("Error al rechazar.", 'error');
-          }
+          await api.post(`${getBasePath()}/${id}/rechazar`);
+          showNotification("Solicitud rechazada.", 'success');
+          fetchSolicitudes();
         } catch (error) {
           console.error(error);
-          showNotification("Error de red", 'error');
+          const msg = error.response?.data?.mensaje || error.message || 'Error de red';
+          showNotification("Error al rechazar: " + msg, 'error');
         }
       }
     });
@@ -290,21 +293,47 @@ const SolicitudesMembresia = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FileText size={28} color="var(--accent-primary)" />
-          Solicitudes de Membresía
+          {requestType === 'MEMBRESIA' ? 'Solicitudes de Membresía' : 'Solicitudes de Productos'}
         </h2>
-        <button 
-          className="btn-update" 
-          onClick={fetchSolicitudes} 
-          style={{ 
-            backgroundColor: '#6b7280',
-            boxShadow: '0 4px 12px rgba(107, 114, 128, 0.3)'
-          }}
-        >
-          <RefreshCw size={18} /> Actualizar
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className="btn-update"
+            onClick={() => switchRequestType('MEMBRESIA')}
+            style={{
+              backgroundColor: requestType === 'MEMBRESIA' ? 'var(--accent-primary)' : '#6b7280',
+              boxShadow: requestType === 'MEMBRESIA'
+                ? '0 4px 12px rgba(255, 62, 62, 0.3)'
+                : '0 4px 12px rgba(107, 114, 128, 0.3)'
+            }}
+          >
+            <Users size={18} /> Ver Membresías
+          </button>
+          <button
+            className="btn-update"
+            onClick={() => switchRequestType('PRODUCTO')}
+            style={{
+              backgroundColor: requestType === 'PRODUCTO' ? 'var(--accent-primary)' : '#6b7280',
+              boxShadow: requestType === 'PRODUCTO'
+                ? '0 4px 12px rgba(255, 62, 62, 0.3)'
+                : '0 4px 12px rgba(107, 114, 128, 0.3)'
+            }}
+          >
+            <Package size={18} /> Ver Productos
+          </button>
+          <button
+            className="btn-update"
+            onClick={fetchSolicitudes}
+            style={{
+              backgroundColor: '#6b7280',
+              boxShadow: '0 4px 12px rgba(107, 114, 128, 0.3)'
+            }}
+          >
+            <RefreshCw size={18} /> Actualizar
+          </button>
+        </div>
       </div>
 
-      <div className="card glass" style={{ marginBottom: '20px', padding: '10px', display: 'flex', gap: '10px' }}>
+      <div className="card glass" style={{ marginBottom: '20px', padding: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <button 
           className={`tab-btn-pendiente ${activeTab === 'PENDIENTE' ? 'active' : ''}`}
           onClick={() => setActiveTab('PENDIENTE')}
@@ -343,7 +372,8 @@ const SolicitudesMembresia = () => {
                 <th>Fecha</th>
                 <th>DNI</th>
                 <th>Cliente</th>
-                <th>Plan Seleccionado</th>
+                <th>{requestType === 'MEMBRESIA' ? 'Plan Seleccionado' : 'Productos'}</th>
+                {requestType === 'PRODUCTO' && <th>Total</th>}
                 <th>Estado</th>
                 <th>Operación / Comprobante</th>
                 <th>Acciones</th>
@@ -358,9 +388,32 @@ const SolicitudesMembresia = () => {
                     {sol.nombreCompleto}<br/>
                     <small style={{ color: 'var(--text-muted)' }}>{sol.telefono} {sol.email ? `| ${sol.email}` : ''}</small>
                   </td>
-                  <td>{sol.membresiaNombre}</td>
                   <td>
-                    <span className={`status-badge status-${sol.estado.toLowerCase()}`}>
+                    {requestType === 'MEMBRESIA' ? (
+                      sol.membresiaNombre
+                    ) : (
+                      <div style={{ fontSize: '0.85rem' }}>
+                        {sol.items && sol.items.length > 0 ? (
+                          sol.items.map((item, idx) => (
+                            <div key={idx} style={{ marginBottom: '2px' }}>
+                              {item.productoNombre || item.producto?.nombre || 'Producto'} × {item.cantidad}
+                            </div>
+                          ))
+                        ) : (
+                          '-'
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  {requestType === 'PRODUCTO' && (
+                    <td>
+                      <strong>
+                        S/ {Number(sol.total ?? 0).toFixed(2)}
+                      </strong>
+                    </td>
+                  )}
+                  <td>
+                    <span className={`status-badge status-${sol.estado?.toLowerCase()}`}>
                       {sol.estado}
                     </span>
                   </td>
@@ -400,7 +453,7 @@ const SolicitudesMembresia = () => {
                         <button 
                           onClick={() => handleAprobar(sol.id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e' }}
-                          title="Aprobar y Registrar Socio"
+                          title={requestType === 'MEMBRESIA' ? 'Aprobar y Registrar Socio' : 'Aprobar y Reducir Stock'}
                         >
                           <CheckCircle size={24} />
                         </button>
