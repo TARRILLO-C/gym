@@ -370,6 +370,7 @@ const SolicitudesMembresia = () => {
             <thead>
               <tr>
                 <th>Fecha</th>
+                {requestType === 'PRODUCTO' && <th>Código</th>}
                 <th>DNI</th>
                 <th>Cliente</th>
                 <th>{requestType === 'MEMBRESIA' ? 'Plan Seleccionado' : 'Productos'}</th>
@@ -383,6 +384,22 @@ const SolicitudesMembresia = () => {
               {solicitudes.map(sol => (
                 <tr key={sol.id}>
                   <td>{formatDate(sol.fechaSolicitud)}</td>
+                  {requestType === 'PRODUCTO' && (
+                    <td>
+                      <span style={{ 
+                        fontSize: '0.85rem', 
+                        color: 'var(--accent-primary)', 
+                        fontWeight: 'bold', 
+                        backgroundColor: 'rgba(255, 62, 62, 0.1)', 
+                        padding: '4px 8px', 
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 62, 62, 0.2)',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        SOL-{sol.id}
+                      </span>
+                    </td>
+                  )}
                   <td><strong>{sol.dni}</strong></td>
                   <td>
                     {sol.nombreCompleto}<br/>
