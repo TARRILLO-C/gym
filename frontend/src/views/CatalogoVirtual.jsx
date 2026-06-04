@@ -4,8 +4,9 @@ import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2, AlertCircle, CheckC
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [yapeNumber, setYapeNumber] = useState('');
-  const [yapeNombre, setYapeNombre] = useState('');
-  const [cciNumber, setCciNumber] = useState('');
+  const [yapeTitular, setYapeTitular] = useState('');
+  const [numeroCuenta, setNumeroCuenta] = useState('');
+  const [cuentaTitular, setCuentaTitular] = useState('');
   const [sliders, setSliders] = useState([]);
   const [productos, setProductos] = useState([]);
   const [membresias, setMembresias] = useState([]);
@@ -1288,12 +1289,16 @@ const CatalogoVirtual = () => {
                           
                           <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{yapeNumber || '---'} {yapeNombre ? <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>({yapeNombre})</span> : null}</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
+                              {yapeNumber || '---'} {yapeTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({yapeTitular})</span> : null}
+                            </p>
                           </div>
 
                           <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>CCI</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{cciNumber || '---'}</p>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>Cuenta Bancaria</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
+                              {numeroCuenta || '---'} {cuentaTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({cuentaTitular})</span> : null}
+                            </p>
                           </div>
 
                           <div style={{ marginBottom: '24px' }}>
@@ -1600,12 +1605,16 @@ const CatalogoVirtual = () => {
                         
                         <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                           <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{yapeNumber || '---'} {yapeNombre ? <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>({yapeNombre})</span> : null}</p>
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
+                            {yapeNumber || '---'} {yapeTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({yapeTitular})</span> : null}
+                          </p>
                         </div>
 
                         <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
-                          <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>CCI</p>
-                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{cciNumber || '---'}</p>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>Cuenta Bancaria</p>
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
+                            {numeroCuenta || '---'} {cuentaTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({cuentaTitular})</span> : null}
+                          </p>
                         </div>
 
                         <div style={{ marginBottom: '24px' }}>
