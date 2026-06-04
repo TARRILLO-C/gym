@@ -23,6 +23,9 @@ const Ventas = () => {
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [dialogInput, setDialogInput] = useState('');
   
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
   const [showEmitModal, setShowEmitModal] = useState(false);
   const [emitForm, setEmitForm] = useState({ ventaId: null, tipo: 'BOLETA', documento: '', nombre: '' });
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -179,6 +182,19 @@ const Ventas = () => {
       return true;
     })
     .filter(v => {
+      if (startDate) {
+        const sDate = new Date(startDate + 'T00:00:00');
+        const vDate = new Date(v.fecha);
+        if (vDate < sDate) return false;
+      }
+      if (endDate) {
+        const eDate = new Date(endDate + 'T23:59:59');
+        const vDate = new Date(v.fecha);
+        if (vDate > eDate) return false;
+      }
+      return true;
+    })
+    .filter(v => {
       const term = search.toLowerCase();
       const socioNombre = v.socio?.nombreCompleto?.toLowerCase() || '';
       const clienteNombre = v.clienteNombre?.toLowerCase() || '';
@@ -192,6 +208,19 @@ const Ventas = () => {
     .filter(p => {
       if (filterMode === 'ACTIVO') return p.venta?.activo !== false;
       if (filterMode === 'INACTIVO') return p.venta?.activo === false;
+      return true;
+    })
+    .filter(p => {
+      if (startDate) {
+        const sDate = new Date(startDate + 'T00:00:00');
+        const pDate = new Date(p.fechaPago);
+        if (pDate < sDate) return false;
+      }
+      if (endDate) {
+        const eDate = new Date(endDate + 'T23:59:59');
+        const pDate = new Date(p.fechaPago);
+        if (pDate > eDate) return false;
+      }
       return true;
     })
     .filter(p => {
@@ -245,7 +274,7 @@ const Ventas = () => {
 
       <div className="card" style={{ padding: '0 24px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '24px 0', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ position: 'relative', flex: '1 1 250px' }}>
+          <div style={{ position: 'relative', flex: '1 1 250px', minWidth: '200px' }}>
             <Search
               size={18}
               color="var(--text-muted)"
@@ -260,22 +289,52 @@ const Ventas = () => {
             />
           </div>
 
+          {/* Filtros de Fecha */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--panel-border)' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Desde:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--panel-border)' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Hasta:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }}
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                style={{ padding: '6px 12px', background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: '1px solid rgba(255, 62, 62, 0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
           <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
             <button 
               onClick={() => setFilterMode('ALL')}
-              style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
+              style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
             >
               Todos
             </button>
             <button 
               onClick={() => setFilterMode('ACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
+              style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
             >
               Válidas
             </button>
             <button 
               onClick={() => setFilterMode('INACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
+              style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
             >
               Anuladas
             </button>
