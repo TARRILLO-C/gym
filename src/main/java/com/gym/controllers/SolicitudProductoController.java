@@ -9,6 +9,7 @@ import com.gym.models.SolicitudProducto.EstadoSolicitud;
 import com.gym.models.Venta;
 import com.gym.repositories.ProductoRepository;
 import com.gym.repositories.SolicitudProductoRepository;
+import com.gym.services.EmailService;
 import com.gym.services.VentaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class SolicitudProductoController {
     private final SolicitudProductoRepository solicitudProductoRepository;
     private final ProductoRepository productoRepository;
     private final VentaService ventaService;
+    private final EmailService emailService;
 
     @GetMapping
     @Transactional(readOnly = true)
@@ -113,6 +115,11 @@ public class SolicitudProductoController {
             SolicitudProducto guardada = solicitudProductoRepository.save(solicitud);
             log.info("Solicitud de producto ID {} aprobada (venta POS existente ID {}).",
                     id, solicitud.getVenta().getId());
+            try {
+                emailService.enviarConfirmacionVenta(guardada);
+            } catch (Exception e) {
+                log.error("Error al enviar correo de confirmación de venta: {}", e.getMessage());
+            }
             return ResponseEntity.ok(guardada);
         }
 
@@ -128,6 +135,11 @@ public class SolicitudProductoController {
         solicitud.setEstado(EstadoSolicitud.APROBADA);
         SolicitudProducto guardada = solicitudProductoRepository.save(solicitud);
         log.info("Solicitud de producto ID {} aprobada. Venta registrada ID {}.", id, venta.getId());
+        try {
+            emailService.enviarConfirmacionVenta(guardada);
+        } catch (Exception e) {
+            log.error("Error al enviar correo de confirmación de venta: {}", e.getMessage());
+        }
         return ResponseEntity.ok(guardada);
     }
 
