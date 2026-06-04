@@ -31,6 +31,13 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    // ── 400 Bad Request (reglas de negocio) ─────────────────────────────────
+
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     // ── 409 Conflict ─────────────────────────────────────────────────────────
 
     @ExceptionHandler(DuplicateResourceException.class)

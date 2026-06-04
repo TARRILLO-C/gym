@@ -1,5 +1,8 @@
 package com.gym.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import jakarta.validation.constraints.*;
@@ -16,67 +19,60 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Producto {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Nombre descriptivo del producto (ej: "Proteína Whey", "Camiseta Dry-fit").
-     */
     @NotBlank(message = "El nombre es obligatorio")
     @Column(name = "nombre", nullable = false, length = 150)
     private String nombre;
 
-    /**
-     * Categoría del producto para filtros y organización.
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "categoria", length = 50)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "categoria_id")
+    @JsonIgnore
     private CategoriaProducto categoria;
 
-    /**
-     * Descripción larga del producto.
-     */
+    @Transient
+    private Long categoriaId;
+
+    @JsonProperty("categoria")
+    public String getCategoriaNombre() {
+        return categoria != null ? categoria.getNombre() : null;
+    }
+
+    @JsonProperty("categoriaId")
+    public Long getCategoriaId() {
+        if (categoriaId != null) {
+            return categoriaId;
+        }
+        return categoria != null ? categoria.getId() : null;
+    }
+
+    @JsonProperty("categoriaId")
+    public void setCategoriaId(Long categoriaId) {
+        this.categoriaId = categoriaId;
+    }
+
     @Column(name = "descripcion", length = 500)
     private String descripcion;
 
-    /**
-     * URL de la imagen del producto para el catálogo visual.
-     */
     @Column(name = "imagen_url")
     private String imagenUrl;
 
-    /**
-     * Precio de venta del producto.
-     */
     @NotNull(message = "El precio es obligatorio")
     @DecimalMin(value = "0.0", inclusive = false, message = "El precio debe ser mayor a 0")
     @Column(name = "precio", nullable = false, precision = 10, scale = 2)
     private BigDecimal precio;
 
-    /**
-     * Cantidad disponible en inventario.
-     * No puede ser negativo; la lógica de negocio lo controlará en el Service.
-     */
     @NotNull(message = "El stock es obligatorio")
     @Min(value = 0, message = "El stock no puede ser negativo")
     @Column(name = "stock", nullable = false)
     private Integer stock;
 
-    /**
-     * Indica si el producto está activo (borrado lógico).
-     */
     @Builder.Default
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
-
-    public enum CategoriaProducto {
-        BEBIDA,
-        SUPLEMENTO,
-        ACCESORIO,
-        ROPA,
-        OTRO
-    }
 }

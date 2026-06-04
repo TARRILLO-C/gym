@@ -27,5 +27,14 @@ public class ConfiguracionWeb {
     @Column(name = "cuenta_titular")
     private String cuentaTitular;
 
+    @Column(name = "yape_number", length = 9)
+    private String yapeNumber;
+
+    @Column(name = "yape_nombre")
+    private String yapeNombre;
+
+    @Column(name = "cci_number")
+    private String cciNumber;
+
     // We can add other fields in the future like site name, primary color, etc.
 }

@@ -7,6 +7,8 @@ const ConfiguracionCatalogo = () => {
   const [yapeTitular, setYapeTitular] = useState('');
   const [numeroCuenta, setNumeroCuenta] = useState('');
   const [cuentaTitular, setCuentaTitular] = useState('');
+  const [yapeNombre, setYapeNombre] = useState('');
+  const [cciNumber, setCciNumber] = useState('');
   const [sliders, setSliders] = useState([]);
   const [membresias, setMembresias] = useState([]);
   
@@ -48,6 +50,8 @@ const ConfiguracionCatalogo = () => {
         if (data.yapeTitular) setYapeTitular(data.yapeTitular);
         if (data.numeroCuenta) setNumeroCuenta(data.numeroCuenta);
         if (data.cuentaTitular) setCuentaTitular(data.cuentaTitular);
+        if (data.yapeNombre) setYapeNombre(data.yapeNombre);
+        if (data.cciNumber) setCciNumber(data.cciNumber);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -117,7 +121,9 @@ const ConfiguracionCatalogo = () => {
           yapeNumber: yapeNumber,
           yapeTitular: yapeTitular,
           numeroCuenta: numeroCuenta,
-          cuentaTitular: cuentaTitular
+          cuentaTitular: cuentaTitular,
+          yapeNombre: yapeNombre,
+          cciNumber: cciNumber
         }),
       });
       if (response.ok) {
@@ -237,7 +243,7 @@ const ConfiguracionCatalogo = () => {
   return (
     <div className="view-container">
       <div className="header-actions">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Configuración del Catálogo Virtual</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Configuración General</h1>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px', marginTop: '20px' }}>
@@ -277,23 +283,36 @@ const ConfiguracionCatalogo = () => {
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de Yape</p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de Yape / Plin</p>
             <input 
               type="text" 
               className="form-control"
               value={yapeNumber}
-              onChange={(e) => setYapeNumber(e.target.value)}
-              placeholder="Ej: 987654321"
+              onChange={(e) => setYapeNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
+              placeholder="9 dígitos"
+              maxLength={9}
+              inputMode="numeric"
             />
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Titular de Yape</p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Titular de Yape (Local)</p>
             <input 
               type="text" 
               className="form-control"
               value={yapeTitular}
               onChange={(e) => setYapeTitular(e.target.value)}
+              placeholder="Ej: Carlos B."
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Nombre en el Yape (Remoto)</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={yapeNombre}
+              onChange={(e) => setYapeNombre(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''))}
               placeholder="Ej: Carlos B."
             />
           </div>
@@ -317,6 +336,19 @@ const ConfiguracionCatalogo = () => {
               value={cuentaTitular}
               onChange={(e) => setCuentaTitular(e.target.value)}
               placeholder="Ej: Gimnasio The Jungle S.A.C."
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de CCI</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={cciNumber}
+              onChange={(e) => setCciNumber(e.target.value.replace(/\D/g, '').slice(0, 20))}
+              placeholder="20 dígitos"
+              maxLength={20}
+              inputMode="numeric"
             />
           </div>
 

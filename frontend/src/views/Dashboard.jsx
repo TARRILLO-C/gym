@@ -9,7 +9,9 @@ import {
   DollarSign,
   ShoppingBag,
   Award,
-  FileText
+  FileText,
+  AlertTriangle,
+  PackageX
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -20,6 +22,7 @@ const Dashboard = () => {
     ingresosHoy: 0,
     membresiasActivas: 0,
     productosBajoStock: 0,
+    productosAgotados: 0,
     totalProductos: 0,
     totalVentasCount: 0,
     montoVendidoTotal: 0,
@@ -49,12 +52,16 @@ const Dashboard = () => {
         
         const totalVentas = (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
         const totalPlanes = (pagos.data || []).reduce((acc, p) => acc + parseFloat(p.monto || 0), 0);
+        const listaProductos = productos.data || [];
+        const bajoStock = listaProductos.filter(p => p.stock > 0 && p.stock < 5).length;
+        const agotados = listaProductos.filter(p => p.stock === 0).length;
 
         setStats({
           totalSocios: socios.data.length || 0,
           ingresosHoy: ingresos.data.length || 0,
           membresiasActivas: socios.data.filter(s => s.status === 'ACTIVO' || s.estado === 'ACTIVO').length || 0,
-          productosBajoStock: productos.data.filter(p => !p.activo || p.stock < 5).length || 0,
+          productosBajoStock: bajoStock,
+          productosAgotados: agotados,
           totalProductos: productos.data.length || 0,
           totalVentasCount: ventas.data.length || 0,
           montoVendidoTotal: totalVentas,
@@ -141,6 +148,22 @@ const Dashboard = () => {
           icon={Users} 
           color="rgba(180, 100, 246, 0.8)" 
         />
+        {!loading && stats.productosBajoStock > 0 && (
+          <Card 
+            title="Productos de bajo estock" 
+            value={stats.productosBajoStock} 
+            icon={AlertTriangle} 
+            color="#f59e0b" 
+          />
+        )}
+        {!loading && stats.productosAgotados > 0 && (
+          <Card 
+            title="Productos agotados" 
+            value={stats.productosAgotados} 
+            icon={PackageX} 
+            color="#ff3e3e" 
+          />
+        )}
       </section>
 
       <section className="dashboard-grid" style={{ marginTop: '24px' }}>

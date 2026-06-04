@@ -840,7 +840,7 @@ const Membresias = () => {
                 type="text" 
                 placeholder="Ej: 72312470 o Salas Bances..." 
                 value={socioSearch}
-                onChange={e => { setSocioSearch(e.target.value); setShowSocioList(true); }}
+                onChange={e => { setSocioSearch(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s]/g, '')); setShowSocioList(true); }}
                 onFocus={() => setShowSocioList(true)}
                 style={{ paddingLeft: '40px', width: '100%', marginBottom: '8px' }}
               />

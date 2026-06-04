@@ -19,6 +19,7 @@ import PrintTicket from '../components/ui/PrintTicket';
 const Productos = () => {
   const [activeTab, setActiveTab] = useState('pos'); // 'pos' o 'inventario'
   const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [socios, setSocios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -27,13 +28,19 @@ const Productos = () => {
   
   // Modales globalizados
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [uploading, setUploading] = useState(false);
   
   const [productForm, setProductForm] = useState({
-    nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: '', activo: true
+    nombre: '', precio: '', stock: '', categoriaId: '', descripcion: '', imagenUrl: '', activo: true
   });
+
+  const [categoryForm, setCategoryForm] = useState({ nombre: '' });
+  const [categoriasTodas, setCategoriasTodas] = useState([]);
+  const [catInventoryTab, setCatInventoryTab] = useState('productos');
 
   const [checkoutForm, setCheckoutForm] = useState({
     socioId: '', 
@@ -60,13 +67,51 @@ const Productos = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [prodResp, socioResp] = await Promise.all([
+      const [prodResp, socioResp, catResp] = await Promise.all([
         api.get('/productos'),
-        api.get('/socios')
+        api.get('/socios'),
+        api.get('/categorias-producto')
       ]);
       setProductos(prodResp.data);
       setSocios(socioResp.data);
+      setCategorias(catResp.data);
+      if (role === 'ADMINISTRADOR') {
+        try {
+          const catTodasResp = await api.get('/categorias-producto/todas');
+          setCategoriasTodas(catTodasResp.data);
+        } catch (e) { setCategoriasTodas([]); }
+      }
     } catch (err) { } finally { setLoading(false); }
+  };
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    const nombre = categoryForm.nombre.trim();
+    if (!nombre) {
+      showAlert("Validación", "El nombre de la categoría es obligatorio.");
+      return;
+    }
+    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombre)) {
+      showAlert("Validación", "El nombre de la categoría solo puede contener letras y espacios.");
+      return;
+    }
+    try {
+      if (editingCategory) {
+        await api.put(`/categorias-producto/${editingCategory.id}`, { nombre });
+      } else {
+        await api.post('/categorias-producto', { nombre });
+      }
+      setShowCategoryModal(false);
+      setEditingCategory(null);
+      setCategoryForm({ nombre: '' });
+      await fetchData();
+      showAlert("Éxito", editingCategory ? "Categoría actualizada correctamente." : "Categoría creada correctamente.");
+    } catch (err) {
+      const msg = err.response?.status === 403
+        ? "Solo los administradores pueden crear categorías."
+        : err.response?.data?.mensaje || "Error al guardar la categoría.";
+      showAlert("Error", msg);
+    }
   };
 
   const handleSaveProduct = async (e) => {
@@ -80,12 +125,20 @@ const Productos = () => {
       showAlert("Validación", "El stock inicial no puede ser negativo.");
       return;
     }
+    if (!productForm.categoriaId) {
+      showAlert("Validación", "Debe seleccionar una categoría.");
+      return;
+    }
 
     try {
+      const payload = {
+        ...productForm,
+        categoriaId: Number(productForm.categoriaId)
+      };
       if (editingProduct) {
-        await api.put(`/productos/${editingProduct.id}`, productForm);
+        await api.put(`/productos/${editingProduct.id}`, payload);
       } else {
-        await api.post('/productos', productForm);
+        await api.post('/productos', payload);
       }
       setShowProductModal(false);
       fetchData();
@@ -94,7 +147,8 @@ const Productos = () => {
   };
 
   const resetProductForm = () => {
-    setProductForm({ nombre: '', precio: '', stock: '', categoria: 'OTRO', descripcion: '', imagenUrl: '', activo: true });
+    const defaultCategoriaId = categorias.length > 0 ? String(categorias[0].id) : '';
+    setProductForm({ nombre: '', precio: '', stock: '', categoriaId: defaultCategoriaId, descripcion: '', imagenUrl: '', activo: true });
     setEditingProduct(null);
     setUploading(false);
   };
@@ -147,6 +201,32 @@ const Productos = () => {
         } catch (err) { showAlert("Error", "Error al reactivar producto"); }
       }
     });
+  };
+
+  const handleEditCategory = (cat) => {
+    setEditingCategory(cat);
+    setCategoryForm({ nombre: cat.nombre });
+    setShowCategoryModal(true);
+  };
+
+  const handleDeleteCategory = (cat) => {
+    setDialogConfig({
+      isOpen: true, type: 'confirm', title: 'Archivar Categoría',
+      message: `¿Estás seguro de archivar la categoría "${cat.nombre}"?`,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/categorias-producto/${cat.id}`);
+          await fetchData();
+        } catch (err) { showAlert("Error", "Error al archivar categoría"); }
+      }
+    });
+  };
+
+  const handleRestoreCategory = async (cat) => {
+    try {
+      await api.put(`/categorias-producto/${cat.id}`, { nombre: cat.nombre, activo: true });
+      await fetchData();
+    } catch (err) { showAlert("Error", "Error al restaurar categoría"); }
   };
 
   const addToCart = (product) => {
@@ -318,17 +398,25 @@ const Productos = () => {
 
   const productsForPOS = productos
     .filter(p => p.activo !== false)
-    .filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || p.categoria.toLowerCase().includes(search.toLowerCase()));
+    .filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || (p.categoria || '').toLowerCase().includes(search.toLowerCase()));
 
   const productsForInventory = productos
     .filter(p => {
-      // Si eliges ALL en el filtro manual, verás todos. Si no, aplicar el respectivo.
       if (filterMode === 'ALL') return true; 
       if (filterMode === 'ACTIVO') return p.activo !== false;
       if (filterMode === 'INACTIVO') return p.activo === false;
       return true;
     })
-    .filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || p.categoria.toLowerCase().includes(search.toLowerCase()));
+    .filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()) || (p.categoria || '').toLowerCase().includes(search.toLowerCase()));
+
+  const categoriasForInventory = categoriasTodas
+    .filter(cat => {
+      if (filterMode === 'ALL') return true;
+      if (filterMode === 'ACTIVO') return cat.activo !== false;
+      if (filterMode === 'INACTIVO') return cat.activo === false;
+      return true;
+    })
+    .filter(cat => cat.nombre.toLowerCase().includes(search.toLowerCase()));
 
   const filteredSocios = socios.filter(s => s.nombreCompleto.toLowerCase().includes(socioSearch.toLowerCase()) || s.dni.includes(socioSearch));
 
@@ -379,6 +467,12 @@ const Productos = () => {
                   Inactivos
                 </button>
               </div>
+            )}
+
+            {activeTab === 'inventario' && role === 'ADMINISTRADOR' && (
+              <button className="btn-primary" onClick={() => { setCategoryForm({ nombre: '' }); setShowCategoryModal(true); }}>
+                <Plus size={18} /> NUEVA CATEGORÍA
+              </button>
             )}
 
             {activeTab === 'inventario' && (
@@ -472,8 +566,101 @@ const Productos = () => {
                 </div>
               ))}
             </div>
+          ) : role === 'ADMINISTRADOR' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', alignSelf: 'flex-start' }}>
+                <button onClick={() => setCatInventoryTab('productos')} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: catInventoryTab === 'productos' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', fontWeight: '600', cursor: 'pointer' }}>Productos</button>
+                <button onClick={() => setCatInventoryTab('categorias')} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: catInventoryTab === 'categorias' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', fontWeight: '600', cursor: 'pointer' }}>Categorías</button>
+              </div>
+              {catInventoryTab === 'productos' ? (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--panel-bg)', textAlign: 'left' }}>
+                        <th style={{ padding: '16px' }}>Producto</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Estado</th>
+                        <th style={{ textAlign: 'right', padding: '16px' }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productsForInventory.map(p => (
+                        <tr key={p.id} style={{ borderBottom: '1px solid var(--panel-border)' }}>
+                          <td data-label="PRODUCTO" style={{ padding: '16px' }}>
+                            <div style={{ fontWeight: '600' }}>{p.nombre}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.descripcion || "Sin descripción"}</div>
+                          </td>
+                          <td data-label="CATEGORÍA"><span className="badge" style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)' }}>{p.categoria}</span></td>
+                          <td data-label="PRECIO" style={{ fontWeight: 'bold' }}>S/ {p.precio.toFixed(2)}</td>
+                          <td data-label="STOCK">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: p.stock < 5 ? '#ff3e3e' : '#00ff7f' }}>
+                              {p.stock < 5 && <AlertTriangle size={14} />}
+                              {p.stock} unidades
+                            </div>
+                          </td>
+                          <td data-label="ESTADO">
+                            <span className={`badge ${p.activo !== false ? 'badge-active' : 'badge-inactive'}`}>
+                              {p.activo !== false ? 'ACTIVO' : 'INACTIVO'}
+                            </span>
+                          </td>
+                          <td data-label="ACCIONES" style={{ textAlign: 'right', padding: '16px' }}>
+                            {p.activo !== false ? (
+                              <>
+                                <button onClick={() => { setEditingProduct(p); setProductForm({ ...p, categoriaId: p.categoriaId ? String(p.categoriaId) : '' }); setShowProductModal(true); }} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }} title="Editar"><Edit2 size={18} /></button>
+                                <button onClick={() => handleDeleteProduct(p.id)} style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer' }} title="Archivar"><Trash2 size={18} /></button>
+                              </>
+                            ) : (
+                              <button onClick={() => handleRestoreProduct(p)} style={{ background: 'transparent', border: 'none', color: '#00ff7f', cursor: 'pointer' }} title="Reactivar"><RotateCcw size={18} /></button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--panel-bg)', textAlign: 'left' }}>
+                        <th style={{ padding: '16px' }}>Categoría</th>
+                        <th>Estado</th>
+                        <th style={{ textAlign: 'right', padding: '16px' }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categoriasForInventory.map(cat => (
+                        <tr key={cat.id} style={{ borderBottom: '1px solid var(--panel-border)' }}>
+                          <td data-label="CATEGORÍA" style={{ padding: '16px', fontWeight: '600' }}>{cat.nombre}</td>
+                          <td data-label="ESTADO">
+                            <span className={`badge ${cat.activo ? 'badge-active' : 'badge-inactive'}`}>
+                              {cat.activo ? 'ACTIVA' : 'INACTIVA'}
+                            </span>
+                          </td>
+                          <td data-label="ACCIONES" style={{ textAlign: 'right', padding: '16px' }}>
+                            {cat.activo ? (
+                              <>
+                                <button onClick={() => handleEditCategory(cat)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }} title="Editar"><Edit2 size={18} /></button>
+                                <button onClick={() => handleDeleteCategory(cat)} style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer' }} title="Archivar"><Trash2 size={18} /></button>
+                              </>
+                            ) : (
+                              <button onClick={() => handleRestoreCategory(cat)} style={{ background: 'transparent', border: 'none', color: '#00ff7f', cursor: 'pointer' }} title="Reactivar"><RotateCcw size={18} /></button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {categoriasForInventory.length === 0 && (
+                        <tr><td colSpan="3" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay categorías registradas.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           ) : (
-             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'var(--panel-bg)', textAlign: 'left' }}>
@@ -508,7 +695,7 @@ const Productos = () => {
                       <td data-label="ACCIONES" style={{ textAlign: 'right', padding: '16px' }}>
                         {p.activo !== false ? (
                           <>
-                            <button onClick={() => { setEditingProduct(p); setProductForm(p); setShowProductModal(true); }} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }} title="Editar"><Edit2 size={18} /></button>
+                            <button onClick={() => { setEditingProduct(p); setProductForm({ ...p, categoriaId: p.categoriaId ? String(p.categoriaId) : '' }); setShowProductModal(true); }} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '10px' }} title="Editar"><Edit2 size={18} /></button>
                             <button onClick={() => handleDeleteProduct(p.id)} style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer' }} title="Archivar"><Trash2 size={18} /></button>
                           </>
                         ) : (
@@ -541,7 +728,7 @@ const Productos = () => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-color)', padding: '4px', borderRadius: '8px' }}>
                       <button onClick={() => updateCartQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}>-</button>
-                      <span style={{ fontSize: '0.9rem', width: '20px', textAlign: 'center' }}>{item.cantidad}</span>
+                      <span style={{ fontSize: '0.9rem', width: '20px', textAlign: 'center', color: '#000' }}>{item.cantidad}</span>
                       <button onClick={() => updateCartQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}>+</button>
                     </div>
                   </div>
@@ -571,25 +758,29 @@ const Productos = () => {
         <form onSubmit={handleSaveProduct} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Nombre del Producto</label>
-            <input required type="text" value={productForm.nombre} onChange={e => setProductForm({...productForm, nombre: e.target.value})} />
+            <input required type="text" value={productForm.nombre} onChange={e => setProductForm({...productForm, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')})} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Precio (S/)</label>
-            <input required type="number" min="0.01" step="0.01" value={productForm.precio} onChange={e => setProductForm({...productForm, precio: e.target.value})} />
+            <input required type="text" inputMode="decimal" value={productForm.precio} onChange={e => setProductForm({...productForm, precio: e.target.value.replace(/[^0-9.]/g, '')})} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Stock Inicial</label>
-            <input required type="number" min="0" step="1" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} />
+            <input required type="text" inputMode="numeric" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value.replace(/\D/g, '')})} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Categoría</label>
-            <select value={productForm.categoria} onChange={e => setProductForm({...productForm, categoria: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-              <option value="SUPLEMENTO">SUPLEMENTO</option>
-              <option value="BEBIDA">BEBIDA</option>
-              <option value="ROPA">ROPA</option>
-              <option value="ACCESORIO">ACCESORIO</option>
-              <option value="OTRO">OTRO</option>
+            <select required value={productForm.categoriaId} onChange={e => setProductForm({...productForm, categoriaId: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+              <option value="">Seleccionar categoría...</option>
+              {categorias.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+              ))}
             </select>
+            {categorias.length === 0 && (
+              <p style={{ fontSize: '0.75rem', color: '#f59e0b', marginTop: '6px' }}>
+                No hay categorías disponibles. Cree una categoría antes de registrar productos.
+              </p>
+            )}
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Estado</label>
@@ -656,13 +847,33 @@ const Productos = () => {
         </form>
       </Modal>
 
+      <Modal isOpen={showCategoryModal} onClose={() => { setShowCategoryModal(false); setEditingCategory(null); setCategoryForm({ nombre: '' }); }} title={editingCategory ? "Editar Categoría" : "Nueva Categoría"}>
+        <form onSubmit={handleSaveCategory} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Nombre de la categoría</label>
+            <input
+              required
+              type="text"
+              maxLength={100}
+              value={categoryForm.nombre}
+              onChange={e => setCategoryForm({ nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '').toUpperCase() })}
+              placeholder="Ej: SUPLEMENTO, BEBIDA..."
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+            <button type="button" onClick={() => { setShowCategoryModal(false); setEditingCategory(null); setCategoryForm({ nombre: '' }); }} style={{ flex: 1, padding: '14px', background: 'transparent', color: 'var(--text-main)' }}>CANCELAR</button>
+            <button type="submit" className="btn-primary" style={{ flex: 1, padding: '14px' }}>{editingCategory ? "GUARDAR CAMBIOS" : "CREAR CATEGORÍA"}</button>
+          </div>
+        </form>
+      </Modal>
+
       <Modal isOpen={showCheckoutModal} onClose={() => setShowCheckoutModal(false)} title="Finalizar Transacción">
         <form onSubmit={handleFinalizeSale} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Asociar a un Socio (Opcional)</label>
             <div style={{ position: 'relative', marginTop: '6px' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input type="text" placeholder="Buscar por DNI o Nombre..." value={socioSearch} onChange={e => setSocioSearch(e.target.value)} style={{ paddingLeft: '40px' }} />
+              <input type="text" placeholder="Buscar por DNI o Nombre..." value={socioSearch} onChange={e => setSocioSearch(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s]/g, ''))} style={{ paddingLeft: '40px' }} />
               {socioSearch && filteredSocios.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-color)', border: '1px solid var(--panel-border)', borderRadius: '12px', zIndex: 1100, maxHeight: '150px', overflowY: 'auto' }}>
                   {filteredSocios.map(s => (

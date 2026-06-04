@@ -47,6 +47,8 @@ public class WebConfigController {
         configToUpdate.setYapeTitular(configData.getYapeTitular());
         configToUpdate.setNumeroCuenta(configData.getNumeroCuenta());
         configToUpdate.setCuentaTitular(configData.getCuentaTitular());
+        configToUpdate.setYapeNombre(configData.getYapeNombre());
+        configToUpdate.setCciNumber(configData.getCciNumber());
         return ResponseEntity.ok(configuracionWebRepository.save(configToUpdate));
     }
 

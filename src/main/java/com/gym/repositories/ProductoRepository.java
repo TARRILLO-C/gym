@@ -45,9 +45,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     List<Producto> findByStockLessThanEqual(Integer stockMinimo);
 
     /**
-     * Retorna productos por categoría.
+     * Retorna productos por ID de categoría.
      */
-    List<Producto> findByCategoria(Producto.CategoriaProducto categoria);
+    List<Producto> findByCategoria_Id(Long categoriaId);
 
     /**
      * Busca un producto por su nombre exacto. Usa findFirst para evitar

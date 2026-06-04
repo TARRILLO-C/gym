@@ -1,158 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Eye, RefreshCw, FileText, ShoppingBag, Award, PackageCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, RefreshCw, FileText, X, Package, Users } from 'lucide-react';
 import Modal from '../components/ui/Modal';
+import api from '../services/api';
 
 const SolicitudesMembresia = () => {
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false); // Action loading state
-  const [requestType, setRequestType] = useState('MEMBRESIA'); // 'MEMBRESIA' or 'PRODUCTO'
-  const [activeTab, setActiveTab] = useState('PENDIENTE'); // 'PENDIENTE', 'APROBADA', 'RECOGIDO', 'RECHAZADA'
+  const [activeTab, setActiveTab] = useState('PENDIENTE');
+  const [requestType, setRequestType] = useState('MEMBRESIA'); // 'MEMBRESIA' | 'PRODUCTO'
+  const [notification, setNotification] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
-  // Custom Modal States
-  const [confirmModal, setConfirmModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: null,
-  });
-
-  const [alertModal, setAlertModal] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-  });
+  const handleVerComprobante = (url, clientName) => {
+    setImageError(false);
+    setPreviewImage({ url, title: `Comprobante de ${clientName}` });
+  };
 
   useEffect(() => {
     fetchSolicitudes();
-  }, [requestType, activeTab]);
+  }, [activeTab, requestType]);
+
+  const getBasePath = () =>
+    requestType === 'MEMBRESIA' ? '/solicitudes-membresia' : '/solicitudes-producto';
 
   const fetchSolicitudes = async () => {
     setLoading(true);
     try {
-      let url = '';
-      if (requestType === 'MEMBRESIA') {
-        url = activeTab === 'PENDIENTE'
-          ? 'http://localhost:8080/api/solicitudes-membresia/pendientes'
-          : 'http://localhost:8080/api/solicitudes-membresia';
-      } else {
-        url = activeTab === 'PENDIENTE'
-          ? 'http://localhost:8080/api/solicitudes-venta/pendientes'
-          : 'http://localhost:8080/api/solicitudes-venta';
-      }
+      const basePath = getBasePath();
+      const url =
+        activeTab === 'PENDIENTE'
+          ? `${basePath}/pendientes`
+          : `${basePath}/por-estado/${activeTab}`;
 
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        if (activeTab !== 'PENDIENTE') {
-          setSolicitudes(data.filter(s => s.estado === activeTab));
-        } else {
-          setSolicitudes(data);
-        }
-      }
+      const res = await api.get(url);
+      setSolicitudes(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('Error fetching solicitudes:', error);
+      setSolicitudes([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const requestConfirmation = (title, message, onConfirm) => {
-    setConfirmModal({
+  const switchRequestType = (type) => {
+    if (type === requestType) return;
+    setRequestType(type);
+    setActiveTab('PENDIENTE');
+  };
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleAprobar = async (id) => {
+    const message = requestType === 'MEMBRESIA'
+      ? "¿Está seguro de aprobar esta solicitud? Se creará el socio y se registrará su pago automáticamente."
+      : "¿Está seguro de aprobar esta solicitud? Se reducirá el stock de los productos y se enviará el comprobante al correo del cliente.";
+    
+    setConfirmDialog({
       isOpen: true,
-      title,
+      title: 'Confirmar Acción',
       message,
-      onConfirm: () => {
-        onConfirm();
-        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false });
+        try {
+          await api.post(`${getBasePath()}/${id}/aprobar`);
+          const successMessage = requestType === 'MEMBRESIA'
+            ? "Solicitud aprobada con éxito. El socio ha sido registrado."
+            : "Solicitud aprobada con éxito. El stock de los productos ha sido reducido.";
+          showNotification(successMessage, 'success');
+          fetchSolicitudes();
+        } catch (error) {
+          console.error(error);
+          const msg = error.response?.data?.mensaje || error.message || 'Error de red';
+          showNotification("Error al aprobar: " + msg, 'error');
+        }
       }
     });
   };
 
-  const showAlert = (title, message) => {
-    setAlertModal({
+  const handleRechazar = async (id) => {
+    setConfirmDialog({
       isOpen: true,
-      title,
-      message,
-    });
-  };
-
-  const handleAprobar = (id) => {
-    const confirmationText = requestType === 'MEMBRESIA'
-      ? "¿Está seguro de aprobar esta solicitud de membresía? Se creará el socio y se registrará su suscripción y pago automáticamente."
-      : "¿Está seguro de aprobar esta solicitud de compra? Se registrará la venta oficial y quedará pendiente para su recojo.";
-
-    requestConfirmation("Aprobar Solicitud", confirmationText, async () => {
-      setProcessing(true);
-      try {
-        const endpoint = requestType === 'MEMBRESIA'
-          ? `http://localhost:8080/api/solicitudes-membresia/${id}/aprobar`
-          : `http://localhost:8080/api/solicitudes-venta/${id}/aprobar`;
-
-        const res = await fetch(endpoint, {
-          method: 'POST'
-        });
-        if (res.ok) {
-          showAlert("Aprobación Exitosa", "La solicitud ha sido aprobada con éxito.");
+      title: 'Confirmar Acción',
+      message: "¿Está seguro de rechazar esta solicitud?",
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false });
+        try {
+          await api.post(`${getBasePath()}/${id}/rechazar`);
+          showNotification("Solicitud rechazada.", 'success');
           fetchSolicitudes();
-        } else {
-          const err = await res.text();
-          showAlert("Error", "Error al aprobar: " + err);
+        } catch (error) {
+          console.error(error);
+          const msg = error.response?.data?.mensaje || error.message || 'Error de red';
+          showNotification("Error al rechazar: " + msg, 'error');
         }
-      } catch (error) {
-        console.error(error);
-        showAlert("Error de Red", "No se pudo conectar con el servidor.");
-      } finally {
-        setProcessing(false);
-      }
-    });
-  };
-
-  const handleRechazar = (id) => {
-    requestConfirmation("Rechazar Solicitud", "¿Está seguro de rechazar esta solicitud?", async () => {
-      setProcessing(true);
-      try {
-        const endpoint = requestType === 'MEMBRESIA'
-          ? `http://localhost:8080/api/solicitudes-membresia/${id}/rechazar`
-          : `http://localhost:8080/api/solicitudes-venta/${id}/rechazar`;
-
-        const res = await fetch(endpoint, {
-          method: 'POST'
-        });
-        if (res.ok) {
-          showAlert("Solicitud Rechazada", "La solicitud ha sido rechazada.");
-          fetchSolicitudes();
-        } else {
-          showAlert("Error", "Error al rechazar.");
-        }
-      } catch (error) {
-        console.error(error);
-        showAlert("Error de Red", "No se pudo conectar con el servidor.");
-      } finally {
-        setProcessing(false);
-      }
-    });
-  };
-
-  const handleRecoger = (id) => {
-    requestConfirmation("Confirmar Entrega de Productos", "¿Confirmar que el cliente ha recogido los productos y la entrega ha sido completada?", async () => {
-      setProcessing(true);
-      try {
-        const res = await fetch(`http://localhost:8080/api/solicitudes-venta/${id}/recoger`, {
-          method: 'POST'
-        });
-        if (res.ok) {
-          showAlert("Pedido Entregado", "El pedido ha sido marcado como entregado/recogido con éxito.");
-          fetchSolicitudes();
-        } else {
-          const err = await res.text();
-          showAlert("Error", "Error al actualizar la entrega: " + err);
-        }
-      } catch (error) {
-        console.error(error);
-        showAlert("Error de Red", "No se pudo conectar con el servidor.");
-      } finally {
-        setProcessing(false);
       }
     });
   };
@@ -163,101 +108,247 @@ const SolicitudesMembresia = () => {
     return date.toLocaleString();
   };
 
+  const getActiveColor = () => {
+    if (activeTab === 'PENDIENTE') return '#f59e0b';
+    if (activeTab === 'APROBADA') return '#22c55e';
+    if (activeTab === 'RECHAZADA') return '#ef4444';
+    return 'var(--accent-primary)';
+  };
+
   return (
     <div className="fade-in">
       <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+        .tab-btn-pendiente {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: 1px solid #f59e0b;
+          background-color: transparent;
+          color: #f59e0b;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-btn-pendiente.active {
+          background-color: #f59e0b;
+          color: white;
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+        .tab-btn-pendiente:hover {
+          background-color: rgba(245, 158, 11, 0.1);
+        }
+        .tab-btn-pendiente.active:hover {
+          background-color: #d97706;
+          border-color: #d97706;
+        }
+
+        .tab-btn-aprobada {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: 1px solid #22c55e;
+          background-color: transparent;
+          color: #22c55e;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-btn-aprobada.active {
+          background-color: #22c55e;
+          color: white;
+          box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        .tab-btn-aprobada:hover {
+          background-color: rgba(34, 197, 94, 0.1);
+        }
+        .tab-btn-aprobada.active:hover {
+          background-color: #16a34a;
+          border-color: #16a34a;
+        }
+
+        .tab-btn-rechazada {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: 1px solid #ef4444;
+          background-color: transparent;
+          color: #ef4444;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-btn-rechazada.active {
+          background-color: #ef4444;
+          color: white;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+        .tab-btn-rechazada:hover {
+          background-color: rgba(239, 68, 68, 0.1);
+        }
+        .tab-btn-rechazada.active:hover {
+          background-color: #dc2626;
+          border-color: #dc2626;
+        }
+
+        .btn-update {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: none;
+          color: white;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-update:hover {
+          transform: translateY(-2px);
+          filter: brightness(1.1);
+        }
+        .btn-update:active {
+          transform: translateY(0);
+        }
+
+        .notification {
+          position: fixed;
+          top: 80px;
+          right: 20px;
+          padding: 16px 20px;
+          border-radius: 12px;
+          color: white;
+          font-weight: 600;
+          font-size: 0.95rem;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+          z-index: 2000;
+          animation: slideInRight 0.3s ease-out;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 320px;
+          max-width: 400px;
+          backdrop-filter: blur(8px);
+        }
+        .notification.success {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          border: 2px solid #047857;
+        }
+        .notification.error {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          border: 2px solid #b91c1c;
+        }
+        .notification.warning {
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          border: 2px solid #b45309;
+        }
+        .notification.info {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          border: 2px solid #1d4ed8;
+        }
+        @media (prefers-color-scheme: dark) {
+          .notification.success {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            border: 2px solid #065f46;
+          }
+          .notification.error {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            border: 2px solid #991b1b;
+          }
+          .notification.warning {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            border: 2px solid #92400e;
+          }
+          .notification.info {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            border: 2px solid #1e40af;
+          }
+        }
+        @keyframes slideInRight {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOutRight {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
         }
       `}</style>
-
-      {/* Fullscreen Loading Overlay during action processing */}
-      {processing && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0,
-          width: '100vw', height: '100vh',
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          zIndex: 9999,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backdropFilter: 'blur(6px)',
-          transition: 'all 0.3s ease'
-        }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            border: '6px solid rgba(255, 62, 62, 0.15)',
-            borderTop: '6px solid var(--accent-primary)',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '20px'
-          }} />
-          <h3 style={{ color: 'white', margin: '0 0 10px 0', fontWeight: 'bold', fontSize: '1.4rem' }}>Procesando Solicitud</h3>
-          <p style={{ color: 'rgba(255,255,255,0.75)', margin: 0, fontSize: '1rem', textAlign: 'center', maxWidth: '400px', px: '20px', lineHeight: '1.4' }}>
-            Por favor espere, estamos guardando la información y enviando el correo de confirmación al cliente...
-          </p>
-        </div>
-      )}
-
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FileText size={28} color="var(--accent-primary)" />
-          Gestión de Solicitudes de Pago
+          {requestType === 'MEMBRESIA' ? 'Solicitudes de Membresía' : 'Solicitudes de Productos'}
         </h2>
-        <button className="btn-secondary" onClick={fetchSolicitudes} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <RefreshCw size={18} /> Actualizar
-        </button>
-      </div>
-
-      {/* Main Switcher: Membresías vs Productos */}
-      <div className="card glass" style={{ marginBottom: '20px', padding: '15px', display: 'flex', gap: '15px', borderBottom: '2px solid rgba(255,255,255,0.1)' }}>
-        <button 
-          className={requestType === 'MEMBRESIA' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => { setRequestType('MEMBRESIA'); setActiveTab('PENDIENTE'); setSolicitudes([]); }}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '1.05rem' }}
-        >
-          <Award size={20} />
-          Membresías
-        </button>
-        <button 
-          className={requestType === 'PRODUCTO' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => { setRequestType('PRODUCTO'); setActiveTab('PENDIENTE'); setSolicitudes([]); }}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', fontSize: '1.05rem' }}
-        >
-          <ShoppingBag size={20} />
-          Productos
-        </button>
-      </div>
-
-      {/* State Tabs: Pendiente, Aprobada, Rechazada, Recogida */}
-      <div className="card glass" style={{ marginBottom: '20px', padding: '10px', display: 'flex', gap: '10px' }}>
-        <button 
-          className={activeTab === 'PENDIENTE' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => { setActiveTab('PENDIENTE'); setSolicitudes([]); }}
-        >
-          {requestType === 'MEMBRESIA' ? 'Pendientes' : 'Pendientes de Pago'}
-        </button>
-        <button 
-          className={activeTab === 'APROBADA' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => { setActiveTab('APROBADA'); setSolicitudes([]); }}
-        >
-          {requestType === 'MEMBRESIA' ? 'Aprobadas' : 'Pendientes de Recojo'}
-        </button>
-        {requestType === 'PRODUCTO' && (
-          <button 
-            className={activeTab === 'RECOGIDO' ? 'btn-primary' : 'btn-secondary'}
-            onClick={() => { setActiveTab('RECOGIDO'); setSolicitudes([]); }}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className="btn-update"
+            onClick={() => switchRequestType('MEMBRESIA')}
+            style={{
+              backgroundColor: requestType === 'MEMBRESIA' ? 'var(--accent-primary)' : '#6b7280',
+              boxShadow: requestType === 'MEMBRESIA'
+                ? '0 4px 12px rgba(255, 62, 62, 0.3)'
+                : '0 4px 12px rgba(107, 114, 128, 0.3)'
+            }}
           >
-            Entregadas / Recogidas
+            <Users size={18} /> Ver Membresías
           </button>
-        )}
+          <button
+            className="btn-update"
+            onClick={() => switchRequestType('PRODUCTO')}
+            style={{
+              backgroundColor: requestType === 'PRODUCTO' ? 'var(--accent-primary)' : '#6b7280',
+              boxShadow: requestType === 'PRODUCTO'
+                ? '0 4px 12px rgba(255, 62, 62, 0.3)'
+                : '0 4px 12px rgba(107, 114, 128, 0.3)'
+            }}
+          >
+            <Package size={18} /> Ver Productos
+          </button>
+          <button
+            className="btn-update"
+            onClick={fetchSolicitudes}
+            style={{
+              backgroundColor: '#6b7280',
+              boxShadow: '0 4px 12px rgba(107, 114, 128, 0.3)'
+            }}
+          >
+            <RefreshCw size={18} /> Actualizar
+          </button>
+        </div>
+      </div>
+
+      <div className="card glass" style={{ marginBottom: '20px', padding: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <button 
-          className={activeTab === 'RECHAZADA' ? 'btn-primary' : 'btn-secondary'}
-          onClick={() => { setActiveTab('RECHAZADA'); setSolicitudes([]); }}
+          className={`tab-btn-pendiente ${activeTab === 'PENDIENTE' ? 'active' : ''}`}
+          onClick={() => setActiveTab('PENDIENTE')}
+        >
+          Pendientes
+        </button>
+        <button 
+          className={`tab-btn-aprobada ${activeTab === 'APROBADA' ? 'active' : ''}`}
+          onClick={() => setActiveTab('APROBADA')}
+        >
+          Aprobadas
+        </button>
+        <button 
+          className={`tab-btn-rechazada ${activeTab === 'RECHAZADA' ? 'active' : ''}`}
+          onClick={() => setActiveTab('RECHAZADA')}
         >
           Rechazadas
         </button>
@@ -277,28 +368,16 @@ const SolicitudesMembresia = () => {
         ) : (
           <table className="data-table">
             <thead>
-              {requestType === 'MEMBRESIA' ? (
-                <tr>
-                  <th>Fecha</th>
-                  <th>DNI</th>
-                  <th>Cliente</th>
-                  <th>Plan Seleccionado</th>
-                  <th>Estado</th>
-                  <th>Operación / Comprobante</th>
-                  <th>Acciones</th>
-                </tr>
-              ) : (
-                <tr>
-                  <th>Fecha</th>
-                  <th>DNI</th>
-                  <th>Cliente</th>
-                  <th>Productos Pedidos</th>
-                  <th>Total</th>
-                  <th>Estado</th>
-                  <th>Operación / Comprobante</th>
-                  <th>Acciones</th>
-                </tr>
-              )}
+              <tr>
+                <th>Fecha</th>
+                <th>DNI</th>
+                <th>Cliente</th>
+                <th>{requestType === 'MEMBRESIA' ? 'Plan Seleccionado' : 'Productos'}</th>
+                {requestType === 'PRODUCTO' && <th>Total</th>}
+                <th>Estado</th>
+                <th>Operación / Comprobante</th>
+                <th>Acciones</th>
+              </tr>
             </thead>
             <tbody>
               {solicitudes.map(sol => (
@@ -309,44 +388,34 @@ const SolicitudesMembresia = () => {
                     {sol.nombreCompleto}<br/>
                     <small style={{ color: 'var(--text-muted)' }}>{sol.telefono} {sol.email ? `| ${sol.email}` : ''}</small>
                   </td>
-                  {requestType === 'MEMBRESIA' ? (
-                    <>
-                      <td>{sol.membresiaNombre}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {sol.detalles?.map(d => (
-                            <div key={d.id} style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                              • {d.cantidad}x <span>{d.producto?.nombre}</span> <span style={{ color: 'var(--text-muted)' }}>(S/ {d.precioUnitario?.toFixed(2)})</span>
-                            </div>
-                          ))}
-                          {sol.codigoEntrega && (
-                            <div style={{ marginTop: '8px' }}>
-                              <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(255, 62, 62, 0.15)', border: '1px solid #ff3e3e', padding: '3px 8px', borderRadius: '4px', color: '#ff3e3e', fontWeight: 'bold', display: 'inline-block' }}>
-                                Código Recojo: {sol.codigoEntrega}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td><strong>S/ {sol.total?.toFixed(2)}</strong></td>
-                    </>
-                  )}
                   <td>
                     {requestType === 'MEMBRESIA' ? (
-                      <span className={`status-badge status-${sol.estado.toLowerCase()}`}>
-                        {sol.estado}
-                      </span>
+                      sol.membresiaNombre
                     ) : (
-                      <span className={`status-badge status-${sol.estado.toLowerCase()}`} style={
-                        sol.estado === 'APROBADA' ? { backgroundColor: 'rgba(245, 158, 11, 0.15)', border: '1px solid #f59e0b', color: '#f59e0b', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold' } :
-                        sol.estado === 'RECOGIDO' ? { backgroundColor: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', color: '#10b981', padding: '3px 8px', borderRadius: '4px', fontWeight: 'bold' } : {}
-                      }>
-                        {sol.estado === 'APROBADA' ? 'PENDIENTE RECOJO' : sol.estado}
-                      </span>
+                      <div style={{ fontSize: '0.85rem' }}>
+                        {sol.items && sol.items.length > 0 ? (
+                          sol.items.map((item, idx) => (
+                            <div key={idx} style={{ marginBottom: '2px' }}>
+                              {item.productoNombre || item.producto?.nombre || 'Producto'} × {item.cantidad}
+                            </div>
+                          ))
+                        ) : (
+                          '-'
+                        )}
+                      </div>
                     )}
+                  </td>
+                  {requestType === 'PRODUCTO' && (
+                    <td>
+                      <strong>
+                        S/ {Number(sol.total ?? 0).toFixed(2)}
+                      </strong>
+                    </td>
+                  )}
+                  <td>
+                    <span className={`status-badge status-${sol.estado?.toLowerCase()}`}>
+                      {sol.estado}
+                    </span>
                   </td>
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -356,44 +425,47 @@ const SolicitudesMembresia = () => {
                          </span>
                       )}
                       {sol.comprobanteUrl ? (
-                         <a href={sol.comprobanteUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-primary)', textDecoration: 'none', fontSize: '0.9rem' }}>
-                           <Eye size={16} /> Ver Comprobante
-                         </a>
+                        <button 
+                          onClick={() => handleVerComprobante(sol.comprobanteUrl, sol.nombreCompleto)}
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '5px', 
+                            color: '#3b82f6', 
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem', 
+                            fontWeight: '500',
+                            padding: 0
+                          }}
+                        >
+                          <Eye size={16} /> Ver Comprobante
+                        </button>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>No adjunto</span>
                       )}
                     </div>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      {sol.estado === 'PENDIENTE' && (
-                        <>
-                          <button 
-                            onClick={() => handleAprobar(sol.id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e' }}
-                            title={requestType === 'MEMBRESIA' ? "Aprobar y Registrar Socio" : "Aprobar y Registrar Venta"}
-                          >
-                            <CheckCircle size={24} />
-                          </button>
-                          <button 
-                            onClick={() => handleRechazar(sol.id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
-                            title="Rechazar"
-                          >
-                            <XCircle size={24} />
-                          </button>
-                        </>
-                      )}
-                      {sol.estado === 'APROBADA' && requestType === 'PRODUCTO' && (
+                    {sol.estado === 'PENDIENTE' && (
+                      <div style={{ display: 'flex', gap: '10px' }}>
                         <button 
-                          onClick={() => handleRecoger(sol.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}
-                          title="Marcar como Recogido / Entregado"
+                          onClick={() => handleAprobar(sol.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e' }}
+                          title={requestType === 'MEMBRESIA' ? 'Aprobar y Registrar Socio' : 'Aprobar y Reducir Stock'}
                         >
-                          <PackageCheck size={24} />
+                          <CheckCircle size={24} />
                         </button>
-                      )}
-                    </div>
+                        <button 
+                          onClick={() => handleRechazar(sol.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                          title="Rechazar"
+                        >
+                          <XCircle size={24} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -402,54 +474,181 @@ const SolicitudesMembresia = () => {
         )}
       </div>
 
-      {/* Modal de Confirmación */}
+      {/* Notification Toast */}
+      {notification && (
+        <div className={`notification ${notification.type}`}>
+          {notification.type === 'success' && <CheckCircle size={20} />}
+          {notification.type === 'error' && <XCircle size={20} />}
+          {notification.type === 'warning' && <RefreshCw size={20} />}
+          {notification.type === 'info' && <FileText size={20} />}
+          <span>{notification.message}</span>
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
       <Modal 
-        isOpen={confirmModal.isOpen} 
-        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-        title={confirmModal.title}
+        isOpen={confirmDialog?.isOpen} 
+        onClose={() => setConfirmDialog({ isOpen: false })} 
+        title={confirmDialog?.title || 'Confirmar Acción'}
       >
-        <div style={{ padding: '5px 0' }}>
-          <p style={{ color: 'var(--text-primary)', fontSize: '1.05rem', margin: '0 0 24px 0', lineHeight: '1.5' }}>
-            {confirmModal.message}
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p style={{ color: 'var(--text-main)', fontSize: '1rem', margin: 0 }}>{confirmDialog?.message}</p>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
             <button 
-              className="btn-secondary" 
-              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              onClick={() => setConfirmDialog({ isOpen: false })} 
+              style={{ padding: '10px 20px', background: 'transparent', color: 'var(--text-muted)' }}
             >
               Cancelar
             </button>
             <button 
               className="btn-primary" 
-              onClick={confirmModal.onConfirm}
-              style={{ backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
+              onClick={() => {
+                if(confirmDialog?.onConfirm) confirmDialog.onConfirm();
+                setConfirmDialog({ isOpen: false });
+              }} 
+              style={{ padding: '10px 24px' }}
             >
-              Aceptar
+              Confirmar
             </button>
           </div>
         </div>
       </Modal>
 
-      {/* Modal de Alerta */}
-      <Modal 
-        isOpen={alertModal.isOpen} 
-        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-        title={alertModal.title}
-      >
-        <div style={{ padding: '5px 0' }}>
-          <p style={{ color: 'var(--text-primary)', fontSize: '1.05rem', margin: '0 0 24px 0', lineHeight: '1.5' }}>
-            {alertModal.message}
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button 
-              className="btn-primary" 
-              onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-            >
-              Aceptar
-            </button>
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, left: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            background: 'rgba(0,0,0,0.85)', 
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(10px)',
+            animation: 'fadeIn 0.25s ease-out'
+          }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            style={{ 
+              position: 'relative',
+              background: 'var(--panel-bg, #1e293b)',
+              border: '1px solid var(--panel-border, #334155)',
+              borderRadius: '20px',
+              padding: '24px',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              width: '600px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              animation: 'scaleIn 0.25s ease-out'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-main, #f8fafc)', fontSize: '1.2rem', fontWeight: '700' }}>
+                {previewImage.title}
+              </h3>
+              <button 
+                onClick={() => setPreviewImage(null)}
+                style={{ 
+                  background: 'rgba(255,255,255,0.1)', 
+                  border: 'none', 
+                  borderRadius: '50%', 
+                  padding: '8px', 
+                  color: 'var(--text-muted, #94a3b8)', 
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+                onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ 
+              flex: 1, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              minHeight: '200px',
+              maxHeight: '60vh',
+              background: 'rgba(0,0,0,0.2)',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              padding: '10px',
+              border: '1px solid var(--panel-border, #334155)'
+            }}>
+              {imageError ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#ef4444' }}>
+                  <p style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '8px' }}>Error al cargar la imagen</p>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted, #94a3b8)', maxWidth: '300px' }}>
+                    El archivo de comprobante no se encuentra en el servidor. Esto suele ocurrir con registros antiguos si el archivo físico no fue conservado.
+                  </p>
+                </div>
+              ) : (
+                <img 
+                  src={previewImage.url} 
+                  alt="Comprobante" 
+                  onError={() => setImageError(true)}
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '55vh', 
+                    objectFit: 'contain',
+                    borderRadius: '8px'
+                  }} 
+                />
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <a 
+                href={previewImage.url} 
+                target="_blank" 
+                rel="noreferrer"
+                className="btn-primary"
+                style={{ 
+                  padding: '10px 20px', 
+                  borderRadius: '10px', 
+                  textDecoration: 'none', 
+                  fontSize: '0.9rem', 
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                Abrir en pestaña nueva
+              </a>
+              <button 
+                onClick={() => setPreviewImage(null)}
+                style={{ 
+                  padding: '10px 20px', 
+                  background: 'transparent', 
+                  border: '1px solid var(--panel-border, #334155)',
+                  borderRadius: '10px',
+                  color: 'var(--text-main, #f8fafc)',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 };

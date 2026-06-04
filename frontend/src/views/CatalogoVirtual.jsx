@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2 } from 'lucide-react';
-import Modal from '../components/ui/Modal';
+import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [yapeNumber, setYapeNumber] = useState('');
-  const [yapeTitular, setYapeTitular] = useState('');
-  const [numeroCuenta, setNumeroCuenta] = useState('');
-  const [cuentaTitular, setCuentaTitular] = useState('');
+  const [yapeNombre, setYapeNombre] = useState('');
+  const [cciNumber, setCciNumber] = useState('');
   const [sliders, setSliders] = useState([]);
   const [productos, setProductos] = useState([]);
   const [membresias, setMembresias] = useState([]);
@@ -32,21 +30,22 @@ const CatalogoVirtual = () => {
   const [solicitudFile, setSolicitudFile] = useState(null);
   const [isSubmittingSolicitud, setIsSubmittingSolicitud] = useState(false);
   const [solicitudSuccess, setSolicitudSuccess] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
-  // Custom Alert Modal State
-  const [alertModal, setAlertModal] = useState({
-    isOpen: false,
-    title: '',
-    message: ''
+  // Product checkout state
+  const [isProductCheckoutOpen, setIsProductCheckoutOpen] = useState(false);
+  const [productCheckoutStep, setProductCheckoutStep] = useState(1);
+  const [productForm, setProductForm] = useState({
+    dni: '',
+    nombreCompleto: '',
+    telefono: '',
+    email: '',
+    numeroOperacion: ''
   });
-
-  const showAlert = (title, message) => {
-    setAlertModal({
-      isOpen: true,
-      title,
-      message
-    });
-  };
+  const [productFile, setProductFile] = useState(null);
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [productSuccess, setProductSuccess] = useState(false);
+  const [productValidationErrors, setProductValidationErrors] = useState({});
 
   useEffect(() => {
     fetchConfig();
@@ -72,9 +71,8 @@ const CatalogoVirtual = () => {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
         if (data.yapeNumber) setYapeNumber(data.yapeNumber);
-        if (data.yapeTitular) setYapeTitular(data.yapeTitular);
-        if (data.numeroCuenta) setNumeroCuenta(data.numeroCuenta);
-        if (data.cuentaTitular) setCuentaTitular(data.cuentaTitular);
+        if (data.yapeNombre) setYapeNombre(data.yapeNombre);
+        if (data.cciNumber) setCciNumber(data.cciNumber);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -132,7 +130,7 @@ const CatalogoVirtual = () => {
       const existing = prev.find(item => item.producto.id === producto.id);
       if (existing) {
         if (existing.cantidad >= producto.stock) {
-          showAlert('Stock Agotado', 'No hay más stock disponible de este producto.');
+          alert('No hay más stock disponible de este producto.');
           return prev;
         }
         return prev.map(item => 
@@ -163,23 +161,147 @@ const CatalogoVirtual = () => {
   const cartTotal = cart.reduce((sum, item) => sum + (item.producto.precio * item.cantidad), 0);
   const cartItemCount = cart.reduce((count, item) => count + item.cantidad, 0);
 
+  const handleCheckoutWhatsApp = () => {
+    if (cart.length === 0) return;
+    
+    // Open product checkout modal instead of WhatsApp
+    setProductForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
+    setProductFile(null);
+    setProductSuccess(false);
+    setProductValidationErrors({});
+    setProductCheckoutStep(1);
+    setIsProductCheckoutOpen(true);
+  };
+
+  const handleProductDniChange = async (e) => {
+    const dni = e.target.value.replace(/\D/g, '');
+    setProductForm(prev => ({ ...prev, dni }));
+
+    if (dni.length === 8) {
+      try {
+        const res = await fetch(`http://localhost:8080/api/consultas/dni/${dni}`);
+        if (res.ok) {
+          const data = await res.json();
+          const nombre = data.nombreCompleto || data.datos?.nombreCompleto;
+          if (nombre) {
+            setProductForm(prev => ({ ...prev, nombreCompleto: nombre }));
+          } else if (data.nombres) {
+            const apellidoPat = data.ape_paterno || data.apellidoPaterno || '';
+            const apellidoMat = data.ape_materno || data.apellidoMaterno || '';
+            setProductForm(prev => ({
+              ...prev,
+              nombreCompleto: `${data.nombres} ${apellidoPat} ${apellidoMat}`.trim()
+            }));
+          } else if (data.datos && data.datos.nombres) {
+             const datos = data.datos;
+             const apellidoPat = datos.ape_paterno || datos.apellidoPaterno || '';
+             const apellidoMat = datos.ape_materno || datos.apellidoMaterno || '';
+             setProductForm(prev => ({
+              ...prev,
+              nombreCompleto: `${datos.nombres} ${apellidoPat} ${apellidoMat}`.trim()
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching DNI:", error);
+      }
+    }
+  };
+
+  const handleProductSubmit = async (e) => {
+    e.preventDefault();
+    
+    const errors = {};
+    
+    if (!productForm.dni || productForm.dni.length !== 8) {
+      errors.dni = "El DNI debe tener exactamente 8 dígitos";
+    }
+    
+    if (!productForm.nombreCompleto || productForm.nombreCompleto.trim() === '') {
+      errors.nombreCompleto = "El nombre completo es requerido";
+    }
+    
+    if (!productForm.telefono || productForm.telefono.length !== 9) {
+      errors.telefono = "El teléfono debe tener exactamente 9 dígitos";
+    }
+    
+    if (!productForm.numeroOperacion || productForm.numeroOperacion.length === 0 || productForm.numeroOperacion.length > 6) {
+      errors.numeroOperacion = "El número de operación debe tener máximo 6 dígitos";
+    }
+    
+    if (!productFile) {
+      errors.comprobante = "Debe subir un comprobante de pago";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setProductValidationErrors(errors);
+      return;
+    }
+    
+    setProductValidationErrors({});
+    setIsSubmittingProduct(true);
+    try {
+      // 1. Subir imagen
+      const formData = new FormData();
+      formData.append('file', productFile);
+      const uploadRes = await fetch('http://localhost:8080/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error("Error subiendo el archivo");
+      const uploadData = await uploadRes.json();
+      const fileUrl = uploadData.url;
+
+      // 2. Crear solicitud de compra de productos
+      const solicitudData = {
+        dni: productForm.dni,
+        nombreCompleto: productForm.nombreCompleto,
+        telefono: productForm.telefono,
+        email: productForm.email,
+        numeroOperacion: productForm.numeroOperacion,
+        items: cart.map(item => ({
+          productoId: item.producto.id,
+          cantidad: item.cantidad,
+          precioUnitario: item.producto.precio
+        })),
+        total: cartTotal,
+        comprobanteUrl: fileUrl
+      };
+
+      const solRes = await fetch('http://localhost:8080/api/solicitudes-producto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(solicitudData)
+      });
+      if (!solRes.ok) {
+        let errMsg = 'Error creando la solicitud';
+        try {
+          const errBody = await solRes.json();
+          errMsg = errBody.mensaje || errBody.message || errMsg;
+        } catch {
+          errMsg = await solRes.text() || errMsg;
+        }
+        throw new Error(errMsg);
+      }
+
+      setProductSuccess(true);
+      setCart([]);
+    } catch (error) {
+      console.error(error);
+      alert("Hubo un problema al enviar la solicitud: " + error.message);
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
   // Solicitud Functions
   const handleOpenSolicitud = (plan) => {
     setSelectedPlan(plan);
     setSolicitudForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
     setSolicitudFile(null);
     setSolicitudSuccess(false);
+    setValidationErrors({});
     setCheckoutStep(2);
-    setIsSolicitudModalOpen(true);
-  };
-
-  const handleOpenCartCheckout = () => {
-    setSelectedPlan(null);
-    setSolicitudForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
-    setSolicitudFile(null);
-    setSolicitudSuccess(false);
-    setCheckoutStep(2);
-    setIsCartOpen(false);
     setIsSolicitudModalOpen(true);
   };
 
@@ -220,10 +342,39 @@ const CatalogoVirtual = () => {
 
   const handleSolicitudSubmit = async (e) => {
     e.preventDefault();
+    
+    const errors = {};
+    
+    // Validación de DNI
+    if (!solicitudForm.dni || solicitudForm.dni.length !== 8) {
+      errors.dni = "El DNI debe tener exactamente 8 dígitos";
+    }
+    
+    // Validación de nombre completo
+    if (!solicitudForm.nombreCompleto || solicitudForm.nombreCompleto.trim() === '') {
+      errors.nombreCompleto = "El nombre completo es requerido";
+    }
+    
+    // Validación de teléfono: exactamente 9 dígitos
+    if (!solicitudForm.telefono || solicitudForm.telefono.length !== 9) {
+      errors.telefono = "El teléfono debe tener exactamente 9 dígitos";
+    }
+    
+    // Validación de número de operación: máximo 6 dígitos
+    if (!solicitudForm.numeroOperacion || solicitudForm.numeroOperacion.length === 0 || solicitudForm.numeroOperacion.length > 6) {
+      errors.numeroOperacion = "El número de operación debe tener máximo 6 dígitos";
+    }
+    
     if (!solicitudFile) {
-      showAlert("Comprobante Requerido", "Debe subir un comprobante de pago para finalizar el pedido.");
+      errors.comprobante = "Debe subir un comprobante de pago";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
+    
+    setValidationErrors({});
     setIsSubmittingSolicitud(true);
     try {
       // 1. Subir imagen
@@ -238,52 +389,27 @@ const CatalogoVirtual = () => {
       const fileUrl = uploadData.url;
 
       // 2. Crear solicitud
-      if (selectedPlan) {
-        const solicitudData = {
-          dni: solicitudForm.dni,
-          nombreCompleto: solicitudForm.nombreCompleto,
-          telefono: solicitudForm.telefono,
-          email: solicitudForm.email,
-          numeroOperacion: solicitudForm.numeroOperacion,
-          membresiaId: selectedPlan.id,
-          comprobanteUrl: fileUrl
-        };
+      const solicitudData = {
+        dni: solicitudForm.dni,
+        nombreCompleto: solicitudForm.nombreCompleto,
+        telefono: solicitudForm.telefono,
+        email: solicitudForm.email,
+        numeroOperacion: solicitudForm.numeroOperacion,
+        membresiaId: selectedPlan.id,
+        comprobanteUrl: fileUrl
+      };
 
-        const solRes = await fetch('http://localhost:8080/api/solicitudes-membresia', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(solicitudData)
-        });
-        if (!solRes.ok) throw new Error("Error creando la solicitud");
-      } else {
-        const solicitudData = {
-          dni: solicitudForm.dni,
-          nombreCompleto: solicitudForm.nombreCompleto,
-          telefono: solicitudForm.telefono,
-          email: solicitudForm.email,
-          numeroOperacion: solicitudForm.numeroOperacion,
-          total: cartTotal,
-          comprobanteUrl: fileUrl,
-          detalles: cart.map(item => ({
-            productoId: item.producto.id,
-            cantidad: item.cantidad
-          }))
-        };
-
-        const solRes = await fetch('http://localhost:8080/api/solicitudes-venta', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(solicitudData)
-        });
-        if (!solRes.ok) throw new Error("Error creando la solicitud de compra");
-
-        setCart([]);
-      }
+      const solRes = await fetch('http://localhost:8080/api/solicitudes-membresia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(solicitudData)
+      });
+      if (!solRes.ok) throw new Error("Error creando la solicitud");
 
       setSolicitudSuccess(true);
     } catch (error) {
       console.error(error);
-      showAlert("Error al Procesar", "Hubo un problema al enviar la solicitud: " + error.message);
+      alert("Hubo un problema al enviar la solicitud: " + error.message);
     } finally {
       setIsSubmittingSolicitud(false);
     }
@@ -625,14 +751,15 @@ const CatalogoVirtual = () => {
               type="text" 
               placeholder="Buscar producto..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, ''))}
               style={{
                 width: '100%',
                 padding: '12px 20px 12px 40px',
                 borderRadius: '25px',
                 border: '1px solid #e2e8f0',
                 outline: 'none',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                color: '#000'
               }}
             />
             <Search size={20} style={{ position: 'absolute', left: '15px', top: '12px', color: '#94a3b8' }} />
@@ -791,7 +918,7 @@ const CatalogoVirtual = () => {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f1f5f9', borderRadius: '20px', padding: '2px 8px' }}>
                         <button onClick={() => updateQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Minus size={14} /></button>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '20px', textAlign: 'center' }}>{item.cantidad}</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '20px', textAlign: 'center', color: '#000' }}>{item.cantidad}</span>
                         <button onClick={() => updateQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Plus size={14} /></button>
                       </div>
                       <button 
@@ -816,7 +943,7 @@ const CatalogoVirtual = () => {
               <span style={{ color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
             </div>
             <button 
-              onClick={handleOpenCartCheckout}
+              onClick={handleCheckoutWhatsApp}
               style={{
                 width: '100%',
                 backgroundColor: 'var(--accent-primary)',
@@ -837,7 +964,7 @@ const CatalogoVirtual = () => {
               onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
               onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              Finalizar Pedido
+              Finalizar compra
             </button>
           </div>
         )}
@@ -855,7 +982,7 @@ const CatalogoVirtual = () => {
       )}
 
       {/* Full Screen Checkout Overlay */}
-      {isSolicitudModalOpen && (
+      {isSolicitudModalOpen && selectedPlan && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
           backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto',
@@ -864,7 +991,7 @@ const CatalogoVirtual = () => {
           {/* Header para Paso 2 */}
           {checkoutStep === 2 && (
             <div style={{ width: '100%', padding: '40px 20px 40px', textAlign: 'center' }}>
-              <h1 style={{ color: 'var(--text-primary)', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
+              <h1 style={{ color: '#000000', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
             </div>
           )}
 
@@ -875,7 +1002,7 @@ const CatalogoVirtual = () => {
             </button>
 
             {checkoutStep === 3 && (
-               <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: 'var(--text-primary)' }}>Detalles de pago</h1>
+               <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de pago</h1>
             )}
 
             {/* Stepper Visual */}
@@ -888,23 +1015,19 @@ const CatalogoVirtual = () => {
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>
-                    {selectedPlan ? 'Planes' : 'Productos'}
-                  </span>
+                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: '#000000', fontWeight: '500' }}>Planes</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }} onClick={() => setCheckoutStep(2)}>
                   <div style={{ width: checkoutStep === 2 ? '50px' : '40px', height: checkoutStep === 2 ? '50px' : '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 2 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 2 ? '-5px' : '0', boxShadow: checkoutStep === 2 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: 'var(--text-primary)', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>
-                    {selectedPlan ? 'Revisar Plan' : 'Revisar Compra'}
-                  </span>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: '#000000', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>Revisar Plan</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: checkoutStep === 3 ? 'pointer' : 'not-allowed' }} onClick={() => { if(checkoutStep === 3) setCheckoutStep(3) }}>
                   <div style={{ width: checkoutStep === 3 ? '50px' : '40px', height: checkoutStep === 3 ? '50px' : '40px', borderRadius: '50%', backgroundColor: checkoutStep === 3 ? 'var(--accent-primary)' : '#334155', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 3 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 3 ? '-5px' : '0', boxShadow: checkoutStep === 3 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 3 ? '1rem' : '0.9rem', color: checkoutStep === 2 ? '#94a3b8' : 'var(--text-primary)', fontWeight: checkoutStep === 3 ? 'bold' : '500' }}>Pago</span>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 3 ? '1rem' : '0.9rem', color: checkoutStep === 2 ? '#94a3b8' : '#000000', fontWeight: checkoutStep === 3 ? 'bold' : '500' }}>Pago</span>
                 </div>
               </div>
             </div>
@@ -915,14 +1038,14 @@ const CatalogoVirtual = () => {
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
                 <h2 style={{ color: '#166534', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
-                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su compra.</p>
+                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su activación como socio.</p>
                 <button onClick={() => setIsSolicitudModalOpen(false)} className="btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem' }}>
                   Volver al Catálogo
                 </button>
               </div>
             ) : (
               <>
-                {/* ----------------- PASO 2: REVISAR DETALLES ----------------- */}
+                {/* ----------------- PASO 2: REVISAR PLAN ----------------- */}
                 {checkoutStep === 2 && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
                     
@@ -939,74 +1062,41 @@ const CatalogoVirtual = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedPlan ? (
-                            <tr>
-                              <td style={{ padding: '20px', textAlign: 'center' }}>
-                                <button onClick={() => setIsSolicitudModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
-                              </td>
-                              <td style={{ padding: '20px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                  <div style={{ width: '50px', height: '50px', backgroundColor: '#1e293b', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', padding: '5px' }}>
-                                    PLAN<br/>GYM
-                                  </div>
-                                  <div>
-                                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre}</p>
-                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>MESES: {selectedPlan.duracionMeses || Math.round(selectedPlan.duracionDias / 30)}</p>
-                                  </div>
+                          <tr>
+                            <td style={{ padding: '20px', textAlign: 'center' }}>
+                              <button onClick={() => setIsSolicitudModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
+                            </td>
+                            <td style={{ padding: '20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div style={{ width: '50px', height: '50px', backgroundColor: '#1e293b', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', padding: '5px' }}>
+                                  PLAN<br/>GYM
                                 </div>
-                              </td>
-                              <td style={{ padding: '20px', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
-                              <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>1</td>
-                              <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
-                            </tr>
-                          ) : (
-                            cart.map(item => (
-                              <tr key={item.producto.id}>
-                                <td style={{ padding: '20px', textAlign: 'center' }}>
-                                  <button onClick={() => removeFromCart(item.producto.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
-                                </td>
-                                <td style={{ padding: '20px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ width: '50px', height: '50px', backgroundColor: '#f1f5f9', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                      {item.producto.imagenUrl ? (
-                                        <img src={item.producto.imagenUrl} alt={item.producto.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                      ) : (
-                                        <ShoppingCart size={20} color="#cbd5e1" />
-                                      )}
-                                    </div>
-                                    <div>
-                                      <p style={{ margin: '0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{item.producto.nombre}</p>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '20px', color: '#475569' }}>S/ {item.producto.precio.toFixed(2)}</td>
-                                <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#f1f5f9', borderRadius: '20px', padding: '2px 8px' }}>
-                                    <button type="button" onClick={() => updateQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Minus size={12} /></button>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', width: '15px', textAlign: 'center' }}>{item.cantidad}</span>
-                                    <button type="button" onClick={() => updateQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Plus size={12} /></button>
-                                  </div>
-                                </td>
-                                <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</td>
-                              </tr>
-                            ))
-                          )}
+                                <div>
+                                  <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre}</p>
+                                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>MESES: {selectedPlan.duracionMeses}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '20px', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                            <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>1</td>
+                            <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
 
                     {/* Totales del Carrito */}
                     <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Totales del carrito</h3>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Totales del carrito</h3>
                       
                       <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>SUBTOTAL</span>
-                        <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
+                        <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                       </div>
 
                       <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>TOTAL</span>
-                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.2rem' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.2rem' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                       </div>
 
                       <button onClick={() => setCheckoutStep(3)} style={{
@@ -1027,37 +1117,145 @@ const CatalogoVirtual = () => {
                     
                     {/* Lado Izquierdo: Detalles de facturación */}
                     <div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-primary)' }}>Detalles de facturación</h3>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#000000' }}>Detalles de facturación</h3>
                       
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>DNI *</label>
-                        <input type="text" required maxLength="8" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.dni} onChange={handleDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type="text" required maxLength="8" style={{ 
+                            width: '100%', 
+                            padding: '14px 16px', 
+                            borderRadius: '10px', 
+                            border: validationErrors.dni ? '2px solid #dc2626' : solicitudForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                            backgroundColor: '#ffffff', 
+                            color: '#000000',
+                            fontSize: '0.95rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: validationErrors.dni ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                          }}
+                            value={solicitudForm.dni} onChange={handleDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                          {solicitudForm.dni.length === 8 && !validationErrors.dni && (
+                            <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                          )}
+                        </div>
+                        {validationErrors.dni && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            color: '#dc2626', 
+                            fontSize: '0.85rem', 
+                            fontWeight: '500', 
+                            backgroundColor: '#fef2f2', 
+                            padding: '10px 14px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #fecaca'
+                          }}>
+                            <AlertCircle size={16} />
+                            <span>{validationErrors.dni}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Nombre Completo *</label>
-                        <input type="text" required style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.nombreCompleto} onChange={e => setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value})} placeholder="Se autocompletará si el DNI es válido" />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type="text" required style={{ 
+                            width: '100%', 
+                            padding: '14px 16px', 
+                            borderRadius: '10px', 
+                            border: validationErrors.nombreCompleto ? '2px solid #dc2626' : (solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                            backgroundColor: '#ffffff', 
+                            color: '#000000',
+                            fontSize: '0.95rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: validationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                          }}
+                            value={solicitudForm.nombreCompleto} onChange={e => {setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value}); setValidationErrors({...validationErrors, nombreCompleto: null});}} placeholder="Se autocompletará si el DNI es válido" />
+                          {solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto && (
+                            <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                          )}
+                        </div>
+                        {validationErrors.nombreCompleto && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            color: '#dc2626', 
+                            fontSize: '0.85rem', 
+                            fontWeight: '500', 
+                            backgroundColor: '#fef2f2', 
+                            padding: '10px 14px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #fecaca'
+                          }}>
+                            <AlertCircle size={16} />
+                            <span>{validationErrors.nombreCompleto}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Teléfono *</label>
-                        <input type="text" required maxLength="15" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.telefono} onChange={e => setSolicitudForm({...solicitudForm, telefono: e.target.value})} />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
+                        <div style={{ position: 'relative' }}>
+                          <input type="text" required maxLength="9" style={{ 
+                            width: '100%', 
+                            padding: '14px 16px', 
+                            borderRadius: '10px', 
+                            border: validationErrors.telefono ? '2px solid #dc2626' : solicitudForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                            backgroundColor: '#ffffff', 
+                            color: '#000000',
+                            fontSize: '0.95rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: validationErrors.telefono ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                          }}
+                            value={solicitudForm.telefono} onChange={e => {setSolicitudForm({...solicitudForm, telefono: e.target.value.replace(/\D/g, '')}); setValidationErrors({...validationErrors, telefono: null});}} placeholder="9 dígitos" />
+                          {solicitudForm.telefono.length === 9 && !validationErrors.telefono && (
+                            <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                          )}
+                        </div>
+                        {validationErrors.telefono && (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '8px',
+                            color: '#dc2626', 
+                            fontSize: '0.85rem', 
+                            fontWeight: '500', 
+                            backgroundColor: '#fef2f2', 
+                            padding: '10px 14px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #fecaca'
+                          }}>
+                            <AlertCircle size={16} />
+                            <span>{validationErrors.telefono}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Dirección de correo electrónico *</label>
-                        <input type="email" required style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
-                          value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} />
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
+                        <input type="email" style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          color: '#000000',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease'
+                        }}
+                          value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} placeholder="ejemplo@correo.com" />
                       </div>
                     </div>
 
                     {/* Lado Derecho: Tu Pedido */}
                     <div>
                       <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
-                        <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-primary)' }}>Tu pedido</h3>
+                        <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Tu pedido</h3>
                         
                         {/* Summary Table */}
                         <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
@@ -1065,66 +1263,115 @@ const CatalogoVirtual = () => {
                           <span>SUBTOTAL</span>
                         </div>
                         
-                        {selectedPlan ? (
-                          <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre} × 1</p>
-                            </div>
-                            <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#000000' }}>{selectedPlan.nombre} × 1</p>
                           </div>
-                        ) : (
-                          cart.map(item => (
-                            <div key={item.producto.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div>
-                                <p style={{ margin: '0', fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>{item.producto.nombre} × {item.cantidad}</p>
-                              </div>
-                              <span style={{ fontWeight: '500', color: '#475569', fontSize: '0.9rem' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</span>
-                            </div>
-                          ))
-                        )}
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        </div>
 
                         <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
-                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                         </div>
 
                         <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
-                          <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Total</span>
-                          <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
+                          <span style={{ fontWeight: 'bold', color: '#000000' }}>Total</span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                         </div>
 
                         {/* Metodos de pago (Yape/Transferencia) */}
                         <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                           <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
-                            Realiza el pago a nuestras cuentas y adjunta el comprobante para procesar tu pedido.
+                            Realiza el pago a nuestras cuentas y adjunta el comprobante para habilitar tu suscripción.
                           </p>
                           
                           <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>
-                              {yapeNumber || 'No configurado'}
-                              {yapeTitular && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 'normal', marginLeft: '5px' }}>({yapeTitular})</span>}
-                            </p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{yapeNumber || '---'} {yapeNombre ? <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>({yapeNombre})</span> : null}</p>
                           </div>
 
                           <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>Cuenta Bancaria</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>
-                              {numeroCuenta || 'No configurado'}
-                              {cuentaTitular && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 'normal', marginLeft: '5px' }}>({cuentaTitular})</span>}
-                            </p>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>CCI</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{cciNumber || '---'}</p>
                           </div>
 
-                          <div style={{ marginBottom: '20px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Número de Operación *</label>
-                            <input type="text" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white', fontSize: '1rem' }}
-                              value={solicitudForm.numeroOperacion} onChange={e => setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value})} placeholder="Ej: 0123456" />
+                          <div style={{ marginBottom: '24px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
+                            <div style={{ position: 'relative' }}>
+                              <input type="text" required maxLength="6" style={{ 
+                                width: '100%', 
+                                padding: '14px 16px', 
+                                borderRadius: '10px', 
+                                border: validationErrors.numeroOperacion ? '2px solid #dc2626' : (solicitudForm.numeroOperacion.length > 0 && solicitudForm.numeroOperacion.length <= 6) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                                backgroundColor: '#ffffff', 
+                                color: '#000000',
+                                fontSize: '0.95rem',
+                                transition: 'all 0.2s ease',
+                                boxShadow: validationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                              }}
+                                value={solicitudForm.numeroOperacion} onChange={e => {setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setValidationErrors({...validationErrors, numeroOperacion: null});}} placeholder="Máx 6 dígitos" />
+                              {solicitudForm.numeroOperacion.length > 0 && solicitudForm.numeroOperacion.length <= 6 && !validationErrors.numeroOperacion && (
+                                <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                              )}
+                            </div>
+                            {validationErrors.numeroOperacion && (
+                              <div style={{ 
+                                marginTop: '8px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                color: '#dc2626', 
+                                fontSize: '0.85rem', 
+                                fontWeight: '500', 
+                                backgroundColor: '#fef2f2', 
+                                padding: '10px 14px', 
+                                borderRadius: '8px', 
+                                border: '1px solid #fecaca'
+                              }}>
+                                <AlertCircle size={16} />
+                                <span>{validationErrors.numeroOperacion}</span>
+                              </div>
+                            )}
                           </div>
                           
                           <div style={{ marginBottom: '30px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem', fontWeight: 'bold' }}>Comprobante de Pago *</label>
-                            <input type="file" accept="image/*,.pdf" required style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px dashed #cbd5e1', backgroundColor: 'white', cursor: 'pointer' }}
-                              onChange={e => setSolicitudFile(e.target.files[0])} />
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
+                            <div style={{ position: 'relative' }}>
+                              <input type="file" accept="image/*,.pdf" required style={{ 
+                                width: '100%', 
+                                padding: '14px 16px', 
+                                borderRadius: '10px', 
+                                border: validationErrors.comprobante ? '2px solid #dc2626' : solicitudFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
+                                backgroundColor: '#ffffff', 
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                transition: 'all 0.2s ease',
+                                boxShadow: validationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                              }}
+                                onChange={e => {setSolicitudFile(e.target.files[0]); setValidationErrors({...validationErrors, comprobante: null});}} />
+                              {solicitudFile && !validationErrors.comprobante && (
+                                <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                              )}
+                            </div>
+                            {validationErrors.comprobante && (
+                              <div style={{ 
+                                marginTop: '8px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                color: '#dc2626', 
+                                fontSize: '0.85rem', 
+                                fontWeight: '500', 
+                                backgroundColor: '#fef2f2', 
+                                padding: '10px 14px', 
+                                borderRadius: '8px', 
+                                border: '1px solid #fecaca'
+                              }}>
+                                <AlertCircle size={16} />
+                                <span>{validationErrors.comprobante}</span>
+                              </div>
+                            )}
                           </div>
 
                           <button type="submit" disabled={isSubmittingSolicitud} style={{
@@ -1148,27 +1395,316 @@ const CatalogoVirtual = () => {
         </div>
       )}
 
-      {/* Modal de Alerta */}
-      <Modal 
-        isOpen={alertModal.isOpen} 
-        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-        title={alertModal.title}
-      >
-        <div style={{ padding: '5px 0' }}>
-          <p style={{ color: 'var(--text-primary)', fontSize: '1.05rem', margin: '0 0 24px 0', lineHeight: '1.5' }}>
-            {alertModal.message}
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button 
-              className="btn-primary" 
-              onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
-              style={{ backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
-            >
-              Aceptar
+      {/* Product Checkout Modal */}
+      {isProductCheckoutOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto',
+          transition: 'background-color 0.3s ease'
+        }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px', position: 'relative' }}>
+            
+            <button onClick={() => setIsProductCheckoutOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+              <X size={24} color="#64748b" />
             </button>
+
+            {productSuccess ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginTop: '40px' }}>
+                <div style={{ width: '80px', height: '80px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <h2 style={{ color: '#166534', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
+                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su pedido.</p>
+                <button onClick={() => setIsProductCheckoutOpen(false)} className="btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem' }}>
+                  Volver al Catálogo
+                </button>
+              </div>
+            ) : (
+              <>
+                <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de la compra</h1>
+                
+                <form onSubmit={handleProductSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                  
+                  {/* Lado Izquierdo: Detalles de facturación */}
+                  <div>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#000000' }}>Detalles de facturación</h3>
+                    
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
+                      <div style={{ position: 'relative' }}>
+                        <input type="text" required maxLength="8" style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: productValidationErrors.dni ? '2px solid #dc2626' : productForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          color: '#000000',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: productValidationErrors.dni ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                        }}
+                          value={productForm.dni} onChange={handleProductDniChange} placeholder="Ingrese su DNI de 8 dígitos" />
+                        {productForm.dni.length === 8 && !productValidationErrors.dni && (
+                          <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                        )}
+                      </div>
+                      {productValidationErrors.dni && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          color: '#dc2626', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '500', 
+                          backgroundColor: '#fef2f2', 
+                          padding: '10px 14px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #fecaca'
+                        }}>
+                          <AlertCircle size={16} />
+                          <span>{productValidationErrors.dni}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
+                      <div style={{ position: 'relative' }}>
+                        <input type="text" required style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: productValidationErrors.nombreCompleto ? '2px solid #dc2626' : (productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          color: '#000000',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: productValidationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                        }}
+                          value={productForm.nombreCompleto} onChange={e => {setProductForm({...productForm, nombreCompleto: e.target.value}); setProductValidationErrors({...productValidationErrors, nombreCompleto: null});}} placeholder="Se autocompletará si el DNI es válido" />
+                        {productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto && (
+                          <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                        )}
+                      </div>
+                      {productValidationErrors.nombreCompleto && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          color: '#dc2626', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '500', 
+                          backgroundColor: '#fef2f2', 
+                          padding: '10px 14px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #fecaca'
+                        }}>
+                          <AlertCircle size={16} />
+                          <span>{productValidationErrors.nombreCompleto}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
+                      <div style={{ position: 'relative' }}>
+                        <input type="text" required maxLength="9" style={{ 
+                          width: '100%', 
+                          padding: '14px 16px', 
+                          borderRadius: '10px', 
+                          border: productValidationErrors.telefono ? '2px solid #dc2626' : productForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                          backgroundColor: '#ffffff', 
+                          color: '#000000',
+                          fontSize: '0.95rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: productValidationErrors.telefono ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                        }}
+                          value={productForm.telefono} onChange={e => {setProductForm({...productForm, telefono: e.target.value.replace(/\D/g, '')}); setProductValidationErrors({...productValidationErrors, telefono: null});}} placeholder="9 dígitos" />
+                        {productForm.telefono.length === 9 && !productValidationErrors.telefono && (
+                          <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                        )}
+                      </div>
+                      {productValidationErrors.telefono && (
+                        <div style={{ 
+                          marginTop: '8px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          color: '#dc2626', 
+                          fontSize: '0.85rem', 
+                          fontWeight: '500', 
+                          backgroundColor: '#fef2f2', 
+                          padding: '10px 14px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #fecaca'
+                        }}>
+                          <AlertCircle size={16} />
+                          <span>{productValidationErrors.telefono}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
+                      <input type="email" style={{ 
+                        width: '100%', 
+                        padding: '14px 16px', 
+                        borderRadius: '10px', 
+                        border: '2px solid #e2e8f0', 
+                        backgroundColor: '#ffffff', 
+                        color: '#000000',
+                        fontSize: '0.95rem',
+                        transition: 'all 0.2s ease'
+                      }}
+                        value={productForm.email} onChange={e => setProductForm({...productForm, email: e.target.value})} placeholder="ejemplo@correo.com" />
+                    </div>
+                  </div>
+
+                  {/* Lado Derecho: Tu Pedido */}
+                  <div>
+                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Tu pedido</h3>
+                      
+                      {/* Summary Table */}
+                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        <span>PRODUCTO</span>
+                        <span>SUBTOTAL</span>
+                      </div>
+                      
+                      {cart.map(item => (
+                        <div key={item.producto.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#000000' }}>{item.producto.nombre} × {item.cantidad}</p>
+                          </div>
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</span>
+                        </div>
+                      ))}
+
+                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
+                        <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {cartTotal.toFixed(2)}</span>
+                      </div>
+
+                      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
+                        <span style={{ fontWeight: 'bold', color: '#000000' }}>Total</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
+                      </div>
+
+                      {/* Metodos de pago (Yape/Transferencia) */}
+                      <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                        <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
+                          Realiza el pago a nuestras cuentas y adjunta el comprobante para procesar tu pedido.
+                        </p>
+                        
+                        <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{yapeNumber || '---'} {yapeNombre ? <span style={{fontSize:'0.9rem', color:'#000000', fontWeight:'normal'}}>({yapeNombre})</span> : null}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>CCI</p>
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>{cciNumber || '---'}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '24px' }}>
+                          <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
+                          <div style={{ position: 'relative' }}>
+                            <input type="text" required maxLength="6" style={{ 
+                              width: '100%', 
+                              padding: '14px 16px', 
+                              borderRadius: '10px', 
+                              border: productValidationErrors.numeroOperacion ? '2px solid #dc2626' : (productForm.numeroOperacion.length > 0 && productForm.numeroOperacion.length <= 6) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                              backgroundColor: '#ffffff', 
+                              color: '#000000',
+                              fontSize: '0.95rem',
+                              transition: 'all 0.2s ease',
+                              boxShadow: productValidationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                            }}
+                              value={productForm.numeroOperacion} onChange={e => {setProductForm({...productForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setProductValidationErrors({...productValidationErrors, numeroOperacion: null});}} placeholder="Máx 6 dígitos" />
+                            {productForm.numeroOperacion.length > 0 && productForm.numeroOperacion.length <= 6 && !productValidationErrors.numeroOperacion && (
+                              <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                            )}
+                          </div>
+                          {productValidationErrors.numeroOperacion && (
+                            <div style={{ 
+                              marginTop: '8px', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '8px',
+                              color: '#dc2626', 
+                              fontSize: '0.85rem', 
+                              fontWeight: '500', 
+                              backgroundColor: '#fef2f2', 
+                              padding: '10px 14px', 
+                              borderRadius: '8px', 
+                              border: '1px solid #fecaca'
+                            }}>
+                              <AlertCircle size={16} />
+                              <span>{productValidationErrors.numeroOperacion}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div style={{ marginBottom: '30px' }}>
+                          <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
+                          <div style={{ position: 'relative' }}>
+                            <input type="file" accept="image/*,.pdf" required style={{ 
+                              width: '100%', 
+                              padding: '14px 16px', 
+                              borderRadius: '10px', 
+                              border: productValidationErrors.comprobante ? '2px solid #dc2626' : productFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
+                              backgroundColor: '#ffffff', 
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              transition: 'all 0.2s ease',
+                              boxShadow: productValidationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                            }}
+                              onChange={e => {setProductFile(e.target.files[0]); setProductValidationErrors({...productValidationErrors, comprobante: null});}} />
+                            {productFile && !productValidationErrors.comprobante && (
+                              <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+                            )}
+                          </div>
+                          {productValidationErrors.comprobante && (
+                            <div style={{ 
+                              marginTop: '8px', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '8px',
+                              color: '#dc2626', 
+                              fontSize: '0.85rem', 
+                              fontWeight: '500', 
+                              backgroundColor: '#fef2f2', 
+                              padding: '10px 14px', 
+                              borderRadius: '8px', 
+                              border: '1px solid #fecaca'
+                            }}>
+                              <AlertCircle size={16} />
+                              <span>{productValidationErrors.comprobante}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <button type="submit" disabled={isSubmittingProduct} style={{
+                          width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
+                          padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
+                          cursor: isSubmittingProduct ? 'not-allowed' : 'pointer', opacity: isSubmittingProduct ? 0.7 : 1,
+                          transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                        }}>
+                          {isSubmittingProduct ? 'Procesando...' : 'Finalizar compra'}
+                        </button>
+                      </div>
+
+                    </div>
+                  </div>
+
+                </form>
+              </>
+            )}
           </div>
         </div>
-      </Modal>
+      )}
 
     </div>
   );
