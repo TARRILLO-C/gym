@@ -72,8 +72,9 @@ const CatalogoVirtual = () => {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
         if (data.yapeNumber) setYapeNumber(data.yapeNumber);
-        if (data.yapeNombre) setYapeNombre(data.yapeNombre);
-        if (data.cciNumber) setCciNumber(data.cciNumber);
+        if (data.yapeTitular) setYapeTitular(data.yapeTitular);
+        if (data.numeroCuenta) setNumeroCuenta(data.numeroCuenta);
+        if (data.cuentaTitular) setCuentaTitular(data.cuentaTitular);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
