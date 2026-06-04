@@ -67,7 +67,8 @@ public class SolicitudProducto {
     public enum EstadoSolicitud {
         PENDIENTE,
         APROBADA,
-        RECHAZADA
+        RECHAZADA,
+        ENTREGADO
     }
 }
 

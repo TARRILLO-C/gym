@@ -86,7 +86,7 @@ const SolicitudesMembresia = () => {
     setConfirmDialog({
       isOpen: true,
       title: 'Confirmar Acción',
-      message: "¿Está seguro de rechazar esta solicitud?",
+      message: "¿Esta seguro de rechazar esta solicitud?",
       onConfirm: async () => {
         setConfirmDialog({ isOpen: false });
         try {
@@ -102,6 +102,26 @@ const SolicitudesMembresia = () => {
     });
   };
 
+  const handleEntregar = async (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Confirmar Entrega',
+      message: "¿Está seguro de marcar este pedido como ENTREGADO? Confirme que el cliente ha recibido los productos.",
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false });
+        try {
+          await api.post(`/solicitudes-producto/${id}/entregar`);
+          showNotification("Pedido entregado con éxito.", 'success');
+          fetchSolicitudes();
+        } catch (error) {
+          console.error(error);
+          const msg = error.response?.data?.mensaje || error.message || 'Error de red';
+          showNotification("Error al entregar: " + msg, 'error');
+        }
+      }
+    });
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -112,6 +132,7 @@ const SolicitudesMembresia = () => {
     if (activeTab === 'PENDIENTE') return '#f59e0b';
     if (activeTab === 'APROBADA') return '#22c55e';
     if (activeTab === 'RECHAZADA') return '#ef4444';
+    if (activeTab === 'ENTREGADO') return '#3b82f6';
     return 'var(--accent-primary)';
   };
 
@@ -185,6 +206,58 @@ const SolicitudesMembresia = () => {
         .tab-btn-rechazada.active:hover {
           background-color: #dc2626;
           border-color: #dc2626;
+        }
+
+        .tab-btn-entregado {
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: bold;
+          border: 1px solid #3b82f6;
+          background-color: transparent;
+          color: #3b82f6;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-btn-entregado.active {
+          background-color: #3b82f6;
+          color: white;
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .tab-btn-entregado:hover {
+          background-color: rgba(59, 130, 246, 0.1);
+        }
+        .tab-btn-entregado.active:hover {
+          background-color: #2563eb;
+          border-color: #2563eb;
+        }
+
+        .status-badge {
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-size: 0.85rem;
+          font-weight: bold;
+          display: inline-block;
+          text-transform: uppercase;
+        }
+        .status-pendiente {
+          background-color: rgba(245, 158, 11, 0.1);
+          color: #f59e0b;
+          border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .status-aprobada {
+          background-color: rgba(34, 197, 94, 0.1);
+          color: #22c55e;
+          border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        .status-rechazada {
+          background-color: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .status-entregado {
+          background-color: rgba(59, 130, 246, 0.1);
+          color: #3b82f6;
+          border: 1px solid rgba(59, 130, 246, 0.2);
         }
 
         .btn-update {
@@ -344,8 +417,16 @@ const SolicitudesMembresia = () => {
           className={`tab-btn-aprobada ${activeTab === 'APROBADA' ? 'active' : ''}`}
           onClick={() => setActiveTab('APROBADA')}
         >
-          Aprobadas
+          {requestType === 'MEMBRESIA' ? 'Aprobadas' : 'Por Entregar'}
         </button>
+        {requestType === 'PRODUCTO' && (
+          <button 
+            className={`tab-btn-entregado ${activeTab === 'ENTREGADO' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ENTREGADO')}
+          >
+            Entregados
+          </button>
+        )}
         <button 
           className={`tab-btn-rechazada ${activeTab === 'RECHAZADA' ? 'active' : ''}`}
           onClick={() => setActiveTab('RECHAZADA')}
@@ -480,6 +561,38 @@ const SolicitudesMembresia = () => {
                           title="Rechazar"
                         >
                           <XCircle size={24} />
+                        </button>
+                      </div>
+                    )}
+                    {requestType === 'PRODUCTO' && sol.estado === 'APROBADA' && (
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                          onClick={() => handleEntregar(sol.id)}
+                          style={{ 
+                            background: 'rgba(59, 130, 246, 0.1)', 
+                            border: '1px solid rgba(59, 130, 246, 0.2)', 
+                            cursor: 'pointer', 
+                            color: '#3b82f6',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontWeight: 'bold',
+                            fontSize: '0.85rem',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={e => {
+                            e.currentTarget.style.backgroundColor = '#3b82f6';
+                            e.currentTarget.style.color = 'white';
+                          }}
+                          onMouseOut={e => {
+                            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                            e.currentTarget.style.color = '#3b82f6';
+                          }}
+                          title="Marcar como Entregado"
+                        >
+                          <Package size={16} /> Entregar
                         </button>
                       </div>
                     )}

@@ -158,4 +158,20 @@ public class SolicitudProductoController {
         log.info("Solicitud de producto ID {} rechazada.", id);
         return ResponseEntity.ok(guardada);
     }
+
+    @PostMapping("/{id}/entregar")
+    @Transactional
+    public ResponseEntity<SolicitudProducto> entregar(@PathVariable Long id) {
+        SolicitudProducto solicitud = solicitudProductoRepository.findByIdWithDetalles(id)
+                .orElseThrow(() -> new ResourceNotFoundException("SolicitudProducto", id));
+
+        if (solicitud.getEstado() != EstadoSolicitud.APROBADA) {
+            throw new IllegalStateException("La solicitud debe estar APROBADA para poder ser entregada.");
+        }
+
+        solicitud.setEstado(EstadoSolicitud.ENTREGADO);
+        SolicitudProducto guardada = solicitudProductoRepository.save(solicitud);
+        log.info("Solicitud de producto ID {} marcada como ENTREGADO.", id);
+        return ResponseEntity.ok(guardada);
+    }
 }
