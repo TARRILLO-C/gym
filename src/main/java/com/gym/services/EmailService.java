@@ -51,14 +51,14 @@ public class EmailService {
     }
 
     @Async
-    public void enviarConfirmacionVenta(SolicitudVenta solicitud) {
+    public void enviarConfirmacionVenta(SolicitudProducto solicitud) {
         String emailTo = solicitud.getEmail();
         if (emailTo == null || emailTo.isEmpty()) {
             log.warn("La solicitud de venta {} no tiene correo registrado. Se omite envío de correo.", solicitud.getNombreCompleto());
             return;
         }
 
-        String subject = "¡Tu pedido está listo para recoger! - Código " + solicitud.getCodigoEntrega();
+        String subject = "¡Tu pedido está listo para recoger! - Código SOL-" + solicitud.getId();
         String content = construirHtmlConfirmacionVenta(solicitud);
 
         enviarCorreo(emailTo, subject, content);
@@ -123,14 +123,16 @@ public class EmailService {
                 "</div>";
     }
 
-    private String construirHtmlConfirmacionVenta(SolicitudVenta sol) {
+    private String construirHtmlConfirmacionVenta(SolicitudProducto sol) {
         StringBuilder itemsHtml = new StringBuilder();
-        for (DetalleSolicitudVenta d : sol.getDetalles()) {
-            String prodName = d.getProducto() != null ? d.getProducto().getNombre() : "Producto";
-            itemsHtml.append("<li style='margin-bottom: 8px;'>")
-                    .append("<strong>").append(d.getCantidad()).append("x ").append(prodName).append("</strong>")
-                    .append(" - S/ ").append(d.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(d.getCantidad())).setScale(2, java.math.RoundingMode.HALF_UP))
-                    .append("</li>");
+        if (sol.getItems() != null) {
+            for (DetalleSolicitudProducto d : sol.getItems()) {
+                String prodName = d.getProducto() != null ? d.getProducto().getNombre() : "Producto";
+                itemsHtml.append("<li style='margin-bottom: 8px;'>")
+                        .append("<strong>").append(d.getCantidad()).append("x ").append(prodName).append("</strong>")
+                        .append(" - S/ ").append(d.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(d.getCantidad())).setScale(2, java.math.RoundingMode.HALF_UP))
+                        .append("</li>");
+            }
         }
 
         return "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>" +
@@ -142,7 +144,7 @@ public class EmailService {
                 "<p>Tu pago con número de operación <strong>" + sol.getNumeroOperacion() + "</strong> ha sido verificado y aprobado.</p>" +
                 "<div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px dashed #cbd5e1;'>" +
                 "  <p style='margin: 0 0 5px 0; font-size: 0.9rem; color: #64748b; font-weight: bold;'>CÓDIGO ÚNICO DE RECOJO</p>" +
-                "  <h1 style='margin: 0; color: #ff3e3e; letter-spacing: 2px; font-size: 2.2rem;'>" + sol.getCodigoEntrega() + "</h1>" +
+                "  <h1 style='margin: 0; color: #ff3e3e; letter-spacing: 2px; font-size: 2.2rem;'>SOL-" + sol.getId() + "</h1>" +
                 "  <p style='margin: 5px 0 0 0; font-size: 0.85rem; color: #ef4444;'>Presenta este código en recepción para recibir tus productos.</p>" +
                 "</div>" +
                 "<h3>Detalle del Pedido:</h3>" +

@@ -15,7 +15,7 @@ public class ConfiguracionWeb {
     @Column(name = "logo_url")
     private String logoUrl;
 
-    @Column(name = "yape_number")
+    @Column(name = "yape_number", length = 9)
     private String yapeNumber;
 
     @Column(name = "yape_titular")
@@ -26,9 +26,6 @@ public class ConfiguracionWeb {
 
     @Column(name = "cuenta_titular")
     private String cuentaTitular;
-
-    @Column(name = "yape_number", length = 9)
-    private String yapeNumber;
 
     @Column(name = "yape_nombre")
     private String yapeNombre;
