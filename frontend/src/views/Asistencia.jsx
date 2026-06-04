@@ -16,7 +16,13 @@ const Asistencia = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!dni || dni.length < 5) return;
+    if (!dni || dni.length !== 8) {
+      setResult({
+        success: false,
+        message: 'El DNI debe tener exactamente 8 dígitos.'
+      });
+      return;
+    }
 
     setLoading(true);
     setResult(null);
@@ -60,13 +66,13 @@ const Asistencia = () => {
                 value={dni}
                 onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
                 style={{ paddingLeft: '56px', fontSize: '1.2rem', height: '64px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)' }}
-                maxLength={12}
+                maxLength={8}
               />
             </div>
             <button 
               type="submit" 
               className="btn-primary" 
-              disabled={loading || !dni}
+              disabled={loading || !dni || dni.length !== 8}
               style={{ width: '180px', height: '64px', fontSize: '1.1rem' }}
             >
               {loading ? 'Validando...' : 'REGISTRAR'}

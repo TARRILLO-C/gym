@@ -43,7 +43,10 @@ public class WebConfigController {
             configToUpdate = configs.get(0);
         }
         configToUpdate.setLogoUrl(configData.getLogoUrl());
-        configToUpdate.setWhatsappNumber(configData.getWhatsappNumber());
+        configToUpdate.setYapeNumber(configData.getYapeNumber());
+        configToUpdate.setYapeTitular(configData.getYapeTitular());
+        configToUpdate.setNumeroCuenta(configData.getNumeroCuenta());
+        configToUpdate.setCuentaTitular(configData.getCuentaTitular());
         return ResponseEntity.ok(configuracionWebRepository.save(configToUpdate));
     }
 

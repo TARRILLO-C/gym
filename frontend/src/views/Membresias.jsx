@@ -109,8 +109,9 @@ const Membresias = () => {
       setIsSearchingDoc(true);
       try {
         const res = await api.get(`/consultas/dni/${doc}`);
-        if (res.data && res.data.nombreCompleto) {
-          setSusFormData(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        const nombre = res.data?.nombreCompleto || res.data?.datos?.nombreCompleto;
+        if (res.data && nombre) {
+          setSusFormData(prev => ({...prev, clienteNombre: nombre}));
         }
       } catch (err) { console.error("Error dni:", err); }
       setIsSearchingDoc(false);
@@ -118,8 +119,9 @@ const Membresias = () => {
       setIsSearchingDoc(true);
       try {
         const res = await api.get(`/consultas/ruc/${doc}`);
-        if (res.data && res.data.nombreCompleto) {
-          setSusFormData(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        const nombre = res.data?.nombreCompleto || res.data?.datos?.nombreCompleto;
+        if (res.data && nombre) {
+          setSusFormData(prev => ({...prev, clienteNombre: nombre}));
         }
       } catch (err) { console.error("Error ruc:", err); }
       setIsSearchingDoc(false);
@@ -1112,11 +1114,24 @@ const Membresias = () => {
               type="text" 
               value={promptValue} 
               autoFocus
-              onChange={(e) => setPromptValue(e.target.value)} 
+              onChange={(e) => {
+                const val = e.target.value;
+                if (dialogConfig.title === 'Congelar Suscripción') {
+                  if (/^\d*$/.test(val)) {
+                    setPromptValue(val);
+                  }
+                } else {
+                  setPromptValue(val);
+                }
+              }} 
+              placeholder={dialogConfig.title === 'Congelar Suscripción' ? "Ej: 15" : ""}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--bg-color)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }}
               onKeyDown={(e) => {
                 if(e.key === 'Enter') {
                   e.preventDefault();
+                  if (dialogConfig.title === 'Congelar Suscripción' && (!promptValue || parseInt(promptValue) <= 0)) {
+                    return;
+                  }
                   dialogConfig.onConfirm && dialogConfig.onConfirm(promptValue);
                   setDialogConfig({ isOpen: false });
                 }
@@ -1126,12 +1141,13 @@ const Membresias = () => {
 
           <div style={{ display: 'flex', gap: '12px', marginTop: '16px', justifyContent: 'flex-end' }}>
             {dialogConfig.type !== 'alert' && (
-              <button onClick={() => setDialogConfig({ isOpen: false })} style={{ padding: '10px 20px', background: 'transparent', color: 'var(--text-muted)' }}>
+              <button onClick={() => setDialogConfig({ isOpen: false })} style={{ padding: '10px 20px', background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>
                 Cancelar
               </button>
             )}
             <button 
               className="btn-primary" 
+              disabled={dialogConfig.type === 'prompt' && dialogConfig.title === 'Congelar Suscripción' && (!promptValue || parseInt(promptValue) <= 0)}
               onClick={() => {
                 if(dialogConfig.type === 'prompt') {
                   dialogConfig.onConfirm && dialogConfig.onConfirm(promptValue);
@@ -1140,7 +1156,11 @@ const Membresias = () => {
                 }
                 setDialogConfig({ isOpen: false });
               }} 
-              style={{ padding: '10px 24px' }}
+              style={{ 
+                padding: '10px 24px',
+                opacity: (dialogConfig.type === 'prompt' && dialogConfig.title === 'Congelar Suscripción' && (!promptValue || parseInt(promptValue) <= 0)) ? 0.5 : 1,
+                cursor: (dialogConfig.type === 'prompt' && dialogConfig.title === 'Congelar Suscripción' && (!promptValue || parseInt(promptValue) <= 0)) ? 'not-allowed' : 'pointer'
+              }}
             >
               {dialogConfig.btnConfirmText || (dialogConfig.type === 'alert' ? 'Aceptar' : 'Confirmar')}
             </button>

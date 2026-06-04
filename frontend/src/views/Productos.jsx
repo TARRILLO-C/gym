@@ -182,8 +182,9 @@ const Productos = () => {
       setIsSearchingDoc(true);
       try {
         const res = await api.get(`/consultas/dni/${doc}`);
-        if (res.data && res.data.nombreCompleto) {
-          setCheckoutForm(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        const nombre = res.data?.nombreCompleto || res.data?.datos?.nombreCompleto;
+        if (res.data && nombre) {
+          setCheckoutForm(prev => ({...prev, clienteNombre: nombre}));
         }
       } catch (err) { console.error("Error dni:", err); }
       setIsSearchingDoc(false);
@@ -191,8 +192,9 @@ const Productos = () => {
       setIsSearchingDoc(true);
       try {
         const res = await api.get(`/consultas/ruc/${doc}`);
-        if (res.data && res.data.nombreCompleto) {
-          setCheckoutForm(prev => ({...prev, clienteNombre: res.data.nombreCompleto}));
+        const nombre = res.data?.nombreCompleto || res.data?.datos?.nombreCompleto;
+        if (res.data && nombre) {
+          setCheckoutForm(prev => ({...prev, clienteNombre: nombre}));
         }
       } catch (err) { console.error("Error ruc:", err); }
       setIsSearchingDoc(false);

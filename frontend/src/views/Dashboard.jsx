@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   TrendingUp, 
@@ -6,7 +7,9 @@ import {
   Activity,
   Package,
   DollarSign,
-  ShoppingBag
+  ShoppingBag,
+  Award,
+  FileText
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -22,20 +25,26 @@ const Dashboard = () => {
     montoVendidoTotal: 0,
     montoVendidoPlanes: 0,
     montoTotalCaja: 0,
-    ultimosMiembros: []
+    ultimosMiembros: [],
+    solicitudesMembresia: [],
+    solicitudesVenta: []
   });
   const [loading, setLoading] = useState(true);
+  const [activeRequestTab, setActiveRequestTab] = useState('MEMBRESIA');
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const [socios, ingresos, productos, ventas, pagos] = await Promise.all([
+        const [socios, ingresos, productos, ventas, pagos, solMembresia, solVenta] = await Promise.all([
           api.get('/socios'),
           api.get('/asistencias/hoy'),
           api.get('/productos'),
           api.get('/ventas'),
-          api.get('/pagos')
+          api.get('/pagos'),
+          api.get('/solicitudes-membresia/pendientes'),
+          api.get('/solicitudes-venta/pendientes')
         ]);
         
         const totalVentas = (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
@@ -51,7 +60,9 @@ const Dashboard = () => {
           montoVendidoTotal: totalVentas,
           montoVendidoPlanes: totalPlanes,
           montoTotalCaja: totalVentas + totalPlanes,
-          ultimosMiembros: socios.data.slice(-4).reverse() || []
+          ultimosMiembros: socios.data.slice(-4).reverse() || [],
+          solicitudesMembresia: solMembresia.data || [],
+          solicitudesVenta: solVenta.data || []
         });
       } catch (err) {
         console.error("Error fetching dashboard stats:", err);
@@ -223,6 +234,184 @@ const Dashboard = () => {
                 <li style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '20px', fontSize: '0.9rem' }}>No hay miembros recientes que mostrar</li>
             )}
           </ul>
+        </div>
+      </section>
+
+      {/* Sección de Solicitudes Pendientes */}
+      <section className="card" style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <FileText size={24} color="var(--accent-primary)" />
+            Solicitudes Pendientes de Validación
+          </h3>
+          <button 
+            className="btn-secondary" 
+            onClick={() => navigate('/solicitudes')}
+            style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+          >
+            Ir a Bandeja de Solicitudes
+          </button>
+        </div>
+
+        {/* Pestañas de tipo de solicitud */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '12px' }}>
+          <button 
+            onClick={() => setActiveRequestTab('MEMBRESIA')}
+            style={{
+              background: activeRequestTab === 'MEMBRESIA' ? 'rgba(255, 62, 62, 0.1)' : 'none',
+              color: activeRequestTab === 'MEMBRESIA' ? 'var(--accent-primary)' : 'var(--text-muted)',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Award size={16} /> Membresías
+            <span style={{ 
+              background: activeRequestTab === 'MEMBRESIA' ? 'var(--accent-primary)' : 'var(--panel-border)',
+              color: activeRequestTab === 'MEMBRESIA' ? 'white' : 'var(--text-muted)',
+              padding: '2px 8px',
+              borderRadius: '10px',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              marginLeft: '4px'
+            }}>
+              {stats.solicitudesMembresia.length}
+            </span>
+          </button>
+          <button 
+            onClick={() => setActiveRequestTab('PRODUCTO')}
+            style={{
+              background: activeRequestTab === 'PRODUCTO' ? 'rgba(255, 62, 62, 0.1)' : 'none',
+              color: activeRequestTab === 'PRODUCTO' ? 'var(--accent-primary)' : 'var(--text-muted)',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <ShoppingBag size={16} /> Productos
+            <span style={{ 
+              background: activeRequestTab === 'PRODUCTO' ? 'var(--accent-primary)' : 'var(--panel-border)',
+              color: activeRequestTab === 'PRODUCTO' ? 'white' : 'var(--text-muted)',
+              padding: '2px 8px',
+              borderRadius: '10px',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              marginLeft: '4px'
+            }}>
+              {stats.solicitudesVenta.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Contenedor de tabla */}
+        <div style={{ overflowX: 'auto' }}>
+          {loading ? (
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando solicitudes...</div>
+          ) : activeRequestTab === 'MEMBRESIA' ? (
+            stats.solicitudesMembresia.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                No hay solicitudes de membresía pendientes.
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>DNI</th>
+                    <th>Cliente</th>
+                    <th>Membresía</th>
+                    <th>N° Operación</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.solicitudesMembresia.map(sol => (
+                    <tr key={sol.id}>
+                      <td>{new Date(sol.fechaSolicitud).toLocaleDateString()}</td>
+                      <td><strong>{sol.dni}</strong></td>
+                      <td>
+                        {sol.nombreCompleto}
+                        {sol.telefono && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tel: {sol.telefono}</div>}
+                      </td>
+                      <td>{sol.membresiaNombre}</td>
+                      <td>
+                        <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>
+                          {sol.numeroOperacion || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <button 
+                          className="btn-secondary"
+                          onClick={() => navigate('/solicitudes')}
+                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                        >
+                          Validar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          ) : (
+            stats.solicitudesVenta.length === 0 ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                No hay solicitudes de productos pendientes.
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>DNI</th>
+                    <th>Cliente</th>
+                    <th>Total</th>
+                    <th>N° Operación</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.solicitudesVenta.map(sol => (
+                    <tr key={sol.id}>
+                      <td>{new Date(sol.fechaSolicitud).toLocaleDateString()}</td>
+                      <td><strong>{sol.dni}</strong></td>
+                      <td>
+                        {sol.nombreCompleto}
+                        {sol.telefono && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Tel: {sol.telefono}</div>}
+                      </td>
+                      <td><strong>S/ {sol.total?.toFixed(2)}</strong></td>
+                      <td>
+                        <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>
+                          {sol.numeroOperacion || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <button 
+                          className="btn-secondary"
+                          onClick={() => navigate('/solicitudes')}
+                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                        >
+                          Validar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          )}
         </div>
       </section>
     </PageLayout>

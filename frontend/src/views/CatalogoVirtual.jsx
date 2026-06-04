@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2 } from 'lucide-react';
+import Modal from '../components/ui/Modal';
 
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [yapeNumber, setYapeNumber] = useState('');
+  const [yapeTitular, setYapeTitular] = useState('');
+  const [numeroCuenta, setNumeroCuenta] = useState('');
+  const [cuentaTitular, setCuentaTitular] = useState('');
   const [sliders, setSliders] = useState([]);
   const [productos, setProductos] = useState([]);
   const [membresias, setMembresias] = useState([]);
@@ -29,6 +33,21 @@ const CatalogoVirtual = () => {
   const [isSubmittingSolicitud, setIsSubmittingSolicitud] = useState(false);
   const [solicitudSuccess, setSolicitudSuccess] = useState(false);
 
+  // Custom Alert Modal State
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+
+  const showAlert = (title, message) => {
+    setAlertModal({
+      isOpen: true,
+      title,
+      message
+    });
+  };
+
   useEffect(() => {
     fetchConfig();
     fetchSliders();
@@ -52,7 +71,10 @@ const CatalogoVirtual = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
-        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
+        if (data.yapeNumber) setYapeNumber(data.yapeNumber);
+        if (data.yapeTitular) setYapeTitular(data.yapeTitular);
+        if (data.numeroCuenta) setNumeroCuenta(data.numeroCuenta);
+        if (data.cuentaTitular) setCuentaTitular(data.cuentaTitular);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -110,7 +132,7 @@ const CatalogoVirtual = () => {
       const existing = prev.find(item => item.producto.id === producto.id);
       if (existing) {
         if (existing.cantidad >= producto.stock) {
-          alert('No hay más stock disponible de este producto.');
+          showAlert('Stock Agotado', 'No hay más stock disponible de este producto.');
           return prev;
         }
         return prev.map(item => 
@@ -141,22 +163,6 @@ const CatalogoVirtual = () => {
   const cartTotal = cart.reduce((sum, item) => sum + (item.producto.precio * item.cantidad), 0);
   const cartItemCount = cart.reduce((count, item) => count + item.cantidad, 0);
 
-  const handleCheckoutWhatsApp = () => {
-    if (cart.length === 0) return;
-    
-    let text = "Hola, deseo realizar el siguiente pedido:\n\n";
-    cart.forEach(item => {
-      text += `- ${item.cantidad}x ${item.producto.nombre} (S/ ${item.producto.precio.toFixed(2)} c/u) = S/ ${(item.producto.precio * item.cantidad).toFixed(2)}\n`;
-    });
-    text += `\n*Total a pagar: S/ ${cartTotal.toFixed(2)}*`;
-    
-    let url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    if (whatsappNumber) {
-      url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
-    }
-    window.open(url, '_blank');
-  };
-
   // Solicitud Functions
   const handleOpenSolicitud = (plan) => {
     setSelectedPlan(plan);
@@ -164,6 +170,16 @@ const CatalogoVirtual = () => {
     setSolicitudFile(null);
     setSolicitudSuccess(false);
     setCheckoutStep(2);
+    setIsSolicitudModalOpen(true);
+  };
+
+  const handleOpenCartCheckout = () => {
+    setSelectedPlan(null);
+    setSolicitudForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
+    setSolicitudFile(null);
+    setSolicitudSuccess(false);
+    setCheckoutStep(2);
+    setIsCartOpen(false);
     setIsSolicitudModalOpen(true);
   };
 
@@ -176,9 +192,9 @@ const CatalogoVirtual = () => {
         const res = await fetch(`http://localhost:8080/api/consultas/dni/${dni}`);
         if (res.ok) {
           const data = await res.json();
-          // Intentar obtener de nombreCompleto (del getter), o armarlo manualmente
-          if (data.nombreCompleto) {
-            setSolicitudForm(prev => ({ ...prev, nombreCompleto: data.nombreCompleto }));
+          const nombre = data.nombreCompleto || data.datos?.nombreCompleto;
+          if (nombre) {
+            setSolicitudForm(prev => ({ ...prev, nombreCompleto: nombre }));
           } else if (data.nombres) {
             const apellidoPat = data.ape_paterno || data.apellidoPaterno || '';
             const apellidoMat = data.ape_materno || data.apellidoMaterno || '';
@@ -205,7 +221,7 @@ const CatalogoVirtual = () => {
   const handleSolicitudSubmit = async (e) => {
     e.preventDefault();
     if (!solicitudFile) {
-      alert("Debe subir un comprobante de pago");
+      showAlert("Comprobante Requerido", "Debe subir un comprobante de pago para finalizar el pedido.");
       return;
     }
     setIsSubmittingSolicitud(true);
@@ -222,27 +238,52 @@ const CatalogoVirtual = () => {
       const fileUrl = uploadData.url;
 
       // 2. Crear solicitud
-      const solicitudData = {
-        dni: solicitudForm.dni,
-        nombreCompleto: solicitudForm.nombreCompleto,
-        telefono: solicitudForm.telefono,
-        email: solicitudForm.email,
-        numeroOperacion: solicitudForm.numeroOperacion,
-        membresiaId: selectedPlan.id,
-        comprobanteUrl: fileUrl
-      };
+      if (selectedPlan) {
+        const solicitudData = {
+          dni: solicitudForm.dni,
+          nombreCompleto: solicitudForm.nombreCompleto,
+          telefono: solicitudForm.telefono,
+          email: solicitudForm.email,
+          numeroOperacion: solicitudForm.numeroOperacion,
+          membresiaId: selectedPlan.id,
+          comprobanteUrl: fileUrl
+        };
 
-      const solRes = await fetch('http://localhost:8080/api/solicitudes-membresia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(solicitudData)
-      });
-      if (!solRes.ok) throw new Error("Error creando la solicitud");
+        const solRes = await fetch('http://localhost:8080/api/solicitudes-membresia', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(solicitudData)
+        });
+        if (!solRes.ok) throw new Error("Error creando la solicitud");
+      } else {
+        const solicitudData = {
+          dni: solicitudForm.dni,
+          nombreCompleto: solicitudForm.nombreCompleto,
+          telefono: solicitudForm.telefono,
+          email: solicitudForm.email,
+          numeroOperacion: solicitudForm.numeroOperacion,
+          total: cartTotal,
+          comprobanteUrl: fileUrl,
+          detalles: cart.map(item => ({
+            productoId: item.producto.id,
+            cantidad: item.cantidad
+          }))
+        };
+
+        const solRes = await fetch('http://localhost:8080/api/solicitudes-venta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(solicitudData)
+        });
+        if (!solRes.ok) throw new Error("Error creando la solicitud de compra");
+
+        setCart([]);
+      }
 
       setSolicitudSuccess(true);
     } catch (error) {
       console.error(error);
-      alert("Hubo un problema al enviar la solicitud: " + error.message);
+      showAlert("Error al Procesar", "Hubo un problema al enviar la solicitud: " + error.message);
     } finally {
       setIsSubmittingSolicitud(false);
     }
@@ -775,10 +816,10 @@ const CatalogoVirtual = () => {
               <span style={{ color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
             </div>
             <button 
-              onClick={handleCheckoutWhatsApp}
+              onClick={handleOpenCartCheckout}
               style={{
                 width: '100%',
-                backgroundColor: '#25D366',
+                backgroundColor: 'var(--accent-primary)',
                 color: 'white',
                 border: 'none',
                 padding: '15px',
@@ -790,13 +831,13 @@ const CatalogoVirtual = () => {
                 justifyContent: 'center',
                 alignItems: 'center',
                 gap: '10px',
-                boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)',
+                boxShadow: '0 4px 15px rgba(255, 62, 62, 0.3)',
                 transition: 'transform 0.2s'
               }}
               onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
               onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
             >
-              Finalizar Pedido por WhatsApp
+              Finalizar Pedido
             </button>
           </div>
         )}
@@ -814,7 +855,7 @@ const CatalogoVirtual = () => {
       )}
 
       {/* Full Screen Checkout Overlay */}
-      {isSolicitudModalOpen && selectedPlan && (
+      {isSolicitudModalOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
           backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto',
@@ -847,13 +888,17 @@ const CatalogoVirtual = () => {
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>Planes</span>
+                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>
+                    {selectedPlan ? 'Planes' : 'Productos'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }} onClick={() => setCheckoutStep(2)}>
                   <div style={{ width: checkoutStep === 2 ? '50px' : '40px', height: checkoutStep === 2 ? '50px' : '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 2 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 2 ? '-5px' : '0', boxShadow: checkoutStep === 2 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: 'var(--text-primary)', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>Revisar Plan</span>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: 'var(--text-primary)', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>
+                    {selectedPlan ? 'Revisar Plan' : 'Revisar Compra'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: checkoutStep === 3 ? 'pointer' : 'not-allowed' }} onClick={() => { if(checkoutStep === 3) setCheckoutStep(3) }}>
                   <div style={{ width: checkoutStep === 3 ? '50px' : '40px', height: checkoutStep === 3 ? '50px' : '40px', borderRadius: '50%', backgroundColor: checkoutStep === 3 ? 'var(--accent-primary)' : '#334155', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 3 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 3 ? '-5px' : '0', boxShadow: checkoutStep === 3 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
@@ -870,14 +915,14 @@ const CatalogoVirtual = () => {
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
                 <h2 style={{ color: '#166534', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
-                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su activación como socio.</p>
+                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su compra.</p>
                 <button onClick={() => setIsSolicitudModalOpen(false)} className="btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem' }}>
                   Volver al Catálogo
                 </button>
               </div>
             ) : (
               <>
-                {/* ----------------- PASO 2: REVISAR PLAN ----------------- */}
+                {/* ----------------- PASO 2: REVISAR DETALLES ----------------- */}
                 {checkoutStep === 2 && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
                     
@@ -894,25 +939,58 @@ const CatalogoVirtual = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          <tr>
-                            <td style={{ padding: '20px', textAlign: 'center' }}>
-                              <button onClick={() => setIsSolicitudModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
-                            </td>
-                            <td style={{ padding: '20px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ width: '50px', height: '50px', backgroundColor: '#1e293b', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', padding: '5px' }}>
-                                  PLAN<br/>GYM
+                          {selectedPlan ? (
+                            <tr>
+                              <td style={{ padding: '20px', textAlign: 'center' }}>
+                                <button onClick={() => setIsSolicitudModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
+                              </td>
+                              <td style={{ padding: '20px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                  <div style={{ width: '50px', height: '50px', backgroundColor: '#1e293b', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', padding: '5px' }}>
+                                    PLAN<br/>GYM
+                                  </div>
+                                  <div>
+                                    <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre}</p>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>MESES: {selectedPlan.duracionMeses || Math.round(selectedPlan.duracionDias / 30)}</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre}</p>
-                                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>MESES: {selectedPlan.duracionMeses}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td style={{ padding: '20px', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
-                            <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>1</td>
-                            <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
-                          </tr>
+                              </td>
+                              <td style={{ padding: '20px', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                              <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>1</td>
+                              <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                            </tr>
+                          ) : (
+                            cart.map(item => (
+                              <tr key={item.producto.id}>
+                                <td style={{ padding: '20px', textAlign: 'center' }}>
+                                  <button onClick={() => removeFromCart(item.producto.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
+                                </td>
+                                <td style={{ padding: '20px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ width: '50px', height: '50px', backgroundColor: '#f1f5f9', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      {item.producto.imagenUrl ? (
+                                        <img src={item.producto.imagenUrl} alt={item.producto.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      ) : (
+                                        <ShoppingCart size={20} color="#cbd5e1" />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <p style={{ margin: '0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{item.producto.nombre}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '20px', color: '#475569' }}>S/ {item.producto.precio.toFixed(2)}</td>
+                                <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#f1f5f9', borderRadius: '20px', padding: '2px 8px' }}>
+                                    <button type="button" onClick={() => updateQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Minus size={12} /></button>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', width: '15px', textAlign: 'center' }}>{item.cantidad}</span>
+                                    <button type="button" onClick={() => updateQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Plus size={12} /></button>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -923,12 +1001,12 @@ const CatalogoVirtual = () => {
                       
                       <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>SUBTOTAL</span>
-                        <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
                       </div>
 
                       <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>TOTAL</span>
-                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.2rem' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.2rem' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
                       </div>
 
                       <button onClick={() => setCheckoutStep(3)} style={{
@@ -970,8 +1048,8 @@ const CatalogoVirtual = () => {
                       </div>
 
                       <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Dirección de correo electrónico</label>
-                        <input type="email" style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
+                        <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '0.95rem' }}>Dirección de correo electrónico *</label>
+                        <input type="email" required style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f1f5f9', fontSize: '1rem' }}
                           value={solicitudForm.email} onChange={e => setSolicitudForm({...solicitudForm, email: e.target.value})} />
                       </div>
                     </div>
@@ -987,37 +1065,54 @@ const CatalogoVirtual = () => {
                           <span>SUBTOTAL</span>
                         </div>
                         
-                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre} × 1</p>
+                        {selectedPlan ? (
+                          <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre} × 1</p>
+                            </div>
+                            <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                           </div>
-                          <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
-                        </div>
+                        ) : (
+                          cart.map(item => (
+                            <div key={item.producto.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <p style={{ margin: '0', fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>{item.producto.nombre} × {item.cantidad}</p>
+                              </div>
+                              <span style={{ fontWeight: '500', color: '#475569', fontSize: '0.9rem' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</span>
+                            </div>
+                          ))
+                        )}
 
                         <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
-                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
                         </div>
 
                         <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
                           <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>Total</span>
-                          <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan ? selectedPlan.precio.toFixed(2) : cartTotal.toFixed(2)}</span>
                         </div>
 
                         {/* Metodos de pago (Yape/Transferencia) */}
                         <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                           <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
-                            Realiza el pago a nuestras cuentas y adjunta el comprobante para habilitar tu suscripción.
+                            Realiza el pago a nuestras cuentas y adjunta el comprobante para procesar tu pedido.
                           </p>
                           
                           <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>939 868 702 <span style={{fontSize:'0.9rem', color:'#64748b', fontWeight:'normal'}}>(Carlos B.)</span></p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>
+                              {yapeNumber || 'No configurado'}
+                              {yapeTitular && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 'normal', marginLeft: '5px' }}>({yapeTitular})</span>}
+                            </p>
                           </div>
 
                           <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>BCP</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>191-0000000-0-00</p>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>Cuenta Bancaria</p>
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>
+                              {numeroCuenta || 'No configurado'}
+                              {cuentaTitular && <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 'normal', marginLeft: '5px' }}>({cuentaTitular})</span>}
+                            </p>
                           </div>
 
                           <div style={{ marginBottom: '20px' }}>
@@ -1052,6 +1147,28 @@ const CatalogoVirtual = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Alerta */}
+      <Modal 
+        isOpen={alertModal.isOpen} 
+        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        title={alertModal.title}
+      >
+        <div style={{ padding: '5px 0' }}>
+          <p style={{ color: 'var(--text-primary)', fontSize: '1.05rem', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+            {alertModal.message}
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button 
+              className="btn-primary" 
+              onClick={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+              style={{ backgroundColor: 'var(--accent-primary)', borderColor: 'var(--accent-primary)' }}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

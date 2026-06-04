@@ -15,8 +15,17 @@ public class ConfiguracionWeb {
     @Column(name = "logo_url")
     private String logoUrl;
 
-    @Column(name = "whatsapp_number")
-    private String whatsappNumber;
+    @Column(name = "yape_number")
+    private String yapeNumber;
+
+    @Column(name = "yape_titular")
+    private String yapeTitular;
+
+    @Column(name = "numero_cuenta")
+    private String numeroCuenta;
+
+    @Column(name = "cuenta_titular")
+    private String cuentaTitular;
 
     // We can add other fields in the future like site name, primary color, etc.
 }

@@ -28,10 +28,13 @@ public class AsistenciaController {
      * @param request Mapa que contiene el "dni" del socio.
      */
     @PostMapping("/registrar-ingreso")
-    public ResponseEntity<Asistencia> registrarIngreso(@Valid @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> registrarIngreso(@Valid @RequestBody Map<String, String> request) {
         String dni = request.get("dni");
-        if (dni == null || dni.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+        if (dni == null || dni.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "El DNI es obligatorio."));
+        }
+        if (dni.length() != 8 || !dni.matches("\\d{8}")) {
+            return ResponseEntity.badRequest().body(Map.of("mensaje", "El DNI debe tener exactamente 8 dígitos numéricos."));
         }
         return ResponseEntity.ok(asistenciaService.registrarIngresoPorDni(dni));
     }

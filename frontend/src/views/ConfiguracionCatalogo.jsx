@@ -3,7 +3,10 @@ import { Upload, Image as ImageIcon, Plus, Trash2, ExternalLink } from 'lucide-r
 
 const ConfiguracionCatalogo = () => {
   const [logoUrl, setLogoUrl] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [yapeNumber, setYapeNumber] = useState('');
+  const [yapeTitular, setYapeTitular] = useState('');
+  const [numeroCuenta, setNumeroCuenta] = useState('');
+  const [cuentaTitular, setCuentaTitular] = useState('');
   const [sliders, setSliders] = useState([]);
   const [membresias, setMembresias] = useState([]);
   
@@ -41,7 +44,10 @@ const ConfiguracionCatalogo = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
-        if (data.whatsappNumber) setWhatsappNumber(data.whatsappNumber);
+        if (data.yapeNumber) setYapeNumber(data.yapeNumber);
+        if (data.yapeTitular) setYapeTitular(data.yapeTitular);
+        if (data.numeroCuenta) setNumeroCuenta(data.numeroCuenta);
+        if (data.cuentaTitular) setCuentaTitular(data.cuentaTitular);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -108,7 +114,10 @@ const ConfiguracionCatalogo = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           logoUrl: currentLogoUrl,
-          whatsappNumber: whatsappNumber
+          yapeNumber: yapeNumber,
+          yapeTitular: yapeTitular,
+          numeroCuenta: numeroCuenta,
+          cuentaTitular: cuentaTitular
         }),
       });
       if (response.ok) {
@@ -268,13 +277,46 @@ const ConfiguracionCatalogo = () => {
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de WhatsApp (Ej: 51987654321)</p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de Yape</p>
             <input 
               type="text" 
               className="form-control"
-              value={whatsappNumber}
-              onChange={(e) => setWhatsappNumber(e.target.value)}
-              placeholder="Número de WhatsApp para recibir pedidos"
+              value={yapeNumber}
+              onChange={(e) => setYapeNumber(e.target.value)}
+              placeholder="Ej: 987654321"
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Titular de Yape</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={yapeTitular}
+              onChange={(e) => setYapeTitular(e.target.value)}
+              placeholder="Ej: Carlos B."
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Número de Cuenta Bancaria</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={numeroCuenta}
+              onChange={(e) => setNumeroCuenta(e.target.value)}
+              placeholder="Ej: BCP 191-XXXXXXXX-X-XX"
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '5px' }}>Titular de Cuenta Bancaria</p>
+            <input 
+              type="text" 
+              className="form-control"
+              value={cuentaTitular}
+              onChange={(e) => setCuentaTitular(e.target.value)}
+              placeholder="Ej: Gimnasio The Jungle S.A.C."
             />
           </div>
 

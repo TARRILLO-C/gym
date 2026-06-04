@@ -68,10 +68,11 @@ const Socios = () => {
         setIsSearchingDni(true);
         try {
           const response = await api.get(`/consultas/dni/${formData.dni}`);
-          if (response.data && response.data.nombreCompleto) {
+          const nombre = response.data?.nombreCompleto || response.data?.datos?.nombreCompleto;
+          if (response.data && nombre) {
             setFormData(prev => ({
               ...prev,
-              nombreCompleto: response.data.nombreCompleto
+              nombreCompleto: nombre
             }));
           }
         } catch (err) {

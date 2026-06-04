@@ -43,17 +43,9 @@ const Ventas = () => {
       const endpoint = isDni ? `/consultas/dni/${doc}` : `/consultas/ruc/${doc}`;
       const resp = await api.get(endpoint);
       const data = resp.data;
-      // El backend ya devuelve getNombreCompleto() armado en un helper
-      // o podemos armarlo nosotros con los campos individuales
-      let nombre = '';
-      if (isDni) {
-        const nombres = data.nombres || '';
-        const paterno = data.ape_paterno || data.apellidoPaterno || '';
-        const materno = data.ape_materno || data.apellidoMaterno || '';
-        nombre = [nombres, paterno, materno].filter(Boolean).join(' ').trim();
-      } else {
-        nombre = data.razon_social || data.razonSocial || '';
-      }
+      
+      const nombre = data.nombreCompleto || data.datos?.nombreCompleto || '';
+      
       if (nombre) {
         setEmitForm(prev => ({ ...prev, nombre }));
       } else {
@@ -126,6 +118,7 @@ const Ventas = () => {
         try {
           await api.put(`/ventas/${venta.id}`, { ...venta, activo: false, motivoAnulacion: dialogInput });
           await fetchVentas();
+          await fetchPagos();
         } catch (err) { showAlert("Error", "Error al anular venta"); }
       }
     });
@@ -173,6 +166,7 @@ const Ventas = () => {
       });
       setShowEmitModal(false);
       fetchVentas();
+      fetchPagos();
     } catch (err) {
       showAlert("Error al emitir", "Hubo un problema al conectar con SUNAT o procesar la petición.");
     }
@@ -403,6 +397,7 @@ const Ventas = () => {
                   <th>MÉTODO PAGO</th>
                   <th>MONTO</th>
                   <th>COMENTARIO</th>
+                  <th style={{ textAlign: 'right' }}>ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
@@ -434,11 +429,71 @@ const Ventas = () => {
                     <td data-label="COMENTARIO" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       {pago.comentario || '-'}
                     </td>
+                    <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
+                      {pago.venta ? (
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {pago.venta.activo !== false ? (
+                            <>
+                              {pago.venta.enlacePdfTicket ? (
+                                <>
+                                  <button
+                                    onClick={() => window.open(pago.venta.enlacePdfTicket, '_blank')}
+                                    title="Ver Ticket de Venta (80mm)"
+                                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                  >
+                                    <Printer size={14} /> TICKET
+                                  </button>
+                                  <button
+                                    onClick={() => window.open(pago.venta.enlacePdfA4, '_blank')}
+                                    title="Ver PDF (A4)"
+                                    style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                  >
+                                    <FileText size={14} /> A4
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleImprimir(pago.venta)}
+                                    title="Reimprimir Comprobante Interno"
+                                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                  >
+                                    <Printer size={16} /> INTERNO
+                                  </button>
+                                  {pago.venta.tipoComprobante === 'NOTA_VENTA' && (
+                                    <button
+                                      onClick={() => handleOpenEmitModal(pago.venta.id)}
+                                      title="Emitir Comprobante"
+                                      style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                    >
+                                      <FilePlus size={16} /> EMITIR
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              <button 
+                                onClick={() => handleAnularVenta(pago.venta)}
+                                title="Anular Comprobante"
+                                style={{ background: 'transparent', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px' }}
+                              >
+                                <Ban size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '8px', border: '1px dashed var(--panel-border)' }}>
+                              ANULADA
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sin comprobante</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {filteredPagos.length === 0 && (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                       No se encontraron pagos de planes con este criterio.
                     </td>
                   </tr>

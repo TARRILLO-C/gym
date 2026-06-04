@@ -41,14 +41,29 @@ public class SuscripcionService {
     private final EmailService          emailService;
     private final PagoService           pagoService;
 
+    // ── Helper Auto-Descongelar ──────────────────────────────────────────────
+
+    private void verificarYDescongelarSiVencio(Suscripcion sus) {
+        if (sus != null && sus.isEstaCongelada()) {
+            Optional<Congelamiento> ultimoOpt = congelamientoRepository.findFirstBySuscripcionIdOrderByIdDesc(sus.getId());
+            if (ultimoOpt.isPresent() && LocalDate.now().isAfter(ultimoOpt.get().getFechaFin())) {
+                sus.setEstaCongelada(false);
+                suscripcionRepository.save(sus);
+                log.info("Auto-descongelamiento de suscripción ID {} porque su periodo de congelamiento venció el {}", sus.getId(), ultimoOpt.get().getFechaFin());
+            }
+        }
+    }
+
     // ── Consultas ─────────────────────────────────────────────────────────────
 
     /**
      * Lista todas las suscripciones del sistema.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Suscripcion> listarTodas() {
-        return suscripcionRepository.findAll();
+        List<Suscripcion> list = suscripcionRepository.findAll();
+        list.forEach(this::verificarYDescongelarSiVencio);
+        return list;
     }
 
     /**
@@ -56,22 +71,26 @@ public class SuscripcionService {
      *
      * @throws ResourceNotFoundException si no existe
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Suscripcion buscarPorId(Long id) {
-        return suscripcionRepository.findById(id)
+        Suscripcion sus = suscripcionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Suscripción", id));
+        verificarYDescongelarSiVencio(sus);
+        return sus;
     }
 
     /**
      * Lista todas las suscripciones de un socio dado.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Suscripcion> listarPorSocio(Long socioId) {
         // Verifica que el socio exista antes de consultar
         if (!socioRepository.existsById(socioId)) {
             throw new ResourceNotFoundException("Socio", socioId);
         }
-        return suscripcionRepository.findBySocioId(socioId);
+        List<Suscripcion> list = suscripcionRepository.findBySocioId(socioId);
+        list.forEach(this::verificarYDescongelarSiVencio);
+        return list;
     }
 
     // ── Verificación de vigencia (lógica central del paso 2) ──────────────────
@@ -89,7 +108,7 @@ public class SuscripcionService {
      * @return {@code true} si el socio tiene membresía vigente; {@code false} en caso contrario
      * @throws ResourceNotFoundException si el socio no existe
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean tieneSuscripcionActiva(Long socioId) {
         if (!socioRepository.existsById(socioId)) {
             throw new ResourceNotFoundException("Socio", socioId);
@@ -100,6 +119,8 @@ public class SuscripcionService {
         
         Suscripcion sus = vigentes.get(0);
         if (!sus.isActivo()) return false;
+        
+        verificarYDescongelarSiVencio(sus);
         if (sus.isEstaCongelada()) return false;
         if (sus.getEstadoPago() != EstadoPago.PAGADO) return false;
         
@@ -116,7 +137,7 @@ public class SuscripcionService {
      * @return suscripción vigente
      * @throws SuscripcionInactivaException si no hay suscripción activa
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Suscripcion obtenerSuscripcionActivaOFallar(Long socioId) {
         List<Suscripcion> vigentes = suscripcionRepository.findVigentesParaHoy(socioId);
         
@@ -141,6 +162,7 @@ public class SuscripcionService {
                     "ACCESO DENEGADO. Su plan de membresía inicia recién a partir del " + sus.getFechaInicio() + ".");
         }
 
+        verificarYDescongelarSiVencio(sus);
         if (sus.isEstaCongelada()) {
             throw new SuscripcionInactivaException(
                     "ACCESO DENEGADO. La suscripción se encuentra congelada.");

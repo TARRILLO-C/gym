@@ -1,6 +1,6 @@
 package com.gym.services;
 
-import com.gym.models.Suscripcion;
+import com.gym.models.*;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +46,20 @@ public class EmailService {
 
         String subject = "¡Confirmación de compra de tu plan - Bienvenido!";
         String content = construirHtmlCompra(suscripcion);
+
+        enviarCorreo(emailTo, subject, content);
+    }
+
+    @Async
+    public void enviarConfirmacionVenta(SolicitudVenta solicitud) {
+        String emailTo = solicitud.getEmail();
+        if (emailTo == null || emailTo.isEmpty()) {
+            log.warn("La solicitud de venta {} no tiene correo registrado. Se omite envío de correo.", solicitud.getNombreCompleto());
+            return;
+        }
+
+        String subject = "¡Tu pedido está listo para recoger! - Código " + solicitud.getCodigoEntrega();
+        String content = construirHtmlConfirmacionVenta(solicitud);
 
         enviarCorreo(emailTo, subject, content);
     }
@@ -106,6 +120,38 @@ public class EmailService {
                 "<p>¡Te esperamos para entrenar con todo!</p>" +
                 "<br>" +
                 "<p>Saludos cordiales,<br><strong>El equipo del Gimnasio</strong></p>" +
+                "</div>";
+    }
+
+    private String construirHtmlConfirmacionVenta(SolicitudVenta sol) {
+        StringBuilder itemsHtml = new StringBuilder();
+        for (DetalleSolicitudVenta d : sol.getDetalles()) {
+            String prodName = d.getProducto() != null ? d.getProducto().getNombre() : "Producto";
+            itemsHtml.append("<li style='margin-bottom: 8px;'>")
+                    .append("<strong>").append(d.getCantidad()).append("x ").append(prodName).append("</strong>")
+                    .append(" - S/ ").append(d.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(d.getCantidad())).setScale(2, java.math.RoundingMode.HALF_UP))
+                    .append("</li>");
+        }
+
+        return "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>" +
+                "<div style='text-align: center; margin-bottom: 20px;'>" +
+                "  <h2 style='color: #ff3e3e; margin: 0;'>¡Compra Aprobada Exitosamente!</h2>" +
+                "  <p style='color: #666;'>Tu pedido en The Jungle Gym está listo para retirar</p>" +
+                "</div>" +
+                "<p>Hola <strong>" + sol.getNombreCompleto() + "</strong>,</p>" +
+                "<p>Tu pago con número de operación <strong>" + sol.getNumeroOperacion() + "</strong> ha sido verificado y aprobado.</p>" +
+                "<div style='background-color: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; border: 1px dashed #cbd5e1;'>" +
+                "  <p style='margin: 0 0 5px 0; font-size: 0.9rem; color: #64748b; font-weight: bold;'>CÓDIGO ÚNICO DE RECOJO</p>" +
+                "  <h1 style='margin: 0; color: #ff3e3e; letter-spacing: 2px; font-size: 2.2rem;'>" + sol.getCodigoEntrega() + "</h1>" +
+                "  <p style='margin: 5px 0 0 0; font-size: 0.85rem; color: #ef4444;'>Presenta este código en recepción para recibir tus productos.</p>" +
+                "</div>" +
+                "<h3>Detalle del Pedido:</h3>" +
+                "<ul>" +
+                itemsHtml.toString() +
+                "</ul>" +
+                "<p style='font-size: 1.1rem;'><strong>Total pagado: S/ " + sol.getTotal().setScale(2, java.math.RoundingMode.HALF_UP) + "</strong></p>" +
+                "<br>" +
+                "<p>¡Gracias por tu preferencia!<br><strong>El equipo de The Jungle Gym</strong></p>" +
                 "</div>";
     }
 }
