@@ -32,15 +32,18 @@ public class GymManagementApplication {
                 System.err.println("Error al limpiar solicitudes de membresía de la tabla de productos: " + e.getMessage());
             }
             try {
-                jdbcTemplate.execute("ALTER TABLE socios DROP INDEX email");
-                System.out.println("Índice único de email eliminado con éxito.");
-            } catch (Exception e) {
-                try {
-                    jdbcTemplate.execute("ALTER TABLE socios DROP INDEX UK_email");
-                    System.out.println("Índice único UK_email eliminado con éxito.");
-                } catch (Exception e2) {
-                    System.err.println("No se pudo eliminar el índice de email (puede que ya no exista): " + e.getMessage());
+                java.util.List<String> indexNames = jdbcTemplate.query(
+                        "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'socios' AND COLUMN_NAME = 'email'",
+                        (rs, rowNum) -> rs.getString("INDEX_NAME")
+                );
+                for (String indexName : indexNames) {
+                    if (!"PRIMARY".equalsIgnoreCase(indexName)) {
+                        jdbcTemplate.execute("ALTER TABLE socios DROP INDEX " + indexName);
+                        System.out.println("Índice único '" + indexName + "' eliminado de la tabla socios.");
+                    }
                 }
+            } catch (Exception e) {
+                System.err.println("No se pudo eliminar dinámicamente el índice de email: " + e.getMessage());
             }
         };
     }
