@@ -227,8 +227,8 @@ const CatalogoVirtual = () => {
       errors.telefono = "El teléfono debe tener exactamente 9 dígitos";
     }
     
-    if (!productForm.numeroOperacion || productForm.numeroOperacion.length === 0 || productForm.numeroOperacion.length > 6) {
-      errors.numeroOperacion = "El número de operación debe tener máximo 6 dígitos";
+    if (!productForm.numeroOperacion || productForm.numeroOperacion.length < 6 || productForm.numeroOperacion.length > 15) {
+      errors.numeroOperacion = "El número de operación debe tener entre 6 y 15 dígitos";
     }
     
     if (!productFile) {
@@ -362,9 +362,9 @@ const CatalogoVirtual = () => {
       errors.telefono = "El teléfono debe tener exactamente 9 dígitos";
     }
     
-    // Validación de número de operación: máximo 6 dígitos
-    if (!solicitudForm.numeroOperacion || solicitudForm.numeroOperacion.length === 0 || solicitudForm.numeroOperacion.length > 6) {
-      errors.numeroOperacion = "El número de operación debe tener máximo 6 dígitos";
+    // Validación de número de operación: entre 6 y 15 dígitos
+    if (!solicitudForm.numeroOperacion || solicitudForm.numeroOperacion.length < 6 || solicitudForm.numeroOperacion.length > 15) {
+      errors.numeroOperacion = "El número de operación debe tener entre 6 y 15 dígitos";
     }
     
     if (!solicitudFile) {
@@ -1305,19 +1305,19 @@ const CatalogoVirtual = () => {
                           <div style={{ marginBottom: '24px' }}>
                             <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
                             <div style={{ position: 'relative' }}>
-                              <input type="text" required maxLength="6" style={{ 
+                              <input type="text" required maxLength="15" style={{ 
                                 width: '100%', 
                                 padding: '14px 16px', 
                                 borderRadius: '10px', 
-                                border: validationErrors.numeroOperacion ? '2px solid #dc2626' : (solicitudForm.numeroOperacion.length > 0 && solicitudForm.numeroOperacion.length <= 6) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                                border: validationErrors.numeroOperacion ? '2px solid #dc2626' : (solicitudForm.numeroOperacion.length >= 6 && solicitudForm.numeroOperacion.length <= 15) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
                                 backgroundColor: '#ffffff', 
                                 color: '#000000',
                                 fontSize: '0.95rem',
                                 transition: 'all 0.2s ease',
                                 boxShadow: validationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
                               }}
-                                value={solicitudForm.numeroOperacion} onChange={e => {setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setValidationErrors({...validationErrors, numeroOperacion: null});}} placeholder="Máx 6 dígitos" />
-                              {solicitudForm.numeroOperacion.length > 0 && solicitudForm.numeroOperacion.length <= 6 && !validationErrors.numeroOperacion && (
+                                value={solicitudForm.numeroOperacion} onChange={e => {setSolicitudForm({...solicitudForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setValidationErrors({...validationErrors, numeroOperacion: null});}} placeholder="De 6 a 15 dígitos" />
+                              {solicitudForm.numeroOperacion.length >= 6 && solicitudForm.numeroOperacion.length <= 15 && !validationErrors.numeroOperacion && (
                                 <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                               )}
                             </div>
@@ -1621,19 +1621,19 @@ const CatalogoVirtual = () => {
                         <div style={{ marginBottom: '24px' }}>
                           <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
                           <div style={{ position: 'relative' }}>
-                            <input type="text" required maxLength="6" style={{ 
+                            <input type="text" required maxLength="15" style={{ 
                               width: '100%', 
                               padding: '14px 16px', 
                               borderRadius: '10px', 
-                              border: productValidationErrors.numeroOperacion ? '2px solid #dc2626' : (productForm.numeroOperacion.length > 0 && productForm.numeroOperacion.length <= 6) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
+                              border: productValidationErrors.numeroOperacion ? '2px solid #dc2626' : (productForm.numeroOperacion.length >= 6 && productForm.numeroOperacion.length <= 15) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
                               backgroundColor: '#ffffff', 
                               color: '#000000',
                               fontSize: '0.95rem',
                               transition: 'all 0.2s ease',
                               boxShadow: productValidationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
                             }}
-                              value={productForm.numeroOperacion} onChange={e => {setProductForm({...productForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setProductValidationErrors({...productValidationErrors, numeroOperacion: null});}} placeholder="Máx 6 dígitos" />
-                            {productForm.numeroOperacion.length > 0 && productForm.numeroOperacion.length <= 6 && !productValidationErrors.numeroOperacion && (
+                              value={productForm.numeroOperacion} onChange={e => {setProductForm({...productForm, numeroOperacion: e.target.value.replace(/\D/g, '')}); setProductValidationErrors({...productValidationErrors, numeroOperacion: null});}} placeholder="De 6 a 15 dígitos" />
+                            {productForm.numeroOperacion.length >= 6 && productForm.numeroOperacion.length <= 15 && !productValidationErrors.numeroOperacion && (
                               <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                             )}
                           </div>
