@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dumbbell, LogIn, ShieldCheck, User, Lock, Eye, EyeOff } from 'lucide-react';
 import '../App.css';
 import './Login.css';
+import { API_BASE_URL } from '../services/api';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -14,7 +15,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/web-config')
+    fetch(`${API_BASE_URL}/web-config`)
       .then(res => {
         if (res.ok) return res.json();
         return null;
@@ -33,7 +34,7 @@ const Login = () => {
     setError('');
     
     try {
-      const response = await fetch('http://localhost:8080/api/usuarios/login', {
+      const response = await fetch(`${API_BASE_URL}/usuarios/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

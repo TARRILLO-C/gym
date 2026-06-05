@@ -16,6 +16,7 @@ import {
   FileText
 } from 'lucide-react';
 import { ThemeContext } from '../context/ThemeContext';
+import { API_BASE_URL } from '../services/api';
 
 const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
@@ -23,7 +24,7 @@ const Sidebar = () => {
   const [logoUrl, setLogoUrl] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/web-config')
+    fetch(`${API_BASE_URL}/web-config`)
       .then(res => {
         if (res.ok) return res.json();
         return null;

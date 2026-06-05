@@ -27,7 +27,10 @@ public class UploadController {
     private static final String UPLOAD_DIR = "uploads/";
 
     @PostMapping
-    public ResponseEntity<Map<String, String>> uploadImage(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<Map<String, String>> uploadImage(
+            @RequestParam("file") MultipartFile file,
+            jakarta.servlet.http.HttpServletRequest request
+    ) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -49,8 +52,19 @@ public class UploadController {
             Path filePath = Paths.get(UPLOAD_DIR + newFileName);
             Files.write(filePath, file.getBytes());
 
-            // Devolver la URL pública que configuraremos en WebMvcConfigurer
-            String fileUrl = "http://localhost:8080/api/uploads/" + newFileName;
+            // Devolver la URL pública dinámicamente
+            String scheme = request.getScheme();             // http o https
+            String serverName = request.getServerName();     // e.g. localhost o gym-production.up.railway.app
+            int serverPort = request.getServerPort();        // e.g. 8080 o 80 o 443
+            
+            StringBuilder baseUrl = new StringBuilder();
+            baseUrl.append(scheme).append("://").append(serverName);
+            
+            if (("http".equals(scheme) && serverPort != 80) || ("https".equals(scheme) && serverPort != 443)) {
+                baseUrl.append(":").append(serverPort);
+            }
+            
+            String fileUrl = baseUrl.toString() + "/api/uploads/" + newFileName;
             
             Map<String, String> response = new HashMap<>();
             response.put("url", fileUrl);

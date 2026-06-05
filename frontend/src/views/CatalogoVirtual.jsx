@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { API_BASE_URL } from '../services/api';
 
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
@@ -69,7 +70,7 @@ const CatalogoVirtual = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/web-config');
+      const response = await fetch(`${API_BASE_URL}/web-config`);
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
@@ -85,7 +86,7 @@ const CatalogoVirtual = () => {
 
   const fetchSliders = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/web-config/slider');
+      const response = await fetch(`${API_BASE_URL}/web-config/slider`);
       if (response.ok) {
         const data = await response.json();
         setSliders(data);
@@ -97,7 +98,7 @@ const CatalogoVirtual = () => {
 
   const fetchProductos = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/productos/disponibles');
+      const response = await fetch(`${API_BASE_URL}/productos/disponibles`);
       if (response.ok) {
         const data = await response.json();
         // Filtro de seguridad: solo activos y excluir producto interno de membresías
@@ -113,7 +114,7 @@ const CatalogoVirtual = () => {
 
   const fetchMembresias = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/membresias');
+      const response = await fetch(`${API_BASE_URL}/membresias`);
       if (response.ok) {
         const data = await response.json();
         setMembresias(data.filter(m => m.estado === 'DISPONIBLE' && m.mostrarEnCatalogo === true));
@@ -183,7 +184,7 @@ const CatalogoVirtual = () => {
 
     if (dni.length === 8) {
       try {
-        const res = await fetch(`http://localhost:8080/api/consultas/dni/${dni}`);
+        const res = await fetch(`${API_BASE_URL}/consultas/dni/${dni}`);
         if (res.ok) {
           const data = await res.json();
           const nombre = data.nombreCompleto || data.datos?.nombreCompleto;
@@ -248,7 +249,7 @@ const CatalogoVirtual = () => {
       // 1. Subir imagen
       const formData = new FormData();
       formData.append('file', productFile);
-      const uploadRes = await fetch('http://localhost:8080/api/upload', {
+      const uploadRes = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -272,7 +273,7 @@ const CatalogoVirtual = () => {
         comprobanteUrl: fileUrl
       };
 
-      const solRes = await fetch('http://localhost:8080/api/solicitudes-producto', {
+      const solRes = await fetch(`${API_BASE_URL}/solicitudes-producto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(solicitudData)
@@ -320,7 +321,7 @@ const CatalogoVirtual = () => {
 
     if (dni.length === 8) {
       try {
-        const res = await fetch(`http://localhost:8080/api/consultas/dni/${dni}`);
+        const res = await fetch(`${API_BASE_URL}/consultas/dni/${dni}`);
         if (res.ok) {
           const data = await res.json();
           const nombre = data.nombreCompleto || data.datos?.nombreCompleto;
@@ -389,7 +390,7 @@ const CatalogoVirtual = () => {
       // 1. Subir imagen
       const formData = new FormData();
       formData.append('file', solicitudFile);
-      const uploadRes = await fetch('http://localhost:8080/api/upload', {
+      const uploadRes = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -408,7 +409,7 @@ const CatalogoVirtual = () => {
         comprobanteUrl: fileUrl
       };
 
-      const solRes = await fetch('http://localhost:8080/api/solicitudes-membresia', {
+      const solRes = await fetch(`${API_BASE_URL}/solicitudes-membresia`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(solicitudData)

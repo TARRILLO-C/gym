@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Plus, Trash2, ExternalLink } from 'lucide-react';
+import { API_BASE_URL } from '../services/api';
 
 const ConfiguracionCatalogo = () => {
   const [logoUrl, setLogoUrl] = useState('');
@@ -42,7 +43,7 @@ const ConfiguracionCatalogo = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/web-config');
+      const response = await fetch(`${API_BASE_URL}/web-config`);
       if (response.ok) {
         const data = await response.json();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
@@ -60,7 +61,7 @@ const ConfiguracionCatalogo = () => {
 
   const fetchSliders = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/web-config/slider');
+      const response = await fetch(`${API_BASE_URL}/web-config/slider`);
       if (response.ok) {
         const data = await response.json();
         setSliders(data);
@@ -72,7 +73,7 @@ const ConfiguracionCatalogo = () => {
 
   const fetchMembresias = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/membresias');
+      const response = await fetch(`${API_BASE_URL}/membresias`);
       if (response.ok) {
         const data = await response.json();
         setMembresias(data.filter(m => m.estado === 'DISPONIBLE'));
@@ -87,7 +88,7 @@ const ConfiguracionCatalogo = () => {
     formData.append('file', file);
     
     try {
-      const response = await fetch('http://localhost:8080/api/upload', {
+      const response = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -113,7 +114,7 @@ const ConfiguracionCatalogo = () => {
     }
     
     try {
-      const response = await fetch('http://localhost:8080/api/web-config', {
+      const response = await fetch(`${API_BASE_URL}/web-config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -151,7 +152,7 @@ const ConfiguracionCatalogo = () => {
       const sliderData = { ...newSlider, imagenUrl: uploadedUrl };
       
       try {
-        const response = await fetch('http://localhost:8080/api/web-config/slider', {
+        const response = await fetch(`${API_BASE_URL}/web-config/slider`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(sliderData),
@@ -181,7 +182,7 @@ const ConfiguracionCatalogo = () => {
     if (!id) return;
     
     try {
-      const response = await fetch(`http://localhost:8080/api/web-config/slider/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/web-config/slider/${id}`, {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -201,7 +202,7 @@ const ConfiguracionCatalogo = () => {
     if (uploadedUrl) {
       try {
         const membresiaToUpdate = membresias.find(m => m.id === membresiaId);
-        const response = await fetch(`http://localhost:8080/api/membresias/${membresiaId}`, {
+        const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...membresiaToUpdate, imagenUrl: uploadedUrl }),
@@ -223,7 +224,7 @@ const ConfiguracionCatalogo = () => {
     setLoading(true);
     try {
       const membresiaToUpdate = membresias.find(m => m.id === membresiaId);
-      const response = await fetch(`http://localhost:8080/api/membresias/${membresiaId}`, {
+      const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...membresiaToUpdate, mostrarEnCatalogo: !currentState }),
