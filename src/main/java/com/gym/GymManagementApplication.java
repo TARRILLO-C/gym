@@ -24,6 +24,13 @@ public class GymManagementApplication {
             } catch (Exception e) {
                 System.err.println("Error al actualizar esquema: " + e.getMessage());
             }
+            try {
+                jdbcTemplate.execute("DELETE dsp FROM detalle_solicitud_producto dsp JOIN producto p ON dsp.producto_id = p.id WHERE p.nombre LIKE 'Servicio de Membresía%'");
+                jdbcTemplate.execute("DELETE sp FROM solicitudes_producto sp LEFT JOIN detalle_solicitud_producto dsp ON dsp.solicitud_producto_id = sp.id WHERE dsp.id IS NULL");
+                System.out.println("Limpieza de solicitudes de membresía en tabla de productos realizada con éxito.");
+            } catch (Exception e) {
+                System.err.println("Error al limpiar solicitudes de membresía de la tabla de productos: " + e.getMessage());
+            }
         };
     }
 }

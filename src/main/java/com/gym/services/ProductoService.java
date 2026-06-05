@@ -25,7 +25,9 @@ public class ProductoService {
 
     @Transactional(readOnly = true)
     public List<Producto> listarTodos() {
-        return productoRepository.findAll();
+        return productoRepository.findAll().stream()
+                .filter(p -> !p.getNombre().startsWith("Servicio de Membresía"))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -40,7 +42,9 @@ public class ProductoService {
      */
     @Transactional(readOnly = true)
     public List<Producto> listarConStock() {
-        return productoRepository.findByActivoTrueAndStockGreaterThan(0);
+        return productoRepository.findByActivoTrueAndStockGreaterThan(0).stream()
+                .filter(p -> !p.getNombre().startsWith("Servicio de Membresía"))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     /**

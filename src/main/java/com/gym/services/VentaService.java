@@ -225,6 +225,14 @@ public class VentaService {
      * Crea automáticamente una SolicitudProducto a partir de una Venta.
      */
     private void crearSolicitudProductoDesdeVenta(Venta venta) {
+        boolean esMembresia = venta.getDetalles().stream()
+                .anyMatch(detalleVenta -> detalleVenta.getProducto() != null 
+                        && "Servicio de Membresía".equals(detalleVenta.getProducto().getNombre()));
+        if (esMembresia) {
+            log.info("Venta ID {} es una membresía, no se crea SolicitudProducto.", venta.getId());
+            return;
+        }
+
         String dni = venta.getClienteDocumento() != null && !venta.getClienteDocumento().isBlank()
                 ? venta.getClienteDocumento()
                 : "00000000";
