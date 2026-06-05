@@ -521,22 +521,30 @@ const Productos = () => {
                       {p.categoria}
                     </div>
 
-                    {/* Badge de Stock (Si es bajo) */}
-                    {p.stock < 5 && (
-                      <div style={{ 
-                        position: 'absolute', 
-                        top: '8px', 
-                        right: '8px', 
-                        background: p.stock === 0 ? '#ff3e3e' : '#f59e0b', 
-                        padding: '4px 8px', 
-                        borderRadius: '6px', 
-                        fontSize: '0.65rem', 
-                        fontWeight: 'bold', 
-                        color: 'white' 
-                      }}>
-                        {p.stock === 0 ? 'AGOTADO' : `¡SOLO ${p.stock}!`}
-                      </div>
-                    )}
+                    {/* Badge de Stock */}
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '8px', 
+                      right: '8px', 
+                      background: p.stock === 0 
+                        ? '#ff3e3e' 
+                        : p.stock < 5 
+                          ? '#f59e0b' 
+                          : 'rgba(15, 23, 42, 0.65)', 
+                      backdropFilter: 'blur(4px)',
+                      padding: '4px 8px', 
+                      borderRadius: '6px', 
+                      fontSize: '0.65rem', 
+                      fontWeight: 'bold', 
+                      color: 'white',
+                      border: p.stock >= 5 ? '1px solid rgba(255, 255, 255, 0.15)' : 'none'
+                    }}>
+                      {p.stock === 0 
+                        ? 'AGOTADO' 
+                        : p.stock < 5 
+                          ? `¡SOLO ${p.stock}!` 
+                          : `Stock: ${p.stock}`}
+                    </div>
                   </div>
 
                   {/* Info del Producto */}
