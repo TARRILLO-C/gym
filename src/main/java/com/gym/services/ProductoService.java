@@ -69,6 +69,7 @@ public class ProductoService {
         existente.setNombre(datos.getNombre());
         existente.setPrecio(datos.getPrecio());
         existente.setStock(datos.getStock());
+        existente.setStockMinimo(datos.getStockMinimo());
         if (datos.getCategoriaId() != null) {
             aplicarCategoria(existente, datos.getCategoriaId());
         }

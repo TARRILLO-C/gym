@@ -35,7 +35,7 @@ const Productos = () => {
   const [uploading, setUploading] = useState(false);
   
   const [productForm, setProductForm] = useState({
-    nombre: '', precio: '', stock: '', categoriaId: '', descripcion: '', imagenUrl: '', activo: true
+    nombre: '', precio: '', stock: '', stockMinimo: 5, categoriaId: '', descripcion: '', imagenUrl: '', activo: true
   });
 
   const [categoryForm, setCategoryForm] = useState({ nombre: '' });
@@ -125,6 +125,10 @@ const Productos = () => {
       showAlert("Validación", "El stock inicial no puede ser negativo.");
       return;
     }
+    if (parseInt(productForm.stockMinimo) < 0 || isNaN(parseInt(productForm.stockMinimo))) {
+      showAlert("Validación", "El stock mínimo de alerta no puede ser negativo.");
+      return;
+    }
     if (!productForm.categoriaId) {
       showAlert("Validación", "Debe seleccionar una categoría.");
       return;
@@ -148,7 +152,7 @@ const Productos = () => {
 
   const resetProductForm = () => {
     const defaultCategoriaId = categorias.length > 0 ? String(categorias[0].id) : '';
-    setProductForm({ nombre: '', precio: '', stock: '', categoriaId: defaultCategoriaId, descripcion: '', imagenUrl: '', activo: true });
+    setProductForm({ nombre: '', precio: '', stock: '', stockMinimo: 5, categoriaId: defaultCategoriaId, descripcion: '', imagenUrl: '', activo: true });
     setEditingProduct(null);
     setUploading(false);
   };
@@ -528,7 +532,7 @@ const Productos = () => {
                       right: '8px', 
                       background: p.stock === 0 
                         ? '#ff3e3e' 
-                        : p.stock < 5 
+                        : p.stock < (p.stockMinimo ?? 5) 
                           ? '#f59e0b' 
                           : 'rgba(15, 23, 42, 0.65)', 
                       backdropFilter: 'blur(4px)',
@@ -537,11 +541,11 @@ const Productos = () => {
                       fontSize: '0.65rem', 
                       fontWeight: 'bold', 
                       color: 'white',
-                      border: p.stock >= 5 ? '1px solid rgba(255, 255, 255, 0.15)' : 'none'
+                      border: p.stock >= (p.stockMinimo ?? 5) ? '1px solid rgba(255, 255, 255, 0.15)' : 'none'
                     }}>
                       {p.stock === 0 
                         ? 'AGOTADO' 
-                        : p.stock < 5 
+                        : p.stock < (p.stockMinimo ?? 5) 
                           ? `¡SOLO ${p.stock}!` 
                           : `Stock: ${p.stock}`}
                     </div>
@@ -603,8 +607,8 @@ const Productos = () => {
                           <td data-label="CATEGORÍA"><span className="badge" style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)' }}>{p.categoria}</span></td>
                           <td data-label="PRECIO" style={{ fontWeight: 'bold' }}>S/ {p.precio.toFixed(2)}</td>
                           <td data-label="STOCK">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: p.stock < 5 ? '#ff3e3e' : '#00ff7f' }}>
-                              {p.stock < 5 && <AlertTriangle size={14} />}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: p.stock < (p.stockMinimo ?? 5) ? '#ff3e3e' : '#00ff7f' }}>
+                              {p.stock < (p.stockMinimo ?? 5) && <AlertTriangle size={14} />}
                               {p.stock} unidades
                             </div>
                           </td>
@@ -690,8 +694,8 @@ const Productos = () => {
                       <td data-label="CATEGORÍA"><span className="badge" style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)' }}>{p.categoria}</span></td>
                       <td data-label="PRECIO" style={{ fontWeight: 'bold' }}>S/ {p.precio.toFixed(2)}</td>
                       <td data-label="STOCK">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: p.stock < 5 ? '#ff3e3e' : '#00ff7f' }}>
-                          {p.stock < 5 && <AlertTriangle size={14} />}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: p.stock < (p.stockMinimo ?? 5) ? '#ff3e3e' : '#00ff7f' }}>
+                          {p.stock < (p.stockMinimo ?? 5) && <AlertTriangle size={14} />}
                           {p.stock} unidades
                         </div>
                       </td>
@@ -775,6 +779,10 @@ const Productos = () => {
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Stock Inicial</label>
             <input required type="text" inputMode="numeric" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value.replace(/\D/g, '')})} />
+          </div>
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Stock Mínimo Alerta</label>
+            <input required type="text" inputMode="numeric" value={productForm.stockMinimo} onChange={e => setProductForm({...productForm, stockMinimo: e.target.value.replace(/\D/g, '')})} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Categoría</label>

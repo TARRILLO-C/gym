@@ -45,6 +45,12 @@ public class GymManagementApplication {
             } catch (Exception e) {
                 System.err.println("No se pudo eliminar dinámicamente el índice de email: " + e.getMessage());
             }
+            try {
+                jdbcTemplate.execute("UPDATE productos SET stock_minimo = 5 WHERE stock_minimo IS NULL");
+                System.out.println("Actualizado stock_minimo por defecto para productos preexistentes.");
+            } catch (Exception e) {
+                // Columna aún no creada por Hibernate
+            }
         };
     }
 }

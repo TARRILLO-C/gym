@@ -53,7 +53,7 @@ const Dashboard = () => {
         const totalVentas = (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
         const totalPlanes = (pagos.data || []).reduce((acc, p) => acc + parseFloat(p.monto || 0), 0);
         const listaProductos = productos.data || [];
-        const bajoStock = listaProductos.filter(p => p.stock > 0 && p.stock < 5).length;
+        const bajoStock = listaProductos.filter(p => p.stock > 0 && p.stock < (p.stockMinimo ?? 5)).length;
         const agotados = listaProductos.filter(p => p.stock === 0).length;
 
         setStats({

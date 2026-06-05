@@ -73,6 +73,11 @@ public class Producto {
     private Integer stock;
 
     @Builder.Default
+    @Min(value = 0, message = "El stock mínimo de alerta no puede ser negativo")
+    @Column(name = "stock_minimo", nullable = false, columnDefinition = "int default 5")
+    private Integer stockMinimo = 5;
+
+    @Builder.Default
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
 }
