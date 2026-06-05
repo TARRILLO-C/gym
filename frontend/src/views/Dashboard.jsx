@@ -41,13 +41,13 @@ const Dashboard = () => {
       setLoading(true);
       try {
         const [socios, ingresos, productos, ventas, pagos, solMembresia, solVenta] = await Promise.all([
-          api.get('/socios'),
-          api.get('/asistencias/hoy'),
-          api.get('/productos'),
-          api.get('/ventas'),
-          api.get('/pagos'),
-          api.get('/solicitudes-membresia/pendientes'),
-          api.get('/solicitudes-venta/pendientes')
+          api.get('/socios').catch(err => { console.error("Error fetching socios:", err); return { data: [] }; }),
+          api.get('/asistencias/hoy').catch(err => { console.error("Error fetching asistencias:", err); return { data: [] }; }),
+          api.get('/productos').catch(err => { console.error("Error fetching productos:", err); return { data: [] }; }),
+          api.get('/ventas').catch(err => { console.error("Error fetching ventas:", err); return { data: [] }; }),
+          api.get('/pagos').catch(err => { console.error("Error fetching pagos:", err); return { data: [] }; }),
+          api.get('/solicitudes-membresia/pendientes').catch(err => { console.error("Error fetching solicitudes-membresia:", err); return { data: [] }; }),
+          api.get('/solicitudes-producto/pendientes').catch(err => { console.error("Error fetching solicitudes-producto:", err); return { data: [] }; })
         ]);
         
         const totalVentas = (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
@@ -57,17 +57,17 @@ const Dashboard = () => {
         const agotados = listaProductos.filter(p => p.stock === 0).length;
 
         setStats({
-          totalSocios: socios.data.length || 0,
-          ingresosHoy: ingresos.data.length || 0,
-          membresiasActivas: socios.data.filter(s => s.status === 'ACTIVO' || s.estado === 'ACTIVO').length || 0,
+          totalSocios: (socios.data || []).length,
+          ingresosHoy: (ingresos.data || []).length,
+          membresiasActivas: (socios.data || []).filter(s => s.status === 'ACTIVO' || s.estado === 'ACTIVO').length,
           productosBajoStock: bajoStock,
           productosAgotados: agotados,
-          totalProductos: productos.data.length || 0,
-          totalVentasCount: ventas.data.length || 0,
+          totalProductos: (productos.data || []).length,
+          totalVentasCount: (ventas.data || []).length,
           montoVendidoTotal: totalVentas,
           montoVendidoPlanes: totalPlanes,
           montoTotalCaja: totalVentas + totalPlanes,
-          ultimosMiembros: socios.data.slice(-4).reverse() || [],
+          ultimosMiembros: (socios.data || []).slice(-4).reverse(),
           solicitudesMembresia: solMembresia.data || [],
           solicitudesVenta: solVenta.data || []
         });
