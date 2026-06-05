@@ -80,8 +80,31 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
-  const Card = ({ title, value, icon: Icon, color }) => (
-    <div className="card stat-card" style={{ flex: 1, minWidth: '240px' }}>
+  const Card = ({ title, value, icon: Icon, color, to }) => (
+    <div 
+      className="card stat-card" 
+      onClick={() => to && navigate(to)}
+      style={{ 
+        flex: 1, 
+        minWidth: '240px',
+        cursor: to ? 'pointer' : 'default',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease'
+      }}
+      onMouseEnter={(e) => {
+        if (to) {
+          e.currentTarget.style.transform = 'translateY(-4px)';
+          e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.15)';
+          e.currentTarget.style.borderColor = 'var(--accent-primary)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (to) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.borderColor = 'var(--panel-border, #334155)';
+        }
+      }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ 
           background: color, 
@@ -117,36 +140,42 @@ const Dashboard = () => {
           value={stats.totalSocios} 
           icon={Users} 
           color="var(--accent-secondary)" 
+          to="/socios"
         />
         <Card 
           title="Ingresos Hoy" 
           value={stats.ingresosHoy} 
           icon={Activity} 
           color="var(--accent-primary)" 
+          to="/asistencia"
         />
         <Card 
           title="Caja Total" 
           value={`S/ ${stats.montoTotalCaja.toFixed(2)}`} 
           icon={DollarSign} 
           color="#00ff7f" 
+          to="/ventas"
         />
         <Card 
           title="Ventas Planes" 
           value={`S/ ${stats.montoVendidoPlanes.toFixed(2)}`} 
           icon={Calendar} 
           color="#f59e0b" 
+          to="/ventas"
         />
         <Card 
           title="Ventas Productos" 
           value={`S/ ${stats.montoVendidoTotal.toFixed(2)}`} 
           icon={ShoppingBag} 
           color="#3b82f6" 
+          to="/ventas"
         />
         <Card 
           title="Planes Activos" 
           value={stats.membresiasActivas} 
           icon={Users} 
           color="rgba(180, 100, 246, 0.8)" 
+          to="/socios"
         />
         {!loading && stats.productosBajoStock > 0 && (
           <Card 
@@ -154,6 +183,7 @@ const Dashboard = () => {
             value={stats.productosBajoStock} 
             icon={AlertTriangle} 
             color="#f59e0b" 
+            to="/productos"
           />
         )}
         {!loading && stats.productosAgotados > 0 && (
@@ -162,6 +192,7 @@ const Dashboard = () => {
             value={stats.productosAgotados} 
             icon={PackageX} 
             color="#ff3e3e" 
+            to="/productos"
           />
         )}
       </section>
