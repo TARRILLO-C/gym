@@ -29,6 +29,7 @@ const CatalogoVirtual = () => {
     email: '',
   });
   const [solicitudFile, setSolicitudFile] = useState(null);
+  const [solicitudPreview, setSolicitudPreview] = useState('');
   const [isSubmittingSolicitud, setIsSubmittingSolicitud] = useState(false);
   const [solicitudSuccess, setSolicitudSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -44,6 +45,7 @@ const CatalogoVirtual = () => {
     numeroOperacion: ''
   });
   const [productFile, setProductFile] = useState(null);
+  const [productPreview, setProductPreview] = useState('');
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [productSuccess, setProductSuccess] = useState(false);
   const [productValidationErrors, setProductValidationErrors] = useState({});
@@ -288,6 +290,9 @@ const CatalogoVirtual = () => {
 
       setProductSuccess(true);
       setCart([]);
+      if (productPreview) URL.revokeObjectURL(productPreview);
+      setProductPreview('');
+      setProductFile(null);
     } catch (error) {
       console.error(error);
       alert("Hubo un problema al enviar la solicitud: " + error.message);
@@ -301,6 +306,8 @@ const CatalogoVirtual = () => {
     setSelectedPlan(plan);
     setSolicitudForm({ dni: '', nombreCompleto: '', telefono: '', email: '', numeroOperacion: '' });
     setSolicitudFile(null);
+    if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
+    setSolicitudPreview('');
     setSolicitudSuccess(false);
     setValidationErrors({});
     setCheckoutStep(2);
@@ -409,6 +416,9 @@ const CatalogoVirtual = () => {
       if (!solRes.ok) throw new Error("Error creando la solicitud");
 
       setSolicitudSuccess(true);
+      if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
+      setSolicitudPreview('');
+      setSolicitudFile(null);
     } catch (error) {
       console.error(error);
       alert("Hubo un problema al enviar la solicitud: " + error.message);
@@ -999,7 +1009,12 @@ const CatalogoVirtual = () => {
 
           <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px', position: 'relative' }}>
             
-            <button onClick={() => setIsSolicitudModalOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <button onClick={() => {
+              setIsSolicitudModalOpen(false);
+              if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
+              setSolicitudPreview('');
+              setSolicitudFile(null);
+            }} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
               <X size={24} color="#64748b" />
             </button>
 
@@ -1344,22 +1359,140 @@ const CatalogoVirtual = () => {
                           <div style={{ marginBottom: '30px' }}>
                             <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
                             <div style={{ position: 'relative' }}>
-                              <input type="file" accept="image/*,.pdf" required style={{ 
-                                width: '100%', 
-                                padding: '14px 16px', 
-                                borderRadius: '10px', 
-                                border: validationErrors.comprobante ? '2px solid #dc2626' : solicitudFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
-                                backgroundColor: '#ffffff', 
-                                cursor: 'pointer',
-                                fontSize: '0.9rem',
-                                transition: 'all 0.2s ease',
-                                boxShadow: validationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
-                              }}
-                                onChange={e => {setSolicitudFile(e.target.files[0]); setValidationErrors({...validationErrors, comprobante: null});}} />
+                              <input 
+                                key={solicitudFile ? 'has-file' : 'no-file'}
+                                type="file" 
+                                accept="image/*,.pdf" 
+                                required={!solicitudFile}
+                                style={{ 
+                                  width: '100%', 
+                                  padding: '14px 16px', 
+                                  borderRadius: '10px', 
+                                  border: validationErrors.comprobante ? '2px solid #dc2626' : solicitudFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
+                                  backgroundColor: '#ffffff', 
+                                  cursor: 'pointer',
+                                  fontSize: '0.9rem',
+                                  transition: 'all 0.2s ease',
+                                  boxShadow: validationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                                }}
+                                onChange={e => {
+                                  const file = e.target.files[0];
+                                  setSolicitudFile(file);
+                                  setValidationErrors({...validationErrors, comprobante: null});
+                                  if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
+                                  if (file && file.type.startsWith('image/')) {
+                                    setSolicitudPreview(URL.createObjectURL(file));
+                                  } else {
+                                    setSolicitudPreview('');
+                                  }
+                                }} 
+                              />
                               {solicitudFile && !validationErrors.comprobante && (
                                 <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                               )}
                             </div>
+                            
+                            {/* Vista previa de imagen del comprobante */}
+                            {solicitudPreview && (
+                              <div style={{ 
+                                marginTop: '15px', 
+                                borderRadius: '12px', 
+                                border: '2px solid #e2e8f0', 
+                                padding: '12px', 
+                                backgroundColor: '#f8fafc',
+                                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center'
+                              }}>
+                                <p style={{ alignSelf: 'flex-start', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vista previa del comprobante:</p>
+                                <img 
+                                  src={solicitudPreview} 
+                                  alt="Vista previa del comprobante" 
+                                  style={{ 
+                                    maxWidth: '100%', 
+                                    maxHeight: '220px', 
+                                    borderRadius: '8px', 
+                                    objectFit: 'contain',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)' 
+                                  }} 
+                                />
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    setSolicitudFile(null);
+                                    if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
+                                    setSolicitudPreview('');
+                                  }}
+                                  style={{
+                                    marginTop: '10px',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #fee2e2',
+                                    backgroundColor: '#fef2e2',
+                                    color: '#ef4444',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                  }}
+                                  onMouseOver={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                                  onMouseOut={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                                >
+                                  <Trash2 size={14} /> Quitar imagen
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Vista previa de PDF */}
+                            {solicitudFile && !solicitudPreview && (
+                              <div style={{ 
+                                marginTop: '15px', 
+                                borderRadius: '12px', 
+                                border: '2px solid #e2e8f0', 
+                                padding: '12px', 
+                                backgroundColor: '#f8fafc',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                                  </div>
+                                  <div>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', color: '#1e293b' }}>Comprobante PDF</p>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{solicitudFile.name}</p>
+                                  </div>
+                                </div>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    setSolicitudFile(null);
+                                    if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
+                                    setSolicitudPreview('');
+                                  }}
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #fee2e2',
+                                    backgroundColor: '#fef2f2',
+                                    color: '#ef4444',
+                                    fontSize: '0.8rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseOver={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                                  onMouseOut={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            )}
                             {validationErrors.comprobante && (
                               <div style={{ 
                                 marginTop: '8px', 
@@ -1410,7 +1543,12 @@ const CatalogoVirtual = () => {
         }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px', position: 'relative' }}>
             
-            <button onClick={() => setIsProductCheckoutOpen(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <button onClick={() => {
+              setIsProductCheckoutOpen(false);
+              if (productPreview) URL.revokeObjectURL(productPreview);
+              setProductPreview('');
+              setProductFile(null);
+            }} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
               <X size={24} color="#64748b" />
             </button>
 
@@ -1660,22 +1798,140 @@ const CatalogoVirtual = () => {
                         <div style={{ marginBottom: '30px' }}>
                           <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
                           <div style={{ position: 'relative' }}>
-                            <input type="file" accept="image/*,.pdf" required style={{ 
-                              width: '100%', 
-                              padding: '14px 16px', 
-                              borderRadius: '10px', 
-                              border: productValidationErrors.comprobante ? '2px solid #dc2626' : productFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
-                              backgroundColor: '#ffffff', 
-                              cursor: 'pointer',
-                              fontSize: '0.9rem',
-                              transition: 'all 0.2s ease',
-                              boxShadow: productValidationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
-                            }}
-                              onChange={e => {setProductFile(e.target.files[0]); setProductValidationErrors({...productValidationErrors, comprobante: null});}} />
+                            <input 
+                              key={productFile ? 'has-file' : 'no-file'}
+                              type="file" 
+                              accept="image/*,.pdf" 
+                              required={!productFile}
+                              style={{ 
+                                width: '100%', 
+                                padding: '14px 16px', 
+                                borderRadius: '10px', 
+                                border: productValidationErrors.comprobante ? '2px solid #dc2626' : productFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
+                                backgroundColor: '#ffffff', 
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                transition: 'all 0.2s ease',
+                                boxShadow: productValidationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                              }}
+                              onChange={e => {
+                                const file = e.target.files[0];
+                                setProductFile(file);
+                                setProductValidationErrors({...productValidationErrors, comprobante: null});
+                                if (productPreview) URL.revokeObjectURL(productPreview);
+                                if (file && file.type.startsWith('image/')) {
+                                  setProductPreview(URL.createObjectURL(file));
+                                } else {
+                                  setProductPreview('');
+                                }
+                              }} 
+                            />
                             {productFile && !productValidationErrors.comprobante && (
                               <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                             )}
                           </div>
+
+                          {/* Vista previa de imagen del comprobante */}
+                          {productPreview && (
+                            <div style={{ 
+                              marginTop: '15px', 
+                              borderRadius: '12px', 
+                              border: '2px solid #e2e8f0', 
+                              padding: '12px', 
+                              backgroundColor: '#f8fafc',
+                              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center'
+                            }}>
+                              <p style={{ alignSelf: 'flex-start', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vista previa del comprobante:</p>
+                              <img 
+                                src={productPreview} 
+                                alt="Vista previa del comprobante" 
+                                style={{ 
+                                  maxWidth: '100%', 
+                                  maxHeight: '220px', 
+                                  borderRadius: '8px', 
+                                  objectFit: 'contain',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)' 
+                                }} 
+                              />
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  setProductFile(null);
+                                  if (productPreview) URL.revokeObjectURL(productPreview);
+                                  setProductPreview('');
+                                }}
+                                style={{
+                                  marginTop: '10px',
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #fee2e2',
+                                  backgroundColor: '#fef2e2',
+                                  color: '#ef4444',
+                                  fontSize: '0.8rem',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '5px'
+                                }}
+                                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                                onMouseOut={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                              >
+                                <Trash2 size={14} /> Quitar imagen
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Vista previa de PDF */}
+                          {productFile && !productPreview && (
+                            <div style={{ 
+                              marginTop: '15px', 
+                              borderRadius: '12px', 
+                              border: '2px solid #e2e8f0', 
+                              padding: '12px', 
+                              backgroundColor: '#f8fafc',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                                </div>
+                                <div>
+                                  <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', color: '#1e293b' }}>Comprobante PDF</p>
+                                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{productFile.name}</p>
+                                </div>
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  setProductFile(null);
+                                  if (productPreview) URL.revokeObjectURL(productPreview);
+                                  setProductPreview('');
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #fee2e2',
+                                  backgroundColor: '#fef2f2',
+                                  color: '#ef4444',
+                                  fontSize: '0.8rem',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+                                onMouseOut={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          )}
                           {productValidationErrors.comprobante && (
                             <div style={{ 
                               marginTop: '8px', 
