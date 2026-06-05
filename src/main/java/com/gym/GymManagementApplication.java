@@ -12,6 +12,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class GymManagementApplication {
 
     public static void main(String[] args) {
+        System.out.println("=== SYSTEM ENV DEBUG ===");
+        System.out.println("DB_USER: " + System.getenv("DB_USER"));
+        System.out.println("DB_PASS length: " + (System.getenv("DB_PASS") != null ? System.getenv("DB_PASS").length() : "null"));
+        System.out.println("MYSQLPASSWORD length: " + (System.getenv("MYSQLPASSWORD") != null ? System.getenv("MYSQLPASSWORD").length() : "null"));
+        System.out.println("DB_URL: " + System.getenv("DB_URL"));
+        System.out.println("========================");
         SpringApplication.run(GymManagementApplication.class, args);
     }
 
