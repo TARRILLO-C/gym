@@ -41,7 +41,7 @@ public class Socio {
     private String telefono;
 
     @Email(message = "El formato de correo electrónico no es válido")
-    @Column(name = "email", length = 150, unique = true)
+    @Column(name = "email", length = 150)
     private String email;
 
     @Column(name = "fecha_nacimiento")

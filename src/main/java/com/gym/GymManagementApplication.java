@@ -31,6 +31,17 @@ public class GymManagementApplication {
             } catch (Exception e) {
                 System.err.println("Error al limpiar solicitudes de membresía de la tabla de productos: " + e.getMessage());
             }
+            try {
+                jdbcTemplate.execute("ALTER TABLE socios DROP INDEX email");
+                System.out.println("Índice único de email eliminado con éxito.");
+            } catch (Exception e) {
+                try {
+                    jdbcTemplate.execute("ALTER TABLE socios DROP INDEX UK_email");
+                    System.out.println("Índice único UK_email eliminado con éxito.");
+                } catch (Exception e2) {
+                    System.err.println("No se pudo eliminar el índice de email (puede que ya no exista): " + e.getMessage());
+                }
+            }
         };
     }
 }

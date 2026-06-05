@@ -90,9 +90,6 @@ public class SocioService {
         if (socio.getRuc() != null && !socio.getRuc().trim().isEmpty() && socioRepository.existsByRuc(socio.getRuc())) {
             throw new DuplicateResourceException("Ya existe un socio con RUC: " + socio.getRuc());
         }
-        if (socio.getEmail() != null && !socio.getEmail().trim().isEmpty() && socioRepository.existsByEmail(socio.getEmail())) {
-            throw new DuplicateResourceException("El correo electrónico " + socio.getEmail() + " ya está en uso.");
-        }
         // Por defecto, un nuevo socio inicia como ACTIVO
         if (socio.getEstado() == null) {
             socio.setEstado(EstadoSocio.ACTIVO);
@@ -122,13 +119,6 @@ public class SocioService {
         if (datosNuevos.getRuc() != null && !datosNuevos.getRuc().trim().isEmpty()) {
             if ((existente.getRuc() == null || !existente.getRuc().equals(datosNuevos.getRuc())) && socioRepository.existsByRuc(datosNuevos.getRuc())) {
                 throw new DuplicateResourceException("El RUC " + datosNuevos.getRuc() + " ya pertenece a otro socio.");
-            }
-        }
-
-        // Verificar Email duplicado
-        if (datosNuevos.getEmail() != null && !datosNuevos.getEmail().trim().isEmpty()) {
-            if ((existente.getEmail() == null || !existente.getEmail().equals(datosNuevos.getEmail())) && socioRepository.existsByEmail(datosNuevos.getEmail())) {
-                throw new DuplicateResourceException("El correo " + datosNuevos.getEmail() + " ya está registrado por otro socio.");
             }
         }
 
