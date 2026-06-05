@@ -12,6 +12,7 @@ const SolicitudesMembresia = () => {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [imageError, setImageError] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleVerComprobante = (url, clientName) => {
     setImageError(false);
@@ -66,6 +67,7 @@ const SolicitudesMembresia = () => {
       message,
       onConfirm: async () => {
         setConfirmDialog({ isOpen: false });
+        setIsProcessing(true);
         try {
           await api.post(`${getBasePath()}/${id}/aprobar`);
           const successMessage = requestType === 'MEMBRESIA'
@@ -77,6 +79,8 @@ const SolicitudesMembresia = () => {
           console.error(error);
           const msg = error.response?.data?.mensaje || error.message || 'Error de red';
           showNotification("Error al aprobar: " + msg, 'error');
+        } finally {
+          setIsProcessing(false);
         }
       }
     });
@@ -89,6 +93,7 @@ const SolicitudesMembresia = () => {
       message: "¿Esta seguro de rechazar esta solicitud?",
       onConfirm: async () => {
         setConfirmDialog({ isOpen: false });
+        setIsProcessing(true);
         try {
           await api.post(`${getBasePath()}/${id}/rechazar`);
           showNotification("Solicitud rechazada.", 'success');
@@ -97,6 +102,8 @@ const SolicitudesMembresia = () => {
           console.error(error);
           const msg = error.response?.data?.mensaje || error.message || 'Error de red';
           showNotification("Error al rechazar: " + msg, 'error');
+        } finally {
+          setIsProcessing(false);
         }
       }
     });
@@ -109,6 +116,7 @@ const SolicitudesMembresia = () => {
       message: "¿Está seguro de marcar este pedido como ENTREGADO? Confirme que el cliente ha recibido los productos.",
       onConfirm: async () => {
         setConfirmDialog({ isOpen: false });
+        setIsProcessing(true);
         try {
           await api.post(`/solicitudes-producto/${id}/entregar`);
           showNotification("Pedido entregado con éxito.", 'success');
@@ -117,6 +125,8 @@ const SolicitudesMembresia = () => {
           console.error(error);
           const msg = error.response?.data?.mensaje || error.message || 'Error de red';
           showNotification("Error al entregar: " + msg, 'error');
+        } finally {
+          setIsProcessing(false);
         }
       }
     });
@@ -362,7 +372,15 @@ const SolicitudesMembresia = () => {
           from { transform: scale(0.95); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
         }
-      `}</style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; }
+        }
+      `}</style>,StartLine:357,TargetContent:
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FileText size={28} color="var(--accent-primary)" />
@@ -775,6 +793,74 @@ const SolicitudesMembresia = () => {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isProcessing && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--panel-bg, #1e293b)',
+            padding: '40px',
+            borderRadius: '24px',
+            border: '1px solid var(--panel-border, #334155)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '24px',
+            maxWidth: '320px',
+            textAlign: 'center',
+            animation: 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}>
+            {/* Spinning Gym/Mail Indicator */}
+            <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                border: '4px solid rgba(255, 62, 62, 0.1)',
+                borderTop: '4px solid var(--accent-primary, #ff3e3e)',
+                animation: 'spin 1s linear infinite'
+              }}></div>
+              <RefreshCw
+                size={32}
+                color="var(--accent-primary, #ff3e3e)"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  animation: 'pulse 1.5s ease-in-out infinite'
+                }}
+              />
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-main, #f8fafc)', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                Procesando Solicitud
+              </h3>
+              <p style={{ margin: 0, color: 'var(--text-muted, #94a3b8)', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                Por favor espera, estamos procesando tu solicitud y enviando el correo de confirmación al cliente...
+              </p>
             </div>
           </div>
         </div>
