@@ -6,12 +6,29 @@ import {
   Trash2,
   AlertCircle,
   Filter,
-  RotateCcw
+  RotateCcw,
+  CheckCircle,
+  XCircle,
+  User
 } from 'lucide-react';
 import axios from 'axios';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
+
+const Avatar = ({ name }) => {
+  const initial = name ? name.charAt(0).toUpperCase() : '?';
+  return (
+    <div style={{
+      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+      background: 'rgba(59,130,246,0.1)', color: '#3b82f6',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 'bold', fontSize: '1.1rem', border: '1px solid rgba(59,130,246,0.2)'
+    }}>
+      {initial}
+    </div>
+  );
+};
 
 const Socios = () => {
   const [socios, setSocios] = useState([]);
@@ -102,6 +119,25 @@ const Socios = () => {
     if (formData.telefono && formData.telefono.trim() !== '') {
       if (formData.telefono.length !== 9) {
         showAlert('Error de Formato', 'El número de teléfono debe tener exactamente 9 dígitos.');
+        return;
+      }
+    }
+
+    // Validación estricta Frontend para fecha de nacimiento (tipado manual)
+    if (formData.fechaNacimiento && formData.fechaNacimiento.trim() !== '') {
+      const birthDate = new Date(formData.fechaNacimiento);
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() - 12);
+      
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - 100);
+
+      if (birthDate > maxDate) {
+        showAlert('Error de Fecha', 'La edad mínima para registrarse es de 12 años. Por favor, verifique la fecha de nacimiento.');
+        return;
+      }
+      if (birthDate < minDate) {
+        showAlert('Error de Fecha', 'La fecha de nacimiento ingresada es demasiado antigua para ser válida.');
         return;
       }
     }
@@ -202,6 +238,12 @@ const Socios = () => {
   const duplicateSocio = !editingId ? (socios || []).find(s => s?.dni === formData.dni) : null;
   const isDniDuplicate = !!duplicateSocio;
 
+  const FILTERS = [
+    { key: 'ALL', label: 'Todos', count: socios.length },
+    { key: 'ACTIVO', label: 'Activos', count: socios.filter(s => s.estado === 'ACTIVO').length, color: '#22c55e' },
+    { key: 'INACTIVO', label: 'Inactivos', count: socios.filter(s => s.estado === 'INACTIVO').length, color: '#ef4444' }
+  ];
+
   return (
     <PageLayout
       title={<span>Gestión de <span className="text-gradient">Socios</span></span>}
@@ -212,49 +254,40 @@ const Socios = () => {
         </button>
       }
     >
-      <section className="card" style={{ padding: '0 24px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '24px 0', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ position: 'relative', flex: '1 1 250px' }}>
-            <Search 
-              size={18} 
-              color="var(--text-muted)" 
-              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} 
-            />
-            <input 
-              type="text" 
-              placeholder="Buscar por nombre o DNI..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ paddingLeft: '40px', width: '100%' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'center' }}>
-            <button 
-              onClick={() => setFilterMode('ALL')}
-              style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
-            >
-              Todos
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: 10, padding: 3, gap: 3 }}>
+          {FILTERS.map(f => (
+            <button key={f.key} onClick={() => setFilterMode(f.key)}
+              style={{
+                padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+                background: filterMode === f.key ? (f.color ? `${f.color}20` : 'var(--panel-border)') : 'transparent',
+                color: filterMode === f.key ? (f.color || 'var(--text-main)') : 'var(--text-muted)',
+                transition: 'all .2s',
+              }}>
+              {f.label} <span style={{ opacity: 0.6, fontSize: '0.78rem' }}>({f.count})</span>
             </button>
-            <button 
-              onClick={() => setFilterMode('ACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
-            >
-              Activos
-            </button>
-            <button 
-              onClick={() => setFilterMode('INACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
-            >
-              Inactivos
-            </button>
-          </div>
+          ))}
         </div>
+        <div style={{ flex: 1, position: 'relative', minWidth: 200 }}>
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o DNI..."
+            style={{ paddingLeft: 36, width: '100%', borderRadius: 10, padding: '9px 12px 9px 36px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', outline: 'none' }} />
+        </div>
+      </div>
 
+      {/* Table */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando socios...</div>
+          <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando socios...</div>
+        ) : filteredSocios.length === 0 ? (
+          <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
+            <User size={36} style={{ opacity: 0.3, marginBottom: 10 }} />
+            <p>No se encontraron socios con los filtros aplicados.</p>
+          </div>
         ) : (
-          <table className="responsive-table">
+          <table className="responsive-table" style={{ margin: 0 }}>
             <thead>
               <tr>
                 <th>SOCIO</th>
@@ -265,64 +298,65 @@ const Socios = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredSocios.map(socio => (
-                <tr key={socio?.id || Math.random()}>
-                  <td data-label="SOCIO" style={{ fontWeight: '600' }}>
-                    {socio?.nombreCompleto || 'Sin nombre'}
-                    {socio?.razonSocial && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>RS: {socio.razonSocial}</div>}
-                  </td>
-                  <td data-label="DOCUMENTO" style={{ color: 'var(--text-muted)' }}>
-                    DNI: {socio?.dni || 'N/A'}<br/>
-                    {socio?.ruc && <span style={{fontSize: '0.8rem'}}>RUC: {socio.ruc}</span>}
-                  </td>
-                  <td data-label="CONTACTO">
-                    <div style={{ fontSize: '0.85rem' }}>📞 {socio?.telefono || 'Sin tel'}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>✉️ {socio?.email || 'Sin email'}</div>
-                  </td>
-                  <td data-label="ESTADO">
-                    <span className={`badge ${socio?.estado === 'ACTIVO' ? 'badge-active' : 'badge-inactive'}`}>
-                      {socio?.estado || 'DESCONOCIDO'}
-                    </span>
-                  </td>
-                  <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button 
-                        onClick={() => openModalForEdit(socio)} 
-                        title="Editar Socio"
-                        style={{ background: 'transparent', color: 'var(--text-main)', padding: '8px' }}
-                      >
-                        <Edit size={16} />
-                      </button>
-                      {socio.estado === 'ACTIVO' ? (
-                        <button 
-                          onClick={() => handleLogicalDelete(socio)} 
-                          title="Dar de baja"
-                          style={{ background: 'transparent', color: '#ff3e3e', padding: '8px' }}
-                        >
-                          <Trash2 size={16} />
+              {filteredSocios.map(socio => {
+                const isActive = socio.estado === 'ACTIVO';
+                return (
+                  <tr key={socio?.id || Math.random()} style={{ opacity: isActive ? 1 : 0.55 }}>
+                    <td data-label="SOCIO">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Avatar name={socio?.nombreCompleto || 'S'} />
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                            {socio?.nombreCompleto || 'Sin nombre'}
+                          </div>
+                          {socio?.razonSocial && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>RS: {socio.razonSocial}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label="DOCUMENTO" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>DNI: {socio?.dni || 'N/A'}</div>
+                      {socio?.ruc && <div>RUC: {socio.ruc}</div>}
+                    </td>
+                    <td data-label="CONTACTO" style={{ fontSize: '0.85rem' }}>
+                      <div style={{ color: 'var(--text-main)' }}>📞 {socio?.telefono || 'Sin tel'}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>✉️ {socio?.email || 'Sin email'}</div>
+                    </td>
+                    <td data-label="ESTADO">
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
+                        background: isActive ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                        color: isActive ? '#22c55e' : '#ef4444',
+                        border: `1px solid ${isActive ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                      }}>
+                        {isActive ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                        {isActive ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button onClick={() => openModalForEdit(socio)} title="Editar Socio"
+                          style={{ background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)', color: '#a78bfa', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', fontWeight: 600 }}>
+                          <Edit size={14} /> Editar
                         </button>
-                      ) : (
-                        <button 
-                          onClick={() => handleRestoreSocio(socio)} 
-                          title="Reactivar"
-                          style={{ background: 'transparent', color: '#00ff7f', padding: '8px' }}
-                        >
-                          <RotateCcw size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredSocios.length === 0 && (
-                <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No se encontraron socios con este criterio.</td>
-                </tr>
-              )}
+                        {isActive ? (
+                          <button onClick={() => handleLogicalDelete(socio)} title="Dar de baja"
+                            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', fontWeight: 600 }}>
+                            <Trash2 size={14} /> Baja
+                          </button>
+                        ) : (
+                          <button onClick={() => handleRestoreSocio(socio)} title="Reactivar"
+                            style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', fontWeight: 600 }}>
+                            <RotateCcw size={14} /> Reactivar
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
-      </section>
+      </div>
 
       <Modal 
         isOpen={showModal} 
@@ -330,16 +364,6 @@ const Socios = () => {
         title={editingId ? "Editar Socio" : "Registrar Socio"}
       >
         <form onSubmit={handleRegisterOrUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Nombre Completo o Razón Social (Factura)</label>
-            <input 
-              required 
-              type="text" 
-              value={formData.nombreCompleto}
-              onChange={e => setFormData({...formData, nombreCompleto: e.target.value})}
-              placeholder="Ej: Juan Pérez"
-            />
-          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DNI</label>
@@ -374,6 +398,16 @@ const Socios = () => {
               />
             </div>
           </div>
+          <div>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Nombre Completo o Razón Social (Factura)</label>
+            <input 
+              required 
+              type="text" 
+              value={formData.nombreCompleto}
+              onChange={e => setFormData({...formData, nombreCompleto: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')})}
+              placeholder="Ej: Juan Pérez"
+            />
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Correo Electrónico</label>
@@ -402,6 +436,8 @@ const Socios = () => {
                 type="date" 
                 value={formData.fechaNacimiento}
                 onChange={e => setFormData({...formData, fechaNacimiento: e.target.value})}
+                max={new Date(new Date().setFullYear(new Date().getFullYear() - 12)).toISOString().split('T')[0]}
+                min={new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split('T')[0]}
               />
             </div>
             <div style={{ flex: 1 }}>

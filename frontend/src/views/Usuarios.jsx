@@ -318,7 +318,13 @@ const Usuarios = () => {
             <div>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontWeight: 600 }}>Rol del Sistema</label>
               <select value={formData.rol} onChange={e => setFormData({ ...formData, rol: e.target.value })}
-                style={{ width: '100%', padding: '11px 12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: 12, border: '1px solid var(--panel-border)' }}>
+                disabled={!!editingId}
+                style={{ 
+                  width: '100%', padding: '11px 12px', background: 'var(--panel-bg)', 
+                  color: 'var(--text-main)', borderRadius: 12, border: '1px solid var(--panel-border)',
+                  cursor: editingId ? 'not-allowed' : 'pointer',
+                  opacity: editingId ? 0.6 : 1
+                }}>
                 <option value="RECEPCIONISTA">Recepcionista</option>
                 <option value="ADMINISTRADOR">Administrador</option>
               </select>
@@ -328,7 +334,13 @@ const Usuarios = () => {
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontWeight: 600 }}>Estado</label>
                 <select value={formData.activo}
                   onChange={e => setFormData({ ...formData, activo: e.target.value === 'true' })}
-                  style={{ width: '100%', padding: '11px 12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: 12, border: '1px solid var(--panel-border)' }}>
+                  disabled={formData.rol === 'ADMINISTRADOR'}
+                  style={{ 
+                    width: '100%', padding: '11px 12px', background: 'var(--panel-bg)', 
+                    color: 'var(--text-main)', borderRadius: 12, border: '1px solid var(--panel-border)',
+                    cursor: formData.rol === 'ADMINISTRADOR' ? 'not-allowed' : 'pointer',
+                    opacity: formData.rol === 'ADMINISTRADOR' ? 0.6 : 1
+                  }}>
                   <option value="true">Activo</option>
                   <option value="false">Inactivo</option>
                 </select>
