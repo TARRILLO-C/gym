@@ -453,8 +453,8 @@ const SolicitudesMembresia = () => {
         </button>
       </div>
 
-      <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '4px solid #ef4444', padding: '12px 15px', borderRadius: '4px', marginBottom: '20px' }}>
-        <p style={{ margin: 0, color: '#ef4444', fontSize: '0.9rem' }}>
+      <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', borderLeft: '3px solid #ef4444', padding: '8px 12px', borderRadius: '4px', marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
+        <p style={{ margin: 0, color: '#ef4444', fontSize: '0.8rem', lineHeight: '1.4' }}>
           <strong>Seguridad Antifraude:</strong> Antes de aprobar una solicitud, verifique en su aplicación bancaria (Yape/Plin/BCP) que el <strong>Número de Operación</strong> y el monto coincidan con el comprobante adjunto.
         </p>
       </div>

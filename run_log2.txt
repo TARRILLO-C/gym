@@ -1,0 +1,731 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------------< com.gym:gym-management >-----------------------
+[INFO] Building gym-management 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.2.5:run (default-cli) > test-compile @ gym-management >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ gym-management ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ gym-management ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ gym-management ---
+[INFO] skip non existing resourceDirectory C:\Users\DANNA\gym\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ gym-management ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] <<< spring-boot:3.2.5:run (default-cli) < test-compile @ gym-management <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.2.5:run (default-cli) @ gym-management ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.5)
+
+2026-05-18T08:36:42.762-05:00  INFO 8880 --- [gym-management] [           main] com.gym.GymManagementApplication         : Starting GymManagementApplication using Java 21.0.10 with PID 8880 (C:\Users\DANNA\gym\target\classes started by DANNA in C:\Users\DANNA\gym)
+2026-05-18T08:36:42.764-05:00  INFO 8880 --- [gym-management] [           main] com.gym.GymManagementApplication         : No active profile set, falling back to 1 default profile: "default"
+2026-05-18T08:36:43.313-05:00  INFO 8880 --- [gym-management] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-05-18T08:36:43.387-05:00  INFO 8880 --- [gym-management] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 66 ms. Found 11 JPA repository interfaces.
+2026-05-18T08:36:43.847-05:00  INFO 8880 --- [gym-management] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-05-18T08:36:43.857-05:00  INFO 8880 --- [gym-management] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-18T08:36:43.857-05:00  INFO 8880 --- [gym-management] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.20]
+2026-05-18T08:36:43.917-05:00  INFO 8880 --- [gym-management] [           main] o.a.c.c.C.[Tomcat].[localhost].[/api]    : Initializing Spring embedded WebApplicationContext
+2026-05-18T08:36:43.920-05:00  INFO 8880 --- [gym-management] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1120 ms
+2026-05-18T08:36:44.043-05:00  INFO 8880 --- [gym-management] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-05-18T08:36:44.090-05:00  INFO 8880 --- [gym-management] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.4.Final
+2026-05-18T08:36:44.120-05:00  INFO 8880 --- [gym-management] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-05-18T08:36:44.296-05:00  INFO 8880 --- [gym-management] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-05-18T08:36:44.324-05:00  INFO 8880 --- [gym-management] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-05-18T08:36:44.814-05:00  INFO 8880 --- [gym-management] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@5da57a64
+2026-05-18T08:36:44.816-05:00  INFO 8880 --- [gym-management] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-05-18T08:36:45.099-05:00  WARN 8880 --- [gym-management] [           main] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-05-18T08:36:46.018-05:00  INFO 8880 --- [gym-management] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-05-18T08:36:47.917-05:00  INFO 8880 --- [gym-management] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-05-18T08:36:48.245-05:00  INFO 8880 --- [gym-management] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+Hibernate: 
+    select
+        count(*) 
+    from
+        usuarios u1_0
+2026-05-18T08:36:49.087-05:00  WARN 8880 --- [gym-management] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-05-18T08:36:49.103-05:00  WARN 8880 --- [gym-management] [           main] .s.s.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 00aa006b-71a6-4170-9df5-bcd45c96c88e
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-05-18T08:36:49.348-05:00  INFO 8880 --- [gym-management] [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@2094a7be, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@57f2a68c, org.springframework.security.web.context.SecurityContextHolderFilter@5264e41d, org.springframework.security.web.header.HeaderWriterFilter@50c0392d, org.springframework.web.filter.CorsFilter@2c63f1fe, org.springframework.security.web.authentication.logout.LogoutFilter@63eebb56, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@67d99612, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@36f8abe2, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@7c4c091a, org.springframework.security.web.access.ExceptionTranslationFilter@5c2fc86, org.springframework.security.web.access.intercept.AuthorizationFilter@563434b4]
+2026-05-18T08:36:49.524-05:00  INFO 8880 --- [gym-management] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/api'
+2026-05-18T08:36:49.533-05:00  INFO 8880 --- [gym-management] [           main] com.gym.GymManagementApplication         : Started GymManagementApplication in 7.071 seconds (process running for 7.353)
+2026-05-18T08:37:48.044-05:00  INFO 8880 --- [gym-management] [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/api]    : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-18T08:37:48.044-05:00  INFO 8880 --- [gym-management] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-05-18T08:37:48.045-05:00  INFO 8880 --- [gym-management] [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+Hibernate: 
+    select
+        u1_0.id,
+        u1_0.activo,
+        u1_0.password,
+        u1_0.rol,
+        u1_0.username 
+    from
+        usuarios u1_0 
+    where
+        u1_0.username=?
+Hibernate: 
+    select
+        cw1_0.id,
+        cw1_0.logo_url 
+    from
+        configuracion_web cw1_0
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.activo,
+        p1_0.categoria,
+        p1_0.descripcion,
+        p1_0.imagen_url,
+        p1_0.nombre,
+        p1_0.precio,
+        p1_0.stock 
+    from
+        productos p1_0
+Hibernate: 
+    select
+        s1_0.id,
+        s1_0.dni,
+        s1_0.email,
+        s1_0.estado,
+        s1_0.fecha_nacimiento,
+        s1_0.nombre_completo,
+        s1_0.razon_social,
+        s1_0.ruc,
+        s1_0.telefono 
+    from
+        socios s1_0
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.activo,
+        v1_0.cliente_documento,
+        v1_0.cliente_nombre,
+        v1_0.codigo_hash,
+        v1_0.correlativo,
+        v1_0.enlace_pdf_a4,
+        v1_0.enlace_pdf_ticket,
+        v1_0.enlace_xml_firmado,
+        v1_0.enlace_xml_sin_firmar,
+        v1_0.estado_sunat,
+        v1_0.fecha,
+        v1_0.metodo_pago,
+        v1_0.motivo_anulacion,
+        v1_0.serie,
+        v1_0.socio_id,
+        v1_0.tipo_comprobante,
+        v1_0.total 
+    from
+        ventas v1_0
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.fecha_hora_ingreso,
+        a1_0.socio_id 
+    from
+        asistencias a1_0 
+    where
+        a1_0.fecha_hora_ingreso between ? and ?
+Hibernate: 
+    select
+        s1_0.id,
+        s1_0.dni,
+        s1_0.email,
+        s1_0.estado,
+        s1_0.fecha_nacimiento,
+        s1_0.nombre_completo,
+        s1_0.razon_social,
+        s1_0.ruc,
+        s1_0.telefono 
+    from
+        socios s1_0 
+    where
+        s1_0.id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        cw1_0.id,
+        cw1_0.logo_url 
+    from
+        configuracion_web cw1_0
+Hibernate: 
+    select
+        a1_0.id,
+        a1_0.fecha_hora_ingreso,
+        a1_0.socio_id 
+    from
+        asistencias a1_0 
+    where
+        a1_0.fecha_hora_ingreso between ? and ?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.activo,
+        p1_0.categoria,
+        p1_0.descripcion,
+        p1_0.imagen_url,
+        p1_0.nombre,
+        p1_0.precio,
+        p1_0.stock 
+    from
+        productos p1_0
+Hibernate: 
+    select
+        d1_0.venta_id,
+        d1_0.id,
+        d1_0.cantidad,
+        d1_0.precio_unitario,
+        d1_0.producto_id,
+        d1_0.subtotal 
+    from
+        detalle_ventas d1_0 
+    where
+        d1_0.venta_id=?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.activo,
+        p1_0.categoria,
+        p1_0.descripcion,
+        p1_0.imagen_url,
+        p1_0.nombre,
+        p1_0.precio,
+        p1_0.stock 
+    from
+        productos p1_0 
+    where
+        p1_0.id=?
+Hibernate: 
+    select
+        m1_0.id,
+        m1_0.descripcion,
+        m1_0.duracion_dias,
+        m1_0.estado,
+        m1_0.frecuencia_cobro_dias,
+        m1_0.nombre,
+        m1_0.permite_congelamiento,
+        m1_0.precio,
+        m1_0.precio_cuota 
+    from
+        membresias m1_0 
+    where
+        m1_0.id=?
+Hibernate: 
+    select
+        m1_0.id,
+        m1_0.descripcion,
+        m1_0.duracion_dias,
+        m1_0.estado,
+        m1_0.frecuencia_cobro_dias,
+        m1_0.nombre,
+        m1_0.permite_congelamiento,
+        m1_0.precio,
+        m1_0.precio_cuota 
+    from
+        membresias m1_0 
+    where
+        m1_0.id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        v1_0.id,
+        v1_0.activo,
+        v1_0.cliente_documento,
+        v1_0.cliente_nombre,
+        v1_0.codigo_hash,
+        v1_0.correlativo,
+        v1_0.enlace_pdf_a4,
+        v1_0.enlace_pdf_ticket,
+        v1_0.enlace_xml_firmado,
+        v1_0.enlace_xml_sin_firmar,
+        v1_0.estado_sunat,
+        v1_0.fecha,
+        v1_0.metodo_pago,
+        v1_0.motivo_anulacion,
+        v1_0.serie,
+        v1_0.socio_id,
+        v1_0.tipo_comprobante,
+        v1_0.total 
+    from
+        ventas v1_0
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.id,
+        s1_0.dni,
+        s1_0.email,
+        s1_0.estado,
+        s1_0.fecha_nacimiento,
+        s1_0.nombre_completo,
+        s1_0.razon_social,
+        s1_0.ruc,
+        s1_0.telefono 
+    from
+        socios s1_0 
+    where
+        s1_0.id=?
+Hibernate: 
+    select
+        d1_0.venta_id,
+        d1_0.id,
+        d1_0.cantidad,
+        d1_0.precio_unitario,
+        d1_0.producto_id,
+        d1_0.subtotal 
+    from
+        detalle_ventas d1_0 
+    where
+        d1_0.venta_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.activo,
+        p1_0.categoria,
+        p1_0.descripcion,
+        p1_0.imagen_url,
+        p1_0.nombre,
+        p1_0.precio,
+        p1_0.stock 
+    from
+        productos p1_0 
+    where
+        p1_0.id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.id,
+        s1_0.dni,
+        s1_0.email,
+        s1_0.estado,
+        s1_0.fecha_nacimiento,
+        s1_0.nombre_completo,
+        s1_0.razon_social,
+        s1_0.ruc,
+        s1_0.telefono 
+    from
+        socios s1_0
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        m1_0.id,
+        m1_0.descripcion,
+        m1_0.duracion_dias,
+        m1_0.estado,
+        m1_0.frecuencia_cobro_dias,
+        m1_0.nombre,
+        m1_0.permite_congelamiento,
+        m1_0.precio,
+        m1_0.precio_cuota 
+    from
+        membresias m1_0 
+    where
+        m1_0.id=?
+Hibernate: 
+    select
+        m1_0.id,
+        m1_0.descripcion,
+        m1_0.duracion_dias,
+        m1_0.estado,
+        m1_0.frecuencia_cobro_dias,
+        m1_0.nombre,
+        m1_0.permite_congelamiento,
+        m1_0.precio,
+        m1_0.precio_cuota 
+    from
+        membresias m1_0 
+    where
+        m1_0.id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        s1_0.socio_id,
+        s1_0.id,
+        s1_0.activo,
+        s1_0.esta_congelada,
+        s1_0.estado_pago,
+        s1_0.fecha_fin,
+        s1_0.fecha_inicio,
+        s1_0.fecha_proximo_cobro,
+        s1_0.membresia_id 
+    from
+        suscripciones s1_0 
+    where
+        s1_0.socio_id=?
+Hibernate: 
+    select
+        a1_0.socio_id,
+        a1_0.id,
+        a1_0.fecha_hora_ingreso 
+    from
+        asistencias a1_0 
+    where
+        a1_0.socio_id=?
+Hibernate: 
+    select
+        cw1_0.id,
+        cw1_0.logo_url 
+    from
+        configuracion_web cw1_0
+Hibernate: 
+    select
+        sw1_0.id,
+        sw1_0.descripcion,
+        sw1_0.enlace_url,
+        sw1_0.imagen_url,
+        sw1_0.texto_boton,
+        sw1_0.titulo 
+    from
+        slider_web sw1_0
+Hibernate: 
+    select
+        cw1_0.id,
+        cw1_0.logo_url 
+    from
+        configuracion_web cw1_0
+Hibernate: 
+    select
+        sw1_0.id,
+        sw1_0.descripcion,
+        sw1_0.enlace_url,
+        sw1_0.imagen_url,
+        sw1_0.texto_boton,
+        sw1_0.titulo 
+    from
+        slider_web sw1_0
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.activo,
+        p1_0.categoria,
+        p1_0.descripcion,
+        p1_0.imagen_url,
+        p1_0.nombre,
+        p1_0.precio,
+        p1_0.stock 
+    from
+        productos p1_0 
+    where
+        p1_0.stock>?
+Hibernate: 
+    select
+        cw1_0.id,
+        cw1_0.logo_url 
+    from
+        configuracion_web cw1_0
+Hibernate: 
+    select
+        sw1_0.id,
+        sw1_0.descripcion,
+        sw1_0.enlace_url,
+        sw1_0.imagen_url,
+        sw1_0.texto_boton,
+        sw1_0.titulo 
+    from
+        slider_web sw1_0
+Hibernate: 
+    select
+        p1_0.id,
+        p1_0.activo,
+        p1_0.categoria,
+        p1_0.descripcion,
+        p1_0.imagen_url,
+        p1_0.nombre,
+        p1_0.precio,
+        p1_0.stock 
+    from
+        productos p1_0 
+    where
+        p1_0.stock>?
+Hibernate: 
+    select
+        cw1_0.id,
+        cw1_0.logo_url 
+    from
+        configuracion_web cw1_0
+Hibernate: 
+    select
+        sw1_0.id,
+        sw1_0.descripcion,
+        sw1_0.enlace_url,
+        sw1_0.imagen_url,
+        sw1_0.texto_boton,
+        sw1_0.titulo 
+    from
+        slider_web sw1_0

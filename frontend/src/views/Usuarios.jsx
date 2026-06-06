@@ -65,7 +65,7 @@ const Usuarios = () => {
       showAlert('Bloqueo de Seguridad', 'Por jerarquía de permisos, está prohibido eliminar o desactivar a un ADMINISTRADOR.');
       return;
     }
-    if (currentUser && username.toLowerCase() === currentUser.toLowerCase()) {
+    if (currentUser && user.username.toLowerCase() === currentUser.toLowerCase()) {
       showAlert('Acción denegada', 'Por seguridad, no puedes eliminar ni desactivar tu propia cuenta mientras estás en sesión activa.');
       return;
     }
@@ -180,7 +180,8 @@ const Usuarios = () => {
                     {u.activo !== false ? (
                       <button 
                         onClick={() => handleDeleteUsuario(u)} 
-                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: 'pointer', padding: '8px', opacity: (u.rol === 'ADMINISTRADOR' || u.username.toLowerCase() === 'admin' || (currentUser && u.username.toLowerCase() === currentUser.toLowerCase())) ? 0.3 : 1 }}
+                        disabled={u.rol === 'ADMINISTRADOR' || u.username.toLowerCase() === 'admin' || (currentUser && u.username.toLowerCase() === currentUser.toLowerCase())}
+                        style={{ background: 'transparent', border: 'none', color: '#ff3e3e', cursor: (u.rol === 'ADMINISTRADOR' || u.username.toLowerCase() === 'admin' || (currentUser && u.username.toLowerCase() === currentUser.toLowerCase())) ? 'not-allowed' : 'pointer', padding: '8px', opacity: (u.rol === 'ADMINISTRADOR' || u.username.toLowerCase() === 'admin' || (currentUser && u.username.toLowerCase() === currentUser.toLowerCase())) ? 0.3 : 1 }}
                         title="Eliminar Acceso"
                       >
                         <UserX size={18} />
@@ -208,7 +209,7 @@ const Usuarios = () => {
           
           <div>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Nombre de Usuario</label>
-            <input required type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value.toLowerCase()})} placeholder="Ej: maria.recepcion" />
+            <input required type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value.toLowerCase()})} placeholder="Ej: maria.recepcion" disabled={editingId && formData.username.toLowerCase() === 'admin'} style={{ cursor: editingId && formData.username.toLowerCase() === 'admin' ? 'not-allowed' : 'text', opacity: editingId && formData.username.toLowerCase() === 'admin' ? 0.6 : 1 }} />
           </div>
           <div>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contraseña</label>
@@ -217,7 +218,7 @@ const Usuarios = () => {
           <div style={{ display: 'flex', gap: '16px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Asignar Rol</label>
-              <select value={formData.rol} onChange={e => setFormData({...formData, rol: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+              <select value={formData.rol} onChange={e => setFormData({...formData, rol: e.target.value})} disabled={!!editingId} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)', cursor: editingId ? 'not-allowed' : 'pointer', opacity: editingId ? 0.6 : 1 }}>
                 <option value="RECEPCIONISTA">RECEPCIONISTA</option>
                 <option value="ADMINISTRADOR">ADMINISTRADOR</option>
               </select>
@@ -225,7 +226,7 @@ const Usuarios = () => {
             {editingId && (
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Estado</label>
-                <select value={formData.activo} onChange={e => setFormData({...formData, activo: e.target.value === 'true'})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                <select value={formData.activo} onChange={e => setFormData({...formData, activo: e.target.value === 'true'})} disabled={formData.rol === 'ADMINISTRADOR'} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)', cursor: formData.rol === 'ADMINISTRADOR' ? 'not-allowed' : 'pointer', opacity: formData.rol === 'ADMINISTRADOR' ? 0.6 : 1 }}>
                   <option value={true}>ACTIVO</option>
                   <option value={false}>INACTIVO</option>
                 </select>
