@@ -136,7 +136,8 @@ public class PagoService {
                     java.util.List.of(detalle),
                     tipoComp,
                     clienteNom,
-                    clienteDoc
+                    clienteDoc,
+                    false
             );
         } catch (Exception e) {
             log.error("ERROR CRITICO en registrarVenta: {} | clase: {}", e.getMessage(), e.getClass().getName(), e);

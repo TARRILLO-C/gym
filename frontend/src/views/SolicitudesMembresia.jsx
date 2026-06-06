@@ -453,8 +453,8 @@ const SolicitudesMembresia = () => {
         </button>
       </div>
 
-      <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeft: '4px solid #ef4444', padding: '12px 15px', borderRadius: '4px', marginBottom: '20px' }}>
-        <p style={{ margin: 0, color: '#ef4444', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', borderLeft: '3px solid #ef4444', padding: '8px 12px', borderRadius: '4px', marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
+        <p style={{ margin: 0, color: '#ef4444', fontSize: '0.8rem', lineHeight: '1.4' }}>
           <strong>Seguridad Antifraude:</strong> Antes de aprobar una solicitud, verifique en su aplicación bancaria (Yape/Plin/BCP) que el <strong>Número de Operación</strong> y el monto coincidan con el comprobante adjunto.
         </p>
       </div>
@@ -465,7 +465,7 @@ const SolicitudesMembresia = () => {
         ) : solicitudes.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay solicitudes en esta categoría.</div>
         ) : (
-          <table className="data-table">
+          <table className="data-table responsive-table">
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -482,9 +482,9 @@ const SolicitudesMembresia = () => {
             <tbody>
               {solicitudes.map(sol => (
                 <tr key={sol.id}>
-                  <td>{formatDate(sol.fechaSolicitud)}</td>
+                  <td data-label="Fecha">{formatDate(sol.fechaSolicitud)}</td>
                   {requestType === 'PRODUCTO' && (
-                    <td>
+                    <td data-label="Código">
                       <span style={{ 
                         fontSize: '0.85rem', 
                         color: 'var(--accent-primary)', 
@@ -499,12 +499,12 @@ const SolicitudesMembresia = () => {
                       </span>
                     </td>
                   )}
-                  <td><strong>{sol.dni}</strong></td>
-                  <td>
+                  <td data-label="DNI"><strong>{sol.dni}</strong></td>
+                  <td data-label="Cliente">
                     {sol.nombreCompleto}<br/>
                     <small style={{ color: 'var(--text-muted)' }}>{sol.telefono} {sol.email ? `| ${sol.email}` : ''}</small>
                   </td>
-                  <td>
+                  <td data-label={requestType === 'MEMBRESIA' ? 'Plan Seleccionado' : 'Productos'}>
                     {requestType === 'MEMBRESIA' ? (
                       sol.membresiaNombre
                     ) : (
@@ -522,18 +522,18 @@ const SolicitudesMembresia = () => {
                     )}
                   </td>
                   {requestType === 'PRODUCTO' && (
-                    <td>
+                    <td data-label="Total">
                       <strong>
                         S/ {Number(sol.total ?? 0).toFixed(2)}
                       </strong>
                     </td>
                   )}
-                  <td>
+                  <td data-label="Estado">
                     <span className={`status-badge status-${sol.estado?.toLowerCase()}`}>
                       {sol.estado}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Operación / Comprobante">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                       {sol.numeroOperacion && (
                          <span style={{ fontSize: '0.85rem', color: 'var(--accent-primary)', fontWeight: 'bold' }}>
@@ -563,7 +563,7 @@ const SolicitudesMembresia = () => {
                       )}
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Acciones">
                     {sol.estado === 'PENDIENTE' && (
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <button 

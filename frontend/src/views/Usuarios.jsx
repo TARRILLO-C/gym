@@ -105,10 +105,23 @@ const Usuarios = () => {
     } finally { setSaving(false); }
   };
 
+<<<<<<< HEAD
   const handleToggleActivo = (u) => {
     if (u.rol === 'ADMINISTRADOR') { showAlert('Acción Restringida', 'Por políticas de seguridad no es posible desactivar a un usuario con rol ADMINISTRADOR.'); return; }
     if (currentUser?.toLowerCase() === u.username.toLowerCase()) { showAlert('Acción Denegada', 'No puedes desactivar tu propia cuenta mientras tienes una sesión activa.'); return; }
     const accion = u.activo !== false ? 'desactivar' : 'activar';
+=======
+  const handleDeleteUsuario = (user) => {
+    if (user.rol === 'ADMINISTRADOR') {
+      showAlert('Bloqueo de Seguridad', 'Por jerarquía de permisos, está prohibido eliminar o desactivar a un ADMINISTRADOR.');
+      return;
+    }
+    if (currentUser && user.username.toLowerCase() === currentUser.toLowerCase()) {
+      showAlert('Acción denegada', 'Por seguridad, no puedes eliminar ni desactivar tu propia cuenta mientras estás en sesión activa.');
+      return;
+    }
+
+>>>>>>> a9f09f4f9297241813c11183f0e993b47a66cc55
     setDialogConfig({
       isOpen: true, type: 'confirm',
       title: u.activo !== false ? 'Desactivar Acceso' : 'Reactivar Acceso',

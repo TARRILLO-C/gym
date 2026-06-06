@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Info, X, Plus, Minus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
+import './CatalogoVirtual.css';
 
 const CatalogoVirtual = () => {
   const [logoUrl, setLogoUrl] = useState('');
@@ -144,7 +145,7 @@ const CatalogoVirtual = () => {
       }
       return [...prev, { producto, cantidad: 1 }];
     });
-    setIsCartOpen(true);
+    // setIsCartOpen(true); // Desactivado a petición del usuario para no abrir el sidebar automáticamente
   };
 
   const updateQuantity = (id, delta) => {
@@ -452,7 +453,7 @@ const CatalogoVirtual = () => {
         }
       `}</style>
       {/* Navbar Público */}
-      <nav style={{ 
+      <nav className="catalog-nav" style={{ 
         backgroundColor: 'white', 
         padding: '15px 50px', 
         display: 'flex', 
@@ -586,18 +587,19 @@ const CatalogoVirtual = () => {
                       padding: '0 20px',
                     }}>
                       {slider.titulo && (
-                        <h1 style={{ fontSize: '4rem', fontWeight: 'bold', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                        <h1 className="catalog-hero-title" style={{ fontSize: '4rem', fontWeight: 'bold', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
                           {slider.titulo}
                         </h1>
                       )}
                       {slider.descripcion && (
-                        <p style={{ fontSize: '1.5rem', maxWidth: '800px', marginBottom: '30px', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+                        <p className="catalog-hero-desc" style={{ fontSize: '1.5rem', maxWidth: '800px', marginBottom: '30px', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                           {slider.descripcion}
                         </p>
                       )}
                       {slider.textoBoton && slider.enlaceUrl && (
                         <a 
                           href={slider.enlaceUrl} 
+                          className="catalog-hero-btn"
                           style={{
                             backgroundColor: 'var(--accent-primary)',
                             color: 'white',
@@ -651,7 +653,7 @@ const CatalogoVirtual = () => {
             marginBottom: '40px',
             boxShadow: '0 4px 20px rgba(255, 62, 62, 0.15)'
           }}>
-            <h1 style={{ 
+            <h1 className="catalog-title" style={{ 
               color: 'white', 
               fontSize: '3rem', 
               fontStyle: 'italic', 
@@ -671,7 +673,7 @@ const CatalogoVirtual = () => {
                 <h3>No hay planes disponibles en el catálogo en este momento.</h3>
               </div>
             ) : (
-              <div style={{ 
+              <div className="catalog-grid" style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
                 gap: '30px' 
@@ -756,10 +758,10 @@ const CatalogoVirtual = () => {
       {/* Grid de Productos */}
       {activeTab === 'productos' && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
+        <div className="catalog-search-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
           <h2 style={{ fontSize: '2rem', color: 'var(--text-primary)', margin: 0 }}>Nuestros Productos</h2>
           
-          <div style={{ position: 'relative', width: '300px' }}>
+          <div className="catalog-search-container" style={{ position: 'relative', width: '300px' }}>
             <input 
               type="text" 
               placeholder="Buscar producto..." 
@@ -785,7 +787,7 @@ const CatalogoVirtual = () => {
             <h3>No se encontraron productos disponibles.</h3>
           </div>
         ) : (
-          <div style={{ 
+          <div className="catalog-grid" style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
             gap: '30px' 
@@ -1003,8 +1005,8 @@ const CatalogoVirtual = () => {
         }}>
           {/* Header para Paso 2 */}
           {checkoutStep === 2 && (
-            <div style={{ width: '100%', padding: '40px 20px 40px', textAlign: 'center' }}>
-              <h1 style={{ color: '#000000', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
+            <div className="checkout-modal-header" style={{ width: '100%', padding: '40px 20px 40px', textAlign: 'center' }}>
+              <h1 className="checkout-modal-title" style={{ color: '#000000', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
             </div>
           )}
 
@@ -1015,16 +1017,16 @@ const CatalogoVirtual = () => {
               if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
               setSolicitudPreview('');
               setSolicitudFile(null);
-            }} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
               <X size={24} color="#64748b" />
             </button>
 
             {checkoutStep === 3 && (
-               <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de pago</h1>
+               <h1 className="checkout-modal-title" style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de pago</h1>
             )}
 
             {/* Stepper Visual */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '50px', position: 'relative' }}>
+            <div className="checkout-stepper-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '50px', position: 'relative' }}>
               <div style={{ position: 'absolute', height: '2px', backgroundColor: checkoutStep === 2 ? '#cbd5e1' : '#e2e8f0', width: '60%', zIndex: 1, top: '20px' }}></div>
               <div style={{ position: 'absolute', height: '2px', backgroundColor: 'var(--accent-primary)', width: checkoutStep === 2 ? '30%' : '60%', zIndex: 2, top: '20px', left: '20%', transition: 'width 0.3s ease' }}></div>
               
@@ -1065,11 +1067,11 @@ const CatalogoVirtual = () => {
               <>
                 {/* ----------------- PASO 2: REVISAR PLAN ----------------- */}
                 {checkoutStep === 2 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
+                  <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
                     
                     {/* Tabla de Productos */}
-                    <div style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div className="checkout-table-container" style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                      <table className="checkout-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0' }}>
                           <tr>
                             <th style={{ padding: '20px', textAlign: 'left', color: '#64748b', fontSize: '0.9rem', width: '50px' }}></th>
@@ -1131,7 +1133,7 @@ const CatalogoVirtual = () => {
 
                 {/* ----------------- PASO 3: PAGO ----------------- */}
                 {checkoutStep === 3 && (
-                  <form onSubmit={handleSolicitudSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                  <form onSubmit={handleSolicitudSubmit} className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
                     
                     {/* Lado Izquierdo: Detalles de facturación */}
                     <div>
@@ -1549,7 +1551,7 @@ const CatalogoVirtual = () => {
               if (productPreview) URL.revokeObjectURL(productPreview);
               setProductPreview('');
               setProductFile(null);
-            }} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
               <X size={24} color="#64748b" />
             </button>
 
@@ -1566,9 +1568,9 @@ const CatalogoVirtual = () => {
               </div>
             ) : (
               <>
-                <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de la compra</h1>
+                <h1 className="checkout-modal-title" style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de la compra</h1>
                 
-                <form onSubmit={handleProductSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
+                <form onSubmit={handleProductSubmit} className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
                   
                   {/* Lado Izquierdo: Detalles de facturación */}
                   <div>
