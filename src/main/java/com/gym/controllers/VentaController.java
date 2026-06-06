@@ -38,13 +38,16 @@ public class VentaController {
 
     @PostMapping
     public ResponseEntity<Venta> registrarVenta(@Valid @RequestBody VentaRequest request) {
+        // Las ventas desde el panel admin/recepcionista NO generan SolicitudProducto.
+        // Las solicitudes de productos son exclusivas del catálogo virtual.
         Venta nueva = ventaService.registrarVenta(
                 request.getSocioId(),
                 request.getMetodoPago(),
                 request.getDetalles(),
                 request.getTipoComprobante(),
                 request.getClienteNombre(),
-                request.getClienteDocumento()
+                request.getClienteDocumento(),
+                false
         );
         return new ResponseEntity<>(nueva, HttpStatus.CREATED);
     }

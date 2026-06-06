@@ -27,6 +27,8 @@ const ConfiguracionCatalogo = () => {
   const [sliderFile, setSliderFile] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null });
+  // Loading per-plan: { [planId]: { imagen: bool, toggle: bool } }
+  const [planLoading, setPlanLoading] = useState({});
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -195,50 +197,76 @@ const ConfiguracionCatalogo = () => {
     }
   };
 
+  const setPlanLoadingField = (planId, field, value) => {
+    setPlanLoading(prev => ({
+      ...prev,
+      [planId]: { ...(prev[planId] || {}), [field]: value }
+    }));
+  };
+
   const handleUpdateMembresiaImage = async (membresiaId, file) => {
     if (!file) return;
-    setLoading(true);
+    setPlanLoadingField(membresiaId, 'imagen', true);
     const uploadedUrl = await handleUploadImage(file);
     if (uploadedUrl) {
       try {
-        const membresiaToUpdate = membresias.find(m => m.id === membresiaId);
-        const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}`, {
-          method: 'PUT',
+        // PATCH dedicado: solo actualiza imagenUrl, sin validación del objeto completo
+        const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}/imagen`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...membresiaToUpdate, imagenUrl: uploadedUrl }),
+          body: JSON.stringify({ imagenUrl: uploadedUrl }),
         });
         if (response.ok) {
           const updated = await response.json();
-          setMembresias(membresias.map(m => m.id === membresiaId ? updated : m));
+          setMembresias(prev => prev.map(m => m.id === membresiaId ? updated : m));
           showToast('Imagen del plan actualizada');
+        } else {
+          const errText = await response.text();
+          console.error('Error del servidor al actualizar imagen:', errText);
+          showToast('Error del servidor al guardar la imagen', 'error');
         }
       } catch (error) {
         console.error('Error updating membresia image:', error);
         showToast('Error al actualizar imagen', 'error');
       }
+    } else {
+      showToast('No se pudo subir la imagen al servidor', 'error');
     }
-    setLoading(false);
+    setPlanLoadingField(membresiaId, 'imagen', false);
   };
 
   const handleToggleMostrarCatalogo = async (membresiaId, currentState) => {
-    setLoading(true);
+    setPlanLoadingField(membresiaId, 'toggle', true);
     try {
-      const membresiaToUpdate = membresias.find(m => m.id === membresiaId);
-      const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}`, {
-        method: 'PUT',
+      const nuevoEstado = !currentState;
+      // Optimistic update
+      setMembresias(prev => prev.map(m =>
+        m.id === membresiaId ? { ...m, mostrarEnCatalogo: nuevoEstado } : m
+      ));
+      // PATCH dedicado: solo actualiza mostrarEnCatalogo
+      const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}/catalogo`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...membresiaToUpdate, mostrarEnCatalogo: !currentState }),
+        body: JSON.stringify({ mostrarEnCatalogo: nuevoEstado }),
       });
       if (response.ok) {
         const updated = await response.json();
-        setMembresias(membresias.map(m => m.id === membresiaId ? updated : m));
+        setMembresias(prev => prev.map(m => m.id === membresiaId ? updated : m));
         showToast(updated.mostrarEnCatalogo ? 'Plan añadido al catálogo' : 'Plan ocultado del catálogo');
+      } else {
+        // Revertir si falla
+        setMembresias(prev => prev.map(m =>
+          m.id === membresiaId ? { ...m, mostrarEnCatalogo: currentState } : m
+        ));
+        const errText = await response.text();
+        console.error('Error del servidor al cambiar visibilidad:', errText);
+        showToast('Error al actualizar visibilidad', 'error');
       }
     } catch (error) {
       console.error('Error toggling mostrarEnCatalogo:', error);
       showToast('Error al actualizar visibilidad', 'error');
     }
-    setLoading(false);
+    setPlanLoadingField(membresiaId, 'toggle', false);
   };
 
   return (
@@ -329,7 +357,7 @@ const ConfiguracionCatalogo = () => {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <button 
               className="btn-primary" 
               onClick={handleSaveConfig}
@@ -364,14 +392,17 @@ const ConfiguracionCatalogo = () => {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>{plan.nombre}</h3>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '5px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: planLoading[plan.id]?.toggle ? 'not-allowed' : 'pointer', gap: '5px' }}>
                     <input 
                       type="checkbox" 
                       checked={plan.mostrarEnCatalogo || false}
                       onChange={() => handleToggleMostrarCatalogo(plan.id, plan.mostrarEnCatalogo)}
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: planLoading[plan.id]?.toggle ? 'not-allowed' : 'pointer' }}
+                      disabled={!!planLoading[plan.id]?.toggle}
                     />
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mostrar</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      {planLoading[plan.id]?.toggle ? 'Guardando...' : 'Mostrar'}
+                    </span>
                   </label>
                 </div>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>S/ {plan.precio.toFixed(2)} - {plan.duracionDias} días</p>
@@ -381,8 +412,19 @@ const ConfiguracionCatalogo = () => {
                   borderRadius: '8px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   overflow: 'hidden',
-                  border: '1px solid var(--border-color)'
+                  border: '1px solid var(--border-color)',
+                  position: 'relative'
                 }}>
+                  {planLoading[plan.id]?.imagen && (
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      backgroundColor: 'rgba(0,0,0,0.4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      borderRadius: '8px', zIndex: 1
+                    }}>
+                      <span style={{ color: 'white', fontSize: '0.85rem', fontWeight: 'bold' }}>Subiendo...</span>
+                    </div>
+                  )}
                   {plan.imagenUrl ? (
                     <img src={plan.imagenUrl} alt={plan.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
@@ -396,9 +438,11 @@ const ConfiguracionCatalogo = () => {
                     accept="image/*"
                     className="form-control"
                     style={{ fontSize: '0.8rem', padding: '5px' }}
+                    disabled={!!planLoading[plan.id]?.imagen}
                     onChange={(e) => {
                       if (e.target.files[0]) {
                         handleUpdateMembresiaImage(plan.id, e.target.files[0]);
+                        e.target.value = '';
                       }
                     }}
                   />

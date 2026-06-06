@@ -33,6 +33,7 @@ const Productos = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   
   const [productForm, setProductForm] = useState({
     nombre: '', precio: '', stock: '', stockMinimo: 5, categoriaId: '', descripcion: '', imagenUrl: '', activo: true
@@ -426,6 +427,53 @@ const Productos = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <style>{`
+        .mobile-cart-float-btn {
+          position: fixed;
+          bottom: 85px;
+          right: 20px;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+          color: white;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 10px 25px rgba(255, 62, 62, 0.4);
+          z-index: 900;
+          border: none;
+          cursor: pointer;
+          transition: transform 0.2s;
+        }
+        .mobile-cart-float-btn:active {
+          transform: scale(0.9);
+        }
+        .mobile-cart-badge {
+          position: absolute;
+          top: -5px;
+          right: -5px;
+          background: #ffffff;
+          color: var(--accent-primary);
+          border-radius: 50%;
+          width: 22px;
+          height: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.75rem;
+          font-weight: 800;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        @media (max-width: 768px) {
+          .cart-sidebar-desktop {
+            display: none !important;
+          }
+          .mobile-cart-float-btn {
+            display: flex;
+          }
+        }
+      `}</style>
     <PageLayout
       title={<span>Punto de <span className="text-gradient">Venta</span></span>}
       subtitle="Gestiona tu inventario y realiza ventas rápidas."
@@ -723,7 +771,7 @@ const Productos = () => {
         </div>
 
         {activeTab === 'pos' && (
-          <div className="card cart-sidebar" style={{ width: '350px', background: 'var(--panel-bg)', display: 'flex', flexDirection: 'column', padding: '20px', border: '1px solid var(--panel-border)' }}>
+          <div className="card cart-sidebar cart-sidebar-desktop" style={{ width: '350px', background: 'var(--panel-bg)', display: 'flex', flexDirection: 'column', padding: '20px', border: '1px solid var(--panel-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '16px' }}>
               <ShoppingCart size={24} color="var(--accent-primary)" />
               <h3 style={{ fontSize: '1.4rem' }}>Tu Carrito</h3>
@@ -740,7 +788,7 @@ const Productos = () => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-color)', padding: '4px', borderRadius: '8px' }}>
                       <button onClick={() => updateCartQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}>-</button>
-                      <span style={{ fontSize: '0.9rem', width: '20px', textAlign: 'center', color: '#000' }}>{item.cantidad}</span>
+                      <span style={{ fontSize: '0.9rem', width: '20px', textAlign: 'center', color: 'var(--text-main)' }}>{item.cantidad}</span>
                       <button onClick={() => updateCartQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}>+</button>
                     </div>
                   </div>
@@ -766,8 +814,57 @@ const Productos = () => {
         )}
       </div>
 
+      {/* Carrito Móvil Modal */}
+      <Modal isOpen={showMobileCart} onClose={() => setShowMobileCart(false)} title="Tu Carrito de Compras">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '70vh' }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '150px' }}>
+            {cart.length > 0 ? (
+              cart.map(item => (
+                <div key={item.producto.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', borderBottom: '1px solid var(--panel-border)', paddingBottom: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{item.producto.nombre}</div>
+                    <div style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>S/ {item.subtotal.toFixed(2)}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--panel-bg)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+                    <button onClick={() => updateCartQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 'bold' }}>-</button>
+                    <span style={{ fontSize: '0.95rem', width: '24px', textAlign: 'center', fontWeight: 'bold' }}>{item.cantidad}</span>
+                    <button onClick={() => updateCartQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 'bold' }}>+</button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                El carrito está vacío.
+              </div>
+            )}
+          </div>
+          <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Total</span>
+              <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => setShowMobileCart(false)} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--panel-border)', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                SEGUIR
+              </button>
+              <button className="btn-primary" style={{ flex: 1, padding: '12px' }} disabled={cart.length === 0} onClick={() => { setShowMobileCart(false); setShowCheckoutModal(true); }}>
+                COMPRAR
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Botón flotante para carrito en móvil */}
+      {activeTab === 'pos' && cart.length > 0 && (
+        <button className="mobile-cart-float-btn" onClick={() => setShowMobileCart(true)}>
+          <ShoppingCart size={24} />
+          <span className="mobile-cart-badge">{cart.length}</span>
+        </button>
+      )}
+
       <Modal isOpen={showProductModal} onClose={() => setShowProductModal(false)} title={editingProduct ? 'Editar Producto' : 'Nuevo Producto'}>
-        <form onSubmit={handleSaveProduct} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <form onSubmit={handleSaveProduct} className="responsive-form-grid">
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Nombre del Producto</label>
             <input required type="text" value={productForm.nombre} onChange={e => setProductForm({...productForm, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')})} />

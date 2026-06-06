@@ -200,7 +200,7 @@ public class SuscripcionService {
     @Transactional
     public Suscripcion crear(Long socioId, Long membresiaId,
                              LocalDate fechaInicio, EstadoPago estadoPago, Boolean pagoTotal) {
-        return crear(socioId, membresiaId, fechaInicio, estadoPago, pagoTotal, false, null, null, null, null);
+        return crear(socioId, membresiaId, fechaInicio, estadoPago, pagoTotal, false, null, null, null, null, true);
     }
 
     @Transactional
@@ -208,6 +208,15 @@ public class SuscripcionService {
                              LocalDate fechaInicio, EstadoPago estadoPago, Boolean pagoTotal,
                              Boolean generarComprobante, String tipoComprobante, 
                              String clienteNombre, String clienteDocumento, String metodoPago) {
+        return crear(socioId, membresiaId, fechaInicio, estadoPago, pagoTotal,
+                     generarComprobante, tipoComprobante, clienteNombre, clienteDocumento, metodoPago, true);
+    }
+    @Transactional
+    public Suscripcion crear(Long socioId, Long membresiaId,
+                             LocalDate fechaInicio, EstadoPago estadoPago, Boolean pagoTotal,
+                             Boolean generarComprobante, String tipoComprobante,
+                             String clienteNombre, String clienteDocumento, String metodoPago,
+                             boolean enviarCorreo) {
 
         if (socioId == null || membresiaId == null) {
             throw new IllegalArgumentException("El ID del socio y de la membresía son obligatorios.");
@@ -315,10 +324,12 @@ public class SuscripcionService {
         }
         
         // Enviar correo de confirmación de compra (sin bloquear si falla el SMTP)
-        try {
-            emailService.enviarConfirmacionCompra(guardada);
-        } catch (Exception mailEx) {
-            log.warn("No se pudo enviar correo de confirmación (la suscripción fue guardada): {}", mailEx.getMessage());
+        if (enviarCorreo) {
+            try {
+                emailService.enviarConfirmacionCompra(guardada);
+            } catch (Exception mailEx) {
+                log.warn("No se pudo enviar correo de confirmación (la suscripción fue guardada): {}", mailEx.getMessage());
+            }
         }
 
         

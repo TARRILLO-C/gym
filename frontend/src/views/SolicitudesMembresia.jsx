@@ -380,13 +380,13 @@ const SolicitudesMembresia = () => {
           0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
           50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; }
         }
-      `}</style>,StartLine:357,TargetContent:
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      `}</style>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FileText size={28} color="var(--accent-primary)" />
           {requestType === 'MEMBRESIA' ? 'Solicitudes de Membresía' : 'Solicitudes de Productos'}
         </h2>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             className="btn-update"
             onClick={() => switchRequestType('MEMBRESIA')}

@@ -78,7 +78,7 @@
 
 @media (max-width: 1024px) {
   .sidebar { width: 88px; padding: 32px 16px; }
-  .main-content { margin-left: 88px; }
+  .main-content { margin-left: 88px; width: calc(100% - 88px); }
   .sidebar-text { display: none !important; }
   .sidebar-header { justify-content: center; padding-bottom: 30px; }
   .nav-link { padding: 14px; justify-content: center; margin: 0 auto; width: 100%; }
@@ -87,7 +87,7 @@
 }
 
 @media (max-width: 768px) {
-  .app-container { flex-direction: column-reverse; }
+  .app-container { flex-direction: column-reverse; width: 100%; }
   .sidebar {
     width: 100%;
     height: 70px;
@@ -100,7 +100,7 @@
     border-top: 1px solid var(--panel-border);
     z-index: 1000;
   }
-  .main-content { margin-left: 0; margin-bottom: 70px; padding: 16px; }
+  .main-content { margin-left: 0; margin-bottom: 70px; padding: 16px; width: 100%; }
   
   /* Sidebar items for mobile bottom nav */
   .sidebar-header { display: none !important; }

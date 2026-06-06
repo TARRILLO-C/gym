@@ -50,8 +50,12 @@ public class MembresiaService {
         membresia.setPrecio(detalles.getPrecio());
         membresia.setDuracionDias(detalles.getDuracionDias());
         membresia.setDescripcion(detalles.getDescripcion());
-        membresia.setEstado(detalles.getEstado());
-        membresia.setPermiteCongelamiento(detalles.getPermiteCongelamiento());
+        if (detalles.getEstado() != null) {
+            membresia.setEstado(detalles.getEstado());
+        }
+        if (detalles.getPermiteCongelamiento() != null) {
+            membresia.setPermiteCongelamiento(detalles.getPermiteCongelamiento());
+        }
         membresia.setPrecioCuota(detalles.getPrecioCuota());
         membresia.setFrecuenciaCobroDias(detalles.getFrecuenciaCobroDias());
         membresia.setImagenUrl(detalles.getImagenUrl());
@@ -67,5 +71,31 @@ public class MembresiaService {
         mem.setEstado(Membresia.EstadoMembresia.OCULTO);
         membresiaRepository.save(mem);
         log.info("Membresía ID {} pasada a estado OCULTO (borrado lógico).", id);
+    }
+
+    /**
+     * Actualiza solo la imagen de un plan sin requerir el objeto completo.
+     */
+    @Transactional
+    public Membresia actualizarImagen(Long id, String imagenUrl) {
+        Membresia membresia = buscarPorId(id);
+        membresia.setImagenUrl(imagenUrl);
+        Membresia guardada = membresiaRepository.save(membresia);
+        log.info("Imagen de membresía ID {} actualizada.", id);
+        return guardada;
+    }
+
+    /**
+     * Actualiza solo la visibilidad en catálogo de un plan sin requerir el objeto completo.
+     */
+    @Transactional
+    public Membresia actualizarMostrarEnCatalogo(Long id, Boolean mostrar) {
+        Membresia membresia = buscarPorId(id);
+        if (mostrar != null) {
+            membresia.setMostrarEnCatalogo(mostrar);
+        }
+        Membresia guardada = membresiaRepository.save(membresia);
+        log.info("Visibilidad en catálogo de membresía ID {} actualizada a: {}", id, mostrar);
+        return guardada;
     }
 }

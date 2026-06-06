@@ -9,6 +9,7 @@ import com.gym.models.SolicitudMembresia.EstadoSolicitud;
 import com.gym.repositories.MembresiaRepository;
 import com.gym.repositories.SocioRepository;
 import com.gym.repositories.SolicitudMembresiaRepository;
+import com.gym.services.EmailService;
 import com.gym.services.SocioService;
 import com.gym.services.SuscripcionService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class SolicitudMembresiaController {
     private final SocioService socioService;
     private final SocioRepository socioRepository;
     private final SuscripcionService suscripcionService;
+    private final EmailService emailService;
     @GetMapping
     public ResponseEntity<List<SolicitudMembresia>> listarTodas() {
         return ResponseEntity.ok(solicitudMembresiaRepository.findAll());
@@ -87,8 +89,8 @@ public class SolicitudMembresiaController {
             socio = socioService.registrar(socio);
             log.info("Nuevo socio registrado a través de solicitud (DNI: {})", socio.getDni());
         }
-        // Crear la suscripción
-        suscripcionService.crear(
+        // Crear la suscripción sin enviar correo (lo enviamos aquí con más detalle)
+        Suscripcion nuevaSuscripcion = suscripcionService.crear(
                 socio.getId(),
                 solicitud.getMembresia().getId(),
                 LocalDate.now(),
@@ -98,10 +100,17 @@ public class SolicitudMembresiaController {
                 null,
                 socio.getNombreCompleto(),
                 socio.getDni(),
-                "TRANSFERENCIA"
+                "TRANSFERENCIA",
+                false  // no enviar correo genérico; lo enviamos abajo con detalle
         );
         solicitud.setEstado(EstadoSolicitud.APROBADA);
         SolicitudMembresia guardada = solicitudMembresiaRepository.save(solicitud);
+        // Enviar correo con detalle de lo comprado y número de operación
+        try {
+            emailService.enviarConfirmacionCompra(nuevaSuscripcion, solicitud.getNumeroOperacion());
+        } catch (Exception e) {
+            log.warn("No se pudo enviar correo de confirmación de membresía: {}", e.getMessage());
+        }
         log.info("Solicitud ID {} aprobada con éxito.", id);
         return ResponseEntity.ok(guardada);
     }

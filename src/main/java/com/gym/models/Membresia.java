@@ -43,9 +43,9 @@ public class Membresia {
     private BigDecimal precioCuota;
 
     /**
-     * Días que abarca cada ciclo de facturación de la cuota (ej: 7, 15, 30).
+     * Días que abarca cada ciclo de facturación de la cuota (ej: 7, 15, 30). 0 = sin cobro por cuotas.
      */
-    @Min(value = 1, message = "La frecuencia de cobro debe ser de al menos 1 día")
+    @Min(value = 0, message = "La frecuencia de cobro no puede ser negativa")
     @Column(name = "frecuencia_cobro_dias")
     private Integer frecuenciaCobroDias;
 

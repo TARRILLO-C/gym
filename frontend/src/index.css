@@ -77,7 +77,7 @@ button {
   transition: var(--transition-smooth);
 }
 
-input {
+input, select {
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
@@ -87,10 +87,20 @@ input {
   font-family: inherit;
 }
 
-input:focus {
+input:focus, select:focus {
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px rgba(255, 62, 62, 0.2);
+}
+
+select option {
+  background-color: #151518;
+  color: #ffffff;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #212529;
 }
 
 /* Glassmorphism elements */
@@ -230,4 +240,20 @@ input:focus {
 .card:hover .logo-icon {
   filter: drop-shadow(0 0 12px rgba(255, 62, 62, 0.6));
   transform: rotate(15deg) scale(1.1);
+}
+
+/* Responsive grid layouts for forms in modals */
+.responsive-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 520px) {
+  .responsive-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .responsive-form-grid > div {
+    grid-column: span 1 !important;
+  }
 }

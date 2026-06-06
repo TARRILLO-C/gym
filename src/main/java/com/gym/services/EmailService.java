@@ -38,14 +38,19 @@ public class EmailService {
 
     @Async
     public void enviarConfirmacionCompra(Suscripcion suscripcion) {
+        enviarConfirmacionCompra(suscripcion, null);
+    }
+
+    @Async
+    public void enviarConfirmacionCompra(Suscripcion suscripcion, String numeroOperacion) {
         String emailTo = suscripcion.getSocio().getEmail();
         if (emailTo == null || emailTo.isEmpty()) {
             log.warn("El socio {} no tiene correo registrado. Se omite confirmación de compra.", suscripcion.getSocio().getNombreCompleto());
             return;
         }
 
-        String subject = "¡Confirmación de compra de tu plan - Bienvenido!";
-        String content = construirHtmlCompra(suscripcion);
+        String subject = "¡Confirmación de tu Membresía - The Jungle Gym!";
+        String content = construirHtmlCompra(suscripcion, numeroOperacion);
 
         enviarCorreo(emailTo, subject, content);
     }
@@ -98,29 +103,72 @@ public class EmailService {
     }
 
     private String construirHtmlCompra(Suscripcion sus) {
+        return construirHtmlCompra(sus, null);
+    }
+
+    private String construirHtmlCompra(Suscripcion sus, String numeroOperacion) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         String fechaInicio = sus.getFechaInicio() != null ? sus.getFechaInicio().format(dtf) : "Hoy";
-        String fechaFin = sus.getFechaFin().format(dtf);
-        String nombre = sus.getSocio().getNombreCompleto();
-        String plan = sus.getMembresia().getNombre();
-        String precio = sus.getMembresia().getPrecioCuota() != null ? "S/ " + sus.getMembresia().getPrecioCuota() : "Consulta en recepción";
-        String detalles = sus.getMembresia().getDescripcion() != null ? sus.getMembresia().getDescripcion() : "Acceso a las instalaciones.";
+        String fechaFin    = sus.getFechaFin().format(dtf);
+        String nombre      = sus.getSocio().getNombreCompleto();
+        String dni         = sus.getSocio().getDni() != null ? sus.getSocio().getDni() : "-";
+        String plan        = sus.getMembresia().getNombre();
+        String duracion    = sus.getMembresia().getDuracionDias() + " días";
+        String precio      = sus.getMembresia().getPrecio() != null
+                             ? "S/ " + sus.getMembresia().getPrecio().setScale(2, java.math.RoundingMode.HALF_UP)
+                             : "Consultar en recepción";
+        String descripcion = (sus.getMembresia().getDescripcion() != null && !sus.getMembresia().getDescripcion().isBlank())
+                             ? sus.getMembresia().getDescripcion()
+                             : "Acceso a todas las instalaciones del gimnasio.";
+        String numOp       = (numeroOperacion != null && !numeroOperacion.isBlank()) ? numeroOperacion : "—";
 
-        return "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>" +
-                "<h2 style='color: #5cb85c; text-align: center;'>¡Gracias por tu compra!</h2>" +
-                "<p>Hola <strong>" + nombre + "</strong>,</p>" +
-                "<p>Hemos registrado exitosamente tu suscripción al plan <strong>" + plan + "</strong>.</p>" +
-                "<h3>Detalles de tu membresía:</h3>" +
-                "<ul>" +
-                "<li><strong>Costo:</strong> " + precio + "</li>" +
-                "<li><strong>Fecha de Inicio:</strong> " + fechaInicio + "</li>" +
-                "<li><strong>Fecha de Vencimiento:</strong> " + fechaFin + "</li>" +
-                "<li><strong>Incluye:</strong> " + detalles + "</li>" +
-                "</ul>" +
-                "<p>¡Te esperamos para entrenar con todo!</p>" +
-                "<br>" +
-                "<p>Saludos cordiales,<br><strong>El equipo del Gimnasio</strong></p>" +
-                "</div>";
+        return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>" +
+            "<div style='font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #f4f4f4; padding: 20px; border-radius: 12px;'>" +
+
+            // Header
+            "<div style='background: linear-gradient(135deg, #1a1a2e 0%, #e94560 100%); padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center;'>" +
+            "  <h1 style='color: white; margin: 0; font-size: 1.6rem; letter-spacing: 1px;'>🏋️ The Jungle Gym</h1>" +
+            "  <p style='color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 1rem;'>Confirmación de Membresía</p>" +
+            "</div>" +
+
+            // Cuerpo
+            "<div style='background: white; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #ddd;'>" +
+            "  <p style='font-size: 1rem; color: #333;'>Hola <strong>" + nombre + "</strong>,</p>" +
+            "  <p style='color: #555;'>Tu membresía ha sido <strong style='color: #22c55e;'>✔ aprobada y activada</strong> exitosamente. Aquí están todos los detalles de tu compra:</p>" +
+
+            // Recuadro de resumen
+            "  <div style='background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 20px 0;'>" +
+            "    <h3 style='margin: 0 0 15px 0; color: #1a1a2e; border-bottom: 2px solid #e94560; padding-bottom: 8px;'>📋 Detalle de tu Plan</h3>" +
+            "    <table style='width: 100%; border-collapse: collapse; font-size: 0.95rem;'>" +
+            "      <tr><td style='padding: 8px 0; color: #64748b; width: 45%;'>Plan contratado</td>" +
+            "          <td style='padding: 8px 0; font-weight: bold; color: #1a1a2e;'>" + plan + "</td></tr>" +
+            "      <tr style='background:#f1f5f9;'><td style='padding: 8px 5px; color: #64748b;'>Duración</td>" +
+            "          <td style='padding: 8px 5px; font-weight: bold;'>" + duracion + "</td></tr>" +
+            "      <tr><td style='padding: 8px 0; color: #64748b;'>Precio pagado</td>" +
+            "          <td style='padding: 8px 0; font-weight: bold; color: #e94560; font-size: 1.1rem;'>" + precio + "</td></tr>" +
+            "      <tr style='background:#f1f5f9;'><td style='padding: 8px 5px; color: #64748b;'>Fecha de inicio</td>" +
+            "          <td style='padding: 8px 5px; font-weight: bold;'>" + fechaInicio + "</td></tr>" +
+            "      <tr><td style='padding: 8px 0; color: #64748b;'>Fecha de vencimiento</td>" +
+            "          <td style='padding: 8px 0; font-weight: bold;'>" + fechaFin + "</td></tr>" +
+            "      <tr style='background:#f1f5f9;'><td style='padding: 8px 5px; color: #64748b;'>DNI</td>" +
+            "          <td style='padding: 8px 5px;'>" + dni + "</td></tr>" +
+            "      <tr><td style='padding: 8px 0; color: #64748b;'>N° de operación</td>" +
+            "          <td style='padding: 8px 0; font-family: monospace; color: #1e40af;'>" + numOp + "</td></tr>" +
+            "    </table>" +
+            "  </div>" +
+
+            // Descripción del plan
+            "  <div style='background: #fef9c3; border-left: 4px solid #eab308; padding: 12px 15px; border-radius: 6px; margin-bottom: 20px;'>" +
+            "    <p style='margin: 0; font-size: 0.9rem; color: #713f12;'><strong>Incluye:</strong> " + descripcion + "</p>" +
+            "  </div>" +
+
+            "  <p style='color: #555; font-size: 0.95rem;'>Recuerda presentar tu <strong>DNI</strong> al ingresar al gimnasio. Si tienes alguna consulta, no dudes en contactarnos en recepción.</p>" +
+            "  <p style='color: #555;'>¡Te esperamos para entrenar con todo! 💪</p>" +
+            "  <br>" +
+            "  <p style='color: #888; font-size: 0.85rem;'>Saludos cordiales,<br><strong style='color: #1a1a2e;'>El equipo de The Jungle Gym</strong></p>" +
+            "</div>" +
+
+            "</div></body></html>";
     }
 
     private String construirHtmlConfirmacionVenta(SolicitudProducto sol) {
