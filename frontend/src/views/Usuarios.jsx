@@ -40,13 +40,24 @@ const validate = (formData, editingId) => {
   if (!formData.username.trim()) return 'El nombre de usuario es obligatorio.';
   if (formData.username.length < 4) return 'El usuario debe tener al menos 4 caracteres.';
   if (!/^[a-z0-9._]+$/.test(formData.username)) return 'Solo letras minúsculas, números, puntos y guiones bajos.';
+  
+  const validatePassword = (pwd) => {
+    if (pwd.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+    if (pwd.includes(' ')) return 'La contraseña no puede tener espacios.';
+    if (!/[A-Z]/.test(pwd)) return 'La contraseña debe contener al menos una letra mayúscula.';
+    if (!/[a-z]/.test(pwd)) return 'La contraseña debe contener al menos una letra minúscula.';
+    if (!/\d/.test(pwd)) return 'La contraseña debe contener al menos un número.';
+    if (!/[@$!%*?&._\-]/.test(pwd)) return 'La contraseña debe contener al menos un carácter especial (@$!%*?&._-).';
+    return null;
+  };
+
   if (!editingId) {
     if (!formData.password) return 'La contraseña es obligatoria.';
-    if (formData.password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
-    if (formData.password.includes(' ')) return 'La contraseña no puede tener espacios.';
+    const passErr = validatePassword(formData.password);
+    if (passErr) return passErr;
   } else if (formData.password && formData.password !== '********') {
-    if (formData.password.length < 6) return 'La nueva contraseña debe tener al menos 6 caracteres.';
-    if (formData.password.includes(' ')) return 'La contraseña no puede tener espacios.';
+    const passErr = validatePassword(formData.password);
+    if (passErr) return passErr;
   }
   return null;
 };
@@ -292,7 +303,6 @@ const Usuarios = () => {
               onChange={e => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, '') })}
               placeholder="Ej: maria.recepcion"
               style={{ width: '100%' }} />
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>Solo minúsculas, números, puntos y guiones bajos. Mín. 4 caracteres.</p>
           </div>
 
           <div>
@@ -305,7 +315,7 @@ const Usuarios = () => {
                 type={showPass ? 'text' : 'password'}
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
-                placeholder={editingId ? "Dejar '********' para no cambiar" : 'Mínimo 6 caracteres, sin espacios'}
+                placeholder={editingId ? "Dejar '********' para no cambiar" : 'Mín. 8 caracteres, letras, números y símbolos'}
                 style={{ width: '100%', paddingRight: 40 }} />
               <button type="button" onClick={() => setShowPass(!showPass)}
                 style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>

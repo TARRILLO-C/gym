@@ -686,11 +686,11 @@ const Membresias = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ color: 'var(--text-muted)', fontWeight: '400' }}>Configura los planes y precios que ofreces al público.</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '8px' }}>
+            <h3 style={{ color: 'var(--text-muted)', fontWeight: '400', flex: '1 1 250px', margin: 0, fontSize: '1.05rem' }}>Configura los planes y precios que ofreces al público.</h3>
             {role === 'ADMINISTRADOR' && (
-              <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 0, duracionDias: '', descripcion: '', estado: 'DISPONIBLE', permiteCongelamiento: true }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Plus size={20} /> CREAR NUEVO PLAN
+              <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 0, duracionDias: '', descripcion: '', estado: 'DISPONIBLE', permiteCongelamiento: true }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', whiteSpace: 'nowrap', borderRadius: '12px', fontSize: '0.95rem' }}>
+                <Plus size={18} /> NUEVO PLAN
               </button>
             )}
           </div>
