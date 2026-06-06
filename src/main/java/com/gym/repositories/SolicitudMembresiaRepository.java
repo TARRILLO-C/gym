@@ -7,4 +7,5 @@ import java.util.List;
 @Repository
 public interface SolicitudMembresiaRepository extends JpaRepository<SolicitudMembresia, Long> {
     List<SolicitudMembresia> findByEstado(EstadoSolicitud estado);
+    List<SolicitudMembresia> findByEstadoOrderByFechaSolicitudDesc(EstadoSolicitud estado);
 }

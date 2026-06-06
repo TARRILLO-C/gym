@@ -69,6 +69,7 @@ com\gym\validators\ValidSunatDocument.class
 com\gym\controllers\SuscripcionController.class
 com\gym\services\MembresiaService.class
 com\gym\dtos\SolicitudProductoRequest$ItemSolicitud.class
+com\gym\services\SolicitudMembresiaService.class
 com\gym\services\SocioService.class
 com\gym\models\Venta$VentaBuilder.class
 com\gym\config\SecurityConfig.class
@@ -96,6 +97,7 @@ com\gym\controllers\SolicitudProductoController.class
 com\gym\controllers\AsistenciaController.class
 com\gym\services\ConsultaService.class
 com\gym\repositories\VentaRepository.class
+com\gym\dtos\SolicitudMembresiaDTO.class
 com\gym\repositories\SolicitudMembresiaRepository.class
 com\gym\dtos\SolicitudProductoRequest.class
 com\gym\repositories\SocioRepository.class
