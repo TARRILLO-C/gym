@@ -145,7 +145,7 @@ const CatalogoVirtual = () => {
       }
       return [...prev, { producto, cantidad: 1 }];
     });
-    setIsCartOpen(true);
+    // setIsCartOpen(true); // Desactivado a petición del usuario para no abrir el sidebar automáticamente
   };
 
   const updateQuantity = (id, delta) => {
@@ -1017,7 +1017,7 @@ const CatalogoVirtual = () => {
               if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
               setSolicitudPreview('');
               setSolicitudFile(null);
-            }} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
               <X size={24} color="#64748b" />
             </button>
 
@@ -1551,7 +1551,7 @@ const CatalogoVirtual = () => {
               if (productPreview) URL.revokeObjectURL(productPreview);
               setProductPreview('');
               setProductFile(null);
-            }} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
               <X size={24} color="#64748b" />
             </button>
 
