@@ -262,8 +262,16 @@ const Membresias = () => {
       showAlert("Validación", "El precio del plan debe ser mayor a 0.");
       return;
     }
+    if (parseFloat(planFormData.precio) > 1000) {
+      showAlert("Validación", "El precio del plan no puede exceder los S/ 1,000.");
+      return;
+    }
     if (planFormData.precioCuota !== '' && parseFloat(planFormData.precioCuota) < 0) {
       showAlert("Validación", "El costo de la cuota no puede ser negativo.");
+      return;
+    }
+    if (planFormData.precioCuota !== '' && parseFloat(planFormData.precioCuota) > 1000) {
+      showAlert("Validación", "El costo de la cuota no puede exceder los S/ 1,000.");
       return;
     }
     if (parseInt(planFormData.duracionDias) <= 0 || isNaN(parseInt(planFormData.duracionDias))) {
@@ -766,6 +774,7 @@ const Membresias = () => {
                 required 
                 type="number" 
                 min="0.01" 
+                max="1000"
                 step="0.01" 
                 placeholder="Ej: 99.00" 
                 value={planFormData.precio} 
@@ -781,6 +790,7 @@ const Membresias = () => {
               <input 
                 type="number" 
                 min="0" 
+                max="1000"
                 step="0.01" 
                 placeholder="Ej: 33.00" 
                 value={planFormData.precioCuota} 
