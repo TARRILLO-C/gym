@@ -13,7 +13,9 @@ import {
   UserCog,
   Receipt,
   Store,
-  FileText
+  FileText,
+  Menu,
+  X
 } from 'lucide-react';
 import { ThemeContext } from '../context/ThemeContext';
 import { API_BASE_URL } from '../services/api';
@@ -22,6 +24,7 @@ const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
   const [logoUrl, setLogoUrl] = useState('');
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/web-config`)
@@ -59,32 +62,53 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header" style={{ minHeight: '64px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {logoUrl ? (
-          <img src={logoUrl} alt="Logo de la empresa" style={{ height: '40px', width: '40px', objectFit: 'contain', borderRadius: '8px' }} />
-        ) : (
-          <div style={{ 
-            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-            padding: '10px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Dumbbell size={24} color="white" />
-          </div>
-        )}
-        <h1 className="sidebar-text" style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>
+    <>
+      <div className="mobile-top-header">
+        <button className="mobile-menu-btn" onClick={() => setIsMobileOpen(true)}>
+          <Menu size={24} />
+        </button>
+        <h1 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {logoUrl ? <img src={logoUrl} alt="Logo" style={{ height: '24px', width: '24px', objectFit: 'contain', borderRadius: '4px' }} /> : <Dumbbell size={18} color="var(--accent-primary)" />}
           THE <span className="text-gradient">JUNGLE</span>
         </h1>
       </div>
+
+      {isMobileOpen && (
+        <div className="mobile-overlay" onClick={() => setIsMobileOpen(false)}></div>
+      )}
+
+      <aside className={`sidebar ${isMobileOpen ? 'open' : ''}`}>
+        <div className="sidebar-header" style={{ minHeight: '64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo de la empresa" style={{ height: '40px', width: '40px', objectFit: 'contain', borderRadius: '8px' }} />
+            ) : (
+              <div style={{ 
+                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                padding: '10px',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Dumbbell size={24} color="white" />
+              </div>
+            )}
+            <h1 className="sidebar-text" style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>
+              THE <span className="text-gradient">JUNGLE</span>
+            </h1>
+          </div>
+          <button className="mobile-close-btn" onClick={() => setIsMobileOpen(false)}>
+            <X size={24} />
+          </button>
+        </div>
 
       <nav className="sidebar-nav">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={() => setIsMobileOpen(false)}
             className={({ isActive }) => 
               `nav-link ${isActive ? 'active' : ''}`
             }
@@ -129,6 +153,7 @@ const Sidebar = () => {
         }
       `}} />
     </aside>
+    </>
   );
 };
 
