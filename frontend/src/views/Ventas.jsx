@@ -273,71 +273,32 @@ const Ventas = () => {
       </div>
 
       <div className="card" style={{ padding: '0 24px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '24px 0', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ position: 'relative', flex: '1 1 250px', minWidth: '200px' }}>
-            <Search
-              size={18}
-              color="var(--text-muted)"
-              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
-            />
-            <input
-              type="text"
-              placeholder={activeTab === 'productos' ? "Buscar por socio o método de pago..." : "Buscar por socio, membresía o método..."}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ paddingLeft: '40px', width: '100%', background: 'var(--panel-bg)', color: 'var(--text-main)' }}
-            />
+        <div style={{ display: 'flex', gap: 12, paddingBottom: 20, paddingTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: 10, padding: 3, gap: 3 }}>
+            <button onClick={() => setFilterMode('ALL')} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: filterMode === 'ALL' ? 'var(--text-main)' : 'var(--text-muted)', transition: 'all .2s' }}>Todos</button>
+            <button onClick={() => setFilterMode('ACTIVO')} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, background: filterMode === 'ACTIVO' ? '#22c55e20' : 'transparent', color: filterMode === 'ACTIVO' ? '#22c55e' : 'var(--text-muted)', transition: 'all .2s' }}>Válidas</button>
+            <button onClick={() => setFilterMode('INACTIVO')} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, background: filterMode === 'INACTIVO' ? '#ef444420' : 'transparent', color: filterMode === 'INACTIVO' ? '#ef4444' : 'var(--text-muted)', transition: 'all .2s' }}>Anuladas</button>
           </div>
 
-          {/* Filtros de Fecha */}
+          <div style={{ flex: 1, position: 'relative', minWidth: 200 }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={activeTab === 'productos' ? "Buscar por socio o método de pago..." : "Buscar por socio, membresía o método..."} style={{ paddingLeft: 36, width: '100%', borderRadius: 10, padding: '9px 12px 9px 36px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', outline: 'none' }} />
+          </div>
+
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--panel-border)' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Desde:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }}
-              />
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--panel-border)' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Hasta:</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }}
-              />
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }} />
             </div>
             {(startDate || endDate) && (
-              <button
-                onClick={() => { setStartDate(''); setEndDate(''); }}
-                style={{ padding: '6px 12px', background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: '1px solid rgba(255, 62, 62, 0.2)', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
-              >
+              <button onClick={() => { setStartDate(''); setEndDate(''); }} style={{ padding: '8px 12px', background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                 Limpiar
               </button>
             )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button 
-              onClick={() => setFilterMode('ALL')}
-              style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-            >
-              Todos
-            </button>
-            <button 
-              onClick={() => setFilterMode('ACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-            >
-              Válidas
-            </button>
-            <button 
-              onClick={() => setFilterMode('INACTIVO')}
-              style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-            >
-              Anuladas
-            </button>
           </div>
         </div>
 
@@ -358,7 +319,7 @@ const Ventas = () => {
               </thead>
               <tbody>
                 {filteredVentas.map(venta => (
-                  <tr key={venta.id}>
+                  <tr key={venta.id} style={{ opacity: venta.activo === false ? 0.55 : 1 }}>
                     <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
                       <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', marginBottom: '2px' }}>{venta.tipoComprobante}</div>
                       <div>{venta.serie && venta.correlativo ? `${venta.serie}-${venta.correlativo}` : `#${venta.id}`}</div>
@@ -369,8 +330,8 @@ const Ventas = () => {
                         {new Date(venta.fecha).toLocaleString()}
                       </div>
                     </td>
-                    <td data-label="CLIENTE" style={{ fontWeight: '600' }}>
-                      {venta.socio?.nombreCompleto || venta.clienteNombre || 'Cliente General'}
+                    <td data-label="CLIENTE">
+                      <div style={{ fontWeight: '600' }}>{venta.socio?.nombreCompleto || venta.clienteNombre || 'Cliente General'}</div>
                     </td>
                     <td data-label="MÉTODO PAGO">
                       <span className="badge" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
@@ -389,16 +350,16 @@ const Ventas = () => {
                                 <button
                                   onClick={() => window.open(venta.enlacePdfTicket, '_blank')}
                                   title="Ver Ticket de Venta (80mm)"
-                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                 >
-                                  <Printer size={14} /> TICKET
+                                  <Printer size={18} />
                                 </button>
                                 <button
                                   onClick={() => window.open(venta.enlacePdfA4, '_blank')}
                                   title="Ver PDF (A4)"
-                                  style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                  style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-main)', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                 >
-                                  <FileText size={14} /> A4
+                                  <FileText size={18} />
                                 </button>
                               </>
                             ) : (
@@ -406,17 +367,17 @@ const Ventas = () => {
                                 <button
                                   onClick={() => handleImprimir(venta)}
                                   title="Reimprimir Comprobante Interno"
-                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                 >
-                                  <Printer size={16} /> INTERNO
+                                  <Printer size={18} />
                                 </button>
                                 {venta.tipoComprobante === 'NOTA_VENTA' && (
                                   <button
                                     onClick={() => handleOpenEmitModal(venta.id)}
                                     title="Emitir Comprobante"
-                                    style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                    style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                   >
-                                    <FilePlus size={16} /> EMITIR
+                                    <FilePlus size={18} />
                                   </button>
                                 )}
                               </>
@@ -424,13 +385,13 @@ const Ventas = () => {
                             <button 
                               onClick={() => handleAnularVenta(venta)}
                               title="Anular Comprobante"
-                              style={{ background: 'transparent', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px' }}
+                              style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}
                             >
-                              <Ban size={16} />
+                              <Ban size={18} />
                             </button>
                           </>
                         ) : (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '8px', border: '1px dashed var(--panel-border)' }}>
+                          <span className="badge badge-inactive" style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e' }}>
                             ANULADA
                           </span>
                         )}
@@ -467,7 +428,7 @@ const Ventas = () => {
               </thead>
               <tbody>
                 {filteredPagos.map(pago => (
-                  <tr key={pago.id}>
+                  <tr key={pago.id} style={{ opacity: (pago.venta && pago.venta.activo === false) ? 0.55 : 1 }}>
                     <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
                       #{pago.id}
                     </td>
@@ -477,8 +438,8 @@ const Ventas = () => {
                         {new Date(pago.fechaPago).toLocaleString()}
                       </div>
                     </td>
-                    <td data-label="SOCIO" style={{ fontWeight: '600' }}>
-                      {pago.suscripcion?.socio?.nombreCompleto || 'Desconocido'}
+                    <td data-label="SOCIO">
+                      <div style={{ fontWeight: '600' }}>{pago.suscripcion?.socio?.nombreCompleto || 'Desconocido'}</div>
                     </td>
                     <td data-label="PLAN / MEMBRESÍA" style={{ fontWeight: '600', color: 'var(--accent-secondary)' }}>
                       {pago.suscripcion?.membresia?.nombre || 'Plan Especial'}
@@ -504,16 +465,16 @@ const Ventas = () => {
                                   <button
                                     onClick={() => window.open(pago.venta.enlacePdfTicket, '_blank')}
                                     title="Ver Ticket de Venta (80mm)"
-                                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                   >
-                                    <Printer size={14} /> TICKET
+                                    <Printer size={18} />
                                   </button>
                                   <button
                                     onClick={() => window.open(pago.venta.enlacePdfA4, '_blank')}
                                     title="Ver PDF (A4)"
-                                    style={{ background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--panel-border)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                    style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-main)', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                   >
-                                    <FileText size={14} /> A4
+                                    <FileText size={18} />
                                   </button>
                                 </>
                               ) : (
@@ -521,17 +482,17 @@ const Ventas = () => {
                                   <button
                                     onClick={() => handleImprimir(pago.venta)}
                                     title="Reimprimir Comprobante Interno"
-                                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem' }}
+                                    style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                   >
-                                    <Printer size={16} /> INTERNO
+                                    <Printer size={18} />
                                   </button>
                                   {pago.venta.tipoComprobante === 'NOTA_VENTA' && (
                                     <button
                                       onClick={() => handleOpenEmitModal(pago.venta.id)}
                                       title="Emitir Comprobante"
-                                      style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                      style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                     >
-                                      <FilePlus size={16} /> EMITIR
+                                      <FilePlus size={18} />
                                     </button>
                                   )}
                                 </>
@@ -539,13 +500,13 @@ const Ventas = () => {
                               <button 
                                 onClick={() => handleAnularVenta(pago.venta)}
                                 title="Anular Comprobante"
-                                style={{ background: 'transparent', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px' }}
+                                style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}
                               >
-                                <Ban size={16} />
+                                <Ban size={18} />
                               </button>
                             </>
                           ) : (
-                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '8px', border: '1px dashed var(--panel-border)' }}>
+                            <span className="badge badge-inactive" style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e' }}>
                               ANULADA
                             </span>
                           )}

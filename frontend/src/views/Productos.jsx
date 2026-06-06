@@ -493,44 +493,45 @@ const Productos = () => {
       <div className="pos-container" style={{ display: 'flex', gap: '24px', flex: 1 }}>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'var(--panel-bg)', padding: '16px', borderRadius: '16px', border: '1px solid var(--panel-border)' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', background: 'var(--panel-bg)', padding: '16px', borderRadius: '16px', border: '1px solid var(--panel-border)' }}>
+            <div style={{ position: 'relative', flex: '1 1 250px' }}>
               <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input type="text" placeholder="Buscar por nombre o categoría..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: '40px', width: '100%', background: 'transparent' }} />
             </div>
+            
             {activeTab === 'inventario' && (
-              <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'center' }}>
-                <button 
-                  onClick={() => setFilterMode('ALL')}
-                  style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px' }}
-                >
-                  Todos
-                </button>
-                <button 
-                  onClick={() => setFilterMode('ACTIVO')}
-                  style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px' }}
-                >
-                  Activos
-                </button>
-                <button 
-                  onClick={() => setFilterMode('INACTIVO')}
-                  style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px' }}
-                >
-                  Inactivos
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--panel-border)', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <button 
+                    onClick={() => setFilterMode('ALL')}
+                    style={{ padding: '8px 16px', background: filterMode === 'ALL' ? 'var(--panel-border)' : 'transparent', color: 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                  >
+                    Todos
+                  </button>
+                  <button 
+                    onClick={() => setFilterMode('ACTIVO')}
+                    style={{ padding: '8px 16px', background: filterMode === 'ACTIVO' ? 'rgba(0, 255, 127, 0.2)' : 'transparent', color: filterMode === 'ACTIVO' ? '#00ff7f' : 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                  >
+                    Activos
+                  </button>
+                  <button 
+                    onClick={() => setFilterMode('INACTIVO')}
+                    style={{ padding: '8px 16px', background: filterMode === 'INACTIVO' ? 'rgba(255, 62, 62, 0.2)' : 'transparent', color: filterMode === 'INACTIVO' ? '#ff3e3e' : 'var(--text-main)', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                  >
+                    Inactivos
+                  </button>
+                </div>
+
+                {role === 'ADMINISTRADOR' && (
+                  <button className="btn-primary" onClick={() => { setCategoryForm({ nombre: '' }); setShowCategoryModal(true); }} style={{ flex: '1 1 auto', minWidth: '160px', padding: '10px 16px', display: 'flex', justifyContent: 'center' }}>
+                    <Plus size={18} /> CATEGORÍA
+                  </button>
+                )}
+
+                <button className="btn-primary" onClick={() => { resetProductForm(); setShowProductModal(true); }} style={{ flex: '1 1 auto', minWidth: '160px', padding: '10px 16px', display: 'flex', justifyContent: 'center' }}>
+                  <Plus size={18} /> PRODUCTO
                 </button>
               </div>
-            )}
-
-            {activeTab === 'inventario' && role === 'ADMINISTRADOR' && (
-              <button className="btn-primary" onClick={() => { setCategoryForm({ nombre: '' }); setShowCategoryModal(true); }}>
-                <Plus size={18} /> NUEVA CATEGORÍA
-              </button>
-            )}
-
-            {activeTab === 'inventario' && (
-              <button className="btn-primary" onClick={() => { resetProductForm(); setShowProductModal(true); }}>
-                <Plus size={18} /> NUEVO PRODUCTO
-              </button>
             )}
           </div>
 
