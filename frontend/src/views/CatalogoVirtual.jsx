@@ -57,6 +57,15 @@ const CatalogoVirtual = () => {
     fetchSliders();
     fetchProductos();
     fetchMembresias();
+
+    const handleFocus = () => {
+      fetchProductos();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Simple auto-slide

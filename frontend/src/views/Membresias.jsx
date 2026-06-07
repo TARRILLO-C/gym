@@ -298,16 +298,19 @@ const Membresias = () => {
     }
   };
 
-  const handleArchivePlan = (plan) => {
+  const handleTogglePlanStatus = (plan) => {
+    const isArchiving = plan.estado !== 'OCULTO';
     setDialogConfig({
-      isOpen: true, type: 'confirm', title: 'Archivar Plan',
-      message: `¿Deseas archivar el plan "${plan.nombre}"? Dejará de salir en futuras ventas.`,
+      isOpen: true, type: 'confirm', title: isArchiving ? 'Archivar Plan' : 'Restaurar Plan',
+      message: isArchiving 
+        ? `¿Deseas archivar el plan "${plan.nombre}"? Dejará de salir en futuras ventas.` 
+        : `¿Deseas reactivar el plan "${plan.nombre}"? Volverá a estar disponible para ventas.`,
       onConfirm: async () => {
         try {
-          await api.put(`/membresias/${plan.id}`, { ...plan, estado: 'INACTIVO' });
+          await api.put(`/membresias/${plan.id}`, { ...plan, estado: isArchiving ? 'OCULTO' : 'DISPONIBLE' });
           fetchData();
         } catch (err) {
-          showAlert("Error", "Error al archivar plan");
+          showAlert("Error", `Error al ${isArchiving ? 'archivar' : 'restaurar'} plan`);
         }
       }
     });
@@ -718,7 +721,7 @@ const Membresias = () => {
                     background: (!m.estado || m.estado === 'DISPONIBLE') ? 'rgba(0, 255, 127, 0.1)' : 'rgba(255, 255, 255, 0.1)', 
                     color: (!m.estado || m.estado === 'DISPONIBLE') ? '#00ff7f' : 'var(--text-muted)' 
                   }}>
-                    {m.estado || 'DISPONIBLE'}
+                    {(!m.estado || m.estado === 'DISPONIBLE') ? 'DISPONIBLE' : 'ARCHIVADO'}
                   </span>
                   {m.permiteCongelamiento !== false && (
                     <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', marginLeft: '8px' }}>
@@ -737,7 +740,9 @@ const Membresias = () => {
                 {role === 'ADMINISTRADOR' && (
                   <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--panel-border)', display: 'flex', gap: '12px' }}>
                     <button onClick={() => { setEditingPlanId(m.id); setPlanFormData(m); setShowPlanModal(true); }} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--panel-border)', borderRadius: '10px', color: 'var(--text-main)' }}>Editar</button>
-                    <button onClick={() => handleArchivePlan(m)} style={{ flex: 1, padding: '10px', background: 'rgba(255, 62, 62, 0.1)', border: 'none', borderRadius: '10px', color: 'var(--accent-primary)' }}>Archivar</button>
+                    <button onClick={() => handleTogglePlanStatus(m)} style={{ flex: 1, padding: '10px', background: m.estado === 'OCULTO' ? 'rgba(0, 255, 127, 0.1)' : 'rgba(255, 62, 62, 0.1)', border: 'none', borderRadius: '10px', color: m.estado === 'OCULTO' ? '#00ff7f' : 'var(--accent-primary)' }}>
+                      {m.estado === 'OCULTO' ? 'Activar' : 'Archivar'}
+                    </button>
                   </div>
                 )}
               </div>
