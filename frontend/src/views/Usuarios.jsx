@@ -36,26 +36,23 @@ const StatCard = ({ value, label, color, icon }) => (
   </div>
 );
 
+const validatePassword = (pwd) => {
+  if (!pwd) return 'La contraseña es obligatoria.';
+  if (pwd.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+  if (pwd.includes(' ')) return 'La contraseña no puede tener espacios.';
+  if (!/[A-Z]/.test(pwd)) return 'La contraseña debe contener al menos una letra mayúscula.';
+  if (!/[a-z]/.test(pwd)) return 'La contraseña debe contener al menos una letra minúscula.';
+  if (!/\d/.test(pwd)) return 'La contraseña debe contener al menos un número.';
+  if (!/[@$!%*?&._\-]/.test(pwd)) return 'La contraseña debe contener al menos un carácter especial (@$!%*?&._-).';
+  return null;
+};
+
 const validate = (formData, editingId) => {
   if (!formData.username.trim()) return 'El nombre de usuario es obligatorio.';
   if (formData.username.length < 4) return 'El usuario debe tener al menos 4 caracteres.';
-  if (!/^[a-z0-9._]+$/.test(formData.username)) return 'Solo letras minúsculas, números, puntos y guiones bajos.';
-  
-  const validatePassword = (pwd) => {
-    if (pwd.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
-    if (pwd.includes(' ')) return 'La contraseña no puede tener espacios.';
-    if (!/[A-Z]/.test(pwd)) return 'La contraseña debe contener al menos una letra mayúscula.';
-    if (!/[a-z]/.test(pwd)) return 'La contraseña debe contener al menos una letra minúscula.';
-    if (!/\d/.test(pwd)) return 'La contraseña debe contener al menos un número.';
-    if (!/[@$!%*?&._\-]/.test(pwd)) return 'La contraseña debe contener al menos un carácter especial (@$!%*?&._-).';
-    return null;
-  };
+  if (!/^[a-zA-Z0-9._]+$/.test(formData.username)) return 'Solo letras, números, puntos y guiones bajos.';
 
   if (!editingId) {
-    if (!formData.password) return 'La contraseña es obligatoria.';
-    const passErr = validatePassword(formData.password);
-    if (passErr) return passErr;
-  } else if (formData.password && formData.password !== '********') {
     const passErr = validatePassword(formData.password);
     if (passErr) return passErr;
   }
@@ -73,6 +70,16 @@ const Usuarios = () => {
   const [filterMode, setFilterMode] = useState('ALL');
   const [search, setSearch] = useState('');
   const [showPass, setShowPass] = useState(false);
+  
+  // States for Change Password Modal
+  const [showPassModal, setShowPassModal] = useState(false);
+  const [passFormData, setPassFormData] = useState({ currentPassword: '', newPassword: '' });
+  const [passUser, setPassUser] = useState(null);
+  const [passError, setPassError] = useState('');
+  const [passSaving, setPassSaving] = useState(false);
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const currentUser = localStorage.getItem('username');
 
@@ -95,7 +102,7 @@ const Usuarios = () => {
 
   const openEdit = (u) => {
     setEditingId(u.id);
-    setFormData({ username: u.username, password: '********', rol: u.rol, activo: u.activo });
+    setFormData({ username: u.username, password: '', rol: u.rol, activo: u.activo });
     setErrorMSG(''); setShowPass(false); setShowModal(true);
   };
 
@@ -133,12 +140,47 @@ const Usuarios = () => {
   };
 
   const handleResetPassword = (u) => {
-    setDialogConfig({
-      isOpen: true, type: 'confirm',
-      title: 'Restablecer Contraseña',
-      message: `Se restablecerá la contraseña de "${u.username}". Deberás ingresar una nueva contraseña en el formulario de edición.`,
-      onConfirm: () => openEdit(u),
-    });
+    setPassUser(u);
+    setPassFormData({ currentPassword: '', newPassword: '' });
+    setPassError('');
+    setShowCurrentPass(false);
+    setShowNewPass(false);
+    setShowPassModal(true);
+  };
+
+  const handlePassSubmit = async (e) => {
+    e.preventDefault();
+    if (!passFormData.currentPassword) {
+      setPassError('La contraseña actual es obligatoria.');
+      return;
+    }
+    const err = validatePassword(passFormData.newPassword);
+    if (err) {
+      setPassError(err);
+      return;
+    }
+    setPassSaving(true);
+    setPassError('');
+
+    try {
+      // Validar contraseña actual simulando login
+      await api.post('/usuarios/login', { username: passUser.username, password: passFormData.currentPassword });
+      
+      // Si es exitoso, actualizar la contraseña
+      await api.put(`/usuarios/${passUser.id}`, { ...passUser, password: passFormData.newPassword });
+      
+      setShowPassModal(false);
+      showAlert('Éxito', 'La contraseña se ha actualizado correctamente.');
+      fetchData();
+    } catch (error) {
+      if (error.response?.status === 401) {
+        setPassError('La contraseña actual es incorrecta.');
+      } else {
+        setPassError(error.response?.data || 'Error al cambiar la contraseña. Inténtalo de nuevo.');
+      }
+    } finally {
+      setPassSaving(false);
+    }
   };
 
   const filtered = usuarios.filter(u => {
@@ -300,29 +342,31 @@ const Usuarios = () => {
               Nombre de Usuario <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input required type="text" value={formData.username}
-              onChange={e => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, '') })}
+              onChange={e => setFormData({ ...formData, username: e.target.value.replace(/[^a-zA-Z0-9._]/g, '') })}
               placeholder="Ej: maria.recepcion"
               style={{ width: '100%' }} />
           </div>
 
-          <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontWeight: 600 }}>
-              Contraseña {!editingId && <span style={{ color: '#ef4444' }}>*</span>}
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                required={!editingId}
-                type={showPass ? 'text' : 'password'}
-                value={formData.password}
-                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                placeholder={editingId ? "Dejar '********' para no cambiar" : 'Mín. 8 caracteres, letras, números y símbolos'}
-                style={{ width: '100%', paddingRight: 40 }} />
-              <button type="button" onClick={() => setShowPass(!showPass)}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+          {!editingId && (
+            <div>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontWeight: 600 }}>
+                Contraseña <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  required
+                  type={showPass ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Mín. 8 caracteres, letras, números y símbolos"
+                  style={{ width: '100%', paddingRight: 40 }} />
+                <button type="button" onClick={() => setShowPass(!showPass)}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="responsive-form-grid" style={{ gap: 12 }}>
             <div>
@@ -372,6 +416,65 @@ const Usuarios = () => {
             </button>
             <button type="submit" className="btn-primary" style={{ flex: 2 }} disabled={saving}>
               {saving ? 'Guardando...' : (editingId ? '✓ Actualizar Usuario' : '+ Crear Usuario')}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Cambiar Contraseña */}
+      <Modal isOpen={showPassModal} onClose={() => setShowPassModal(false)} title="Cambiar Contraseña">
+        <form onSubmit={handlePassSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {passError && (
+            <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderRadius: 10, fontSize: '0.88rem', borderLeft: '3px solid #ef4444' }}>
+              ⚠ {passError}
+            </div>
+          )}
+
+          <div>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontWeight: 600 }}>
+              Contraseña Actual <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                required
+                type={showCurrentPass ? 'text' : 'password'}
+                value={passFormData.currentPassword}
+                onChange={e => setPassFormData({ ...passFormData, currentPassword: e.target.value })}
+                placeholder="Ingresa la contraseña actual"
+                style={{ width: '100%', paddingRight: 40 }} />
+              <button type="button" onClick={() => setShowCurrentPass(!showCurrentPass)}
+                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                {showCurrentPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontWeight: 600 }}>
+              Nueva Contraseña <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                required
+                type={showNewPass ? 'text' : 'password'}
+                value={passFormData.newPassword}
+                onChange={e => setPassFormData({ ...passFormData, newPassword: e.target.value })}
+                placeholder="Mín. 8 caracteres, letras, números y símbolos"
+                style={{ width: '100%', paddingRight: 40 }} />
+              <button type="button" onClick={() => setShowNewPass(!showNewPass)}
+                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                {showNewPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+            <button type="button" onClick={() => setShowPassModal(false)}
+              style={{ flex: 1, padding: '11px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--panel-border)', borderRadius: 10, cursor: 'pointer', fontWeight: 600 }}>
+              Cancelar
+            </button>
+            <button type="submit" className="btn-primary" style={{ flex: 2 }} disabled={passSaving}>
+              {passSaving ? 'Actualizando...' : '✓ Actualizar Contraseña'}
             </button>
           </div>
         </form>
