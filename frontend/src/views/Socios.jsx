@@ -375,7 +375,11 @@ const Socios = () => {
                   value={formData.dni} 
                   onChange={e => setFormData({...formData, dni: e.target.value.replace(/\D/g, '')})} 
                   placeholder="8 dígitos"
-                  style={{ border: isDniDuplicate ? '1px solid #ff3e3e' : '1px solid var(--panel-border)' }}
+                  disabled={!!editingId}
+                  style={{ 
+                    border: isDniDuplicate ? '1px solid #ff3e3e' : '1px solid var(--panel-border)',
+                    ...(editingId ? { opacity: 0.7, cursor: 'not-allowed', background: 'rgba(0,0,0,0.02)' } : {})
+                  }}
                 />
                 {isSearchingDni && (
                   <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: 'var(--accent-primary)' }}>Consultando...</div>
@@ -406,6 +410,8 @@ const Socios = () => {
               value={formData.nombreCompleto}
               onChange={e => setFormData({...formData, nombreCompleto: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')})}
               placeholder="Ej: Juan Pérez"
+              disabled={!!editingId}
+              style={editingId ? { opacity: 0.7, cursor: 'not-allowed', background: 'rgba(0,0,0,0.02)' } : {}}
             />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -438,6 +444,8 @@ const Socios = () => {
                 onChange={e => setFormData({...formData, fechaNacimiento: e.target.value})}
                 max={new Date(new Date().setFullYear(new Date().getFullYear() - 12)).toISOString().split('T')[0]}
                 min={new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split('T')[0]}
+                disabled={!!editingId}
+                style={editingId ? { opacity: 0.7, cursor: 'not-allowed', background: 'rgba(0,0,0,0.02)' } : {}}
               />
             </div>
             <div style={{ flex: 1 }}>
