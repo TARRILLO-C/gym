@@ -8,6 +8,7 @@ import com.gym.models.SolicitudProducto;
 import com.gym.models.SolicitudProducto.EstadoSolicitud;
 import com.gym.models.Venta;
 import com.gym.repositories.ProductoRepository;
+import com.gym.repositories.SolicitudMembresiaRepository;
 import com.gym.repositories.SolicitudProductoRepository;
 import com.gym.services.EmailService;
 import com.gym.services.VentaService;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SolicitudProductoController {
     private final SolicitudProductoRepository solicitudProductoRepository;
+    private final SolicitudMembresiaRepository solicitudMembresiaRepository;
     private final ProductoRepository productoRepository;
     private final VentaService ventaService;
     private final EmailService emailService;
@@ -60,7 +62,12 @@ public class SolicitudProductoController {
 
     @PostMapping
     @Transactional
-    public ResponseEntity<SolicitudProducto> crear(@RequestBody SolicitudProductoRequest request) {
+    public ResponseEntity<?> crear(@RequestBody SolicitudProductoRequest request) {
+        if (solicitudProductoRepository.existsByNumeroOperacion(request.getNumeroOperacion()) ||
+            solicitudMembresiaRepository.existsByNumeroOperacion(request.getNumeroOperacion())) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("mensaje", "El número de operación ingresado ya ha sido registrado."));
+        }
+
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("La solicitud debe incluir al menos un producto.");
         }

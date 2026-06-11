@@ -35,6 +35,7 @@ const CatalogoVirtual = () => {
   const [isSubmittingSolicitud, setIsSubmittingSolicitud] = useState(false);
   const [solicitudSuccess, setSolicitudSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [solicitudSubmitError, setSolicitudSubmitError] = useState('');
 
   // Product checkout state
   const [isProductCheckoutOpen, setIsProductCheckoutOpen] = useState(false);
@@ -51,6 +52,7 @@ const CatalogoVirtual = () => {
   const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
   const [productSuccess, setProductSuccess] = useState(false);
   const [productValidationErrors, setProductValidationErrors] = useState({});
+  const [productSubmitError, setProductSubmitError] = useState('');
 
   useEffect(() => {
     fetchConfig();
@@ -184,6 +186,7 @@ const CatalogoVirtual = () => {
     setProductFile(null);
     setProductSuccess(false);
     setProductValidationErrors({});
+    setProductSubmitError('');
     setProductCheckoutStep(1);
     setIsProductCheckoutOpen(true);
   };
@@ -254,6 +257,7 @@ const CatalogoVirtual = () => {
     }
     
     setProductValidationErrors({});
+    setProductSubmitError('');
     setIsSubmittingProduct(true);
     try {
       // 1. Subir imagen
@@ -306,7 +310,7 @@ const CatalogoVirtual = () => {
       setProductFile(null);
     } catch (error) {
       console.error(error);
-      alert("Hubo un problema al enviar la solicitud: " + error.message);
+      setProductSubmitError(error.message);
     } finally {
       setIsSubmittingProduct(false);
     }
@@ -321,6 +325,7 @@ const CatalogoVirtual = () => {
     setSolicitudPreview('');
     setSolicitudSuccess(false);
     setValidationErrors({});
+    setSolicitudSubmitError('');
     setCheckoutStep(2);
     setIsSolicitudModalOpen(true);
   };
@@ -395,6 +400,7 @@ const CatalogoVirtual = () => {
     }
     
     setValidationErrors({});
+    setSolicitudSubmitError('');
     setIsSubmittingSolicitud(true);
     try {
       // 1. Subir imagen
@@ -432,7 +438,7 @@ const CatalogoVirtual = () => {
       setSolicitudFile(null);
     } catch (error) {
       console.error(error);
-      alert("Hubo un problema al enviar la solicitud: " + error.message);
+      setSolicitudSubmitError(error.message);
     } finally {
       setIsSubmittingSolicitud(false);
     }
@@ -1525,6 +1531,28 @@ const CatalogoVirtual = () => {
                             )}
                           </div>
 
+                          {solicitudSubmitError && (
+                            <div style={{
+                              marginBottom: '16px',
+                              display: 'flex', 
+                              alignItems: 'flex-start', 
+                              gap: '12px',
+                              color: '#991b1b', 
+                              fontSize: '0.95rem', 
+                              backgroundColor: '#fef2f2', 
+                              padding: '16px', 
+                              borderRadius: '12px', 
+                              border: '1px solid #fecaca',
+                              boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)'
+                            }}>
+                              <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontWeight: '600' }}>Error al procesar la solicitud</span>
+                                <span style={{ opacity: 0.9 }}>{solicitudSubmitError}</span>
+                              </div>
+                            </div>
+                          )}
+
                           <button type="submit" disabled={isSubmittingSolicitud} style={{
                             width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
                             padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
@@ -1963,6 +1991,28 @@ const CatalogoVirtual = () => {
                             </div>
                           )}
                         </div>
+
+                        {productSubmitError && (
+                          <div style={{
+                            marginBottom: '16px',
+                            display: 'flex', 
+                            alignItems: 'flex-start', 
+                            gap: '12px',
+                            color: '#991b1b', 
+                            fontSize: '0.95rem', 
+                            backgroundColor: '#fef2f2', 
+                            padding: '16px', 
+                            borderRadius: '12px', 
+                            border: '1px solid #fecaca',
+                            boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)'
+                          }}>
+                            <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span style={{ fontWeight: '600' }}>Error al procesar la compra</span>
+                              <span style={{ opacity: 0.9 }}>{productSubmitError}</span>
+                            </div>
+                          </div>
+                        )}
 
                         <button type="submit" disabled={isSubmittingProduct} style={{
                           width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',

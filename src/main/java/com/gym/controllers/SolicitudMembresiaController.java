@@ -9,6 +9,7 @@ import com.gym.models.SolicitudMembresia.EstadoSolicitud;
 import com.gym.repositories.MembresiaRepository;
 import com.gym.repositories.SocioRepository;
 import com.gym.repositories.SolicitudMembresiaRepository;
+import com.gym.repositories.SolicitudProductoRepository;
 import com.gym.services.EmailService;
 import com.gym.services.SocioService;
 import com.gym.services.SuscripcionService;
@@ -27,6 +28,7 @@ import java.util.Optional;
 @Slf4j
 public class SolicitudMembresiaController {
     private final SolicitudMembresiaRepository solicitudMembresiaRepository;
+    private final SolicitudProductoRepository solicitudProductoRepository;
     private final MembresiaRepository membresiaRepository;
     private final SocioService socioService;
     private final SocioRepository socioRepository;
@@ -48,7 +50,12 @@ public class SolicitudMembresiaController {
         return ResponseEntity.ok(solicitudMembresiaRepository.findByEstado(estado));
     }
     @PostMapping
-    public ResponseEntity<SolicitudMembresia> crear(@RequestBody SolicitudMembresiaRequest request) {
+    public ResponseEntity<?> crear(@RequestBody SolicitudMembresiaRequest request) {
+        if (solicitudMembresiaRepository.existsByNumeroOperacion(request.getNumeroOperacion()) ||
+            solicitudProductoRepository.existsByNumeroOperacion(request.getNumeroOperacion())) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("mensaje", "El número de operación ingresado ya ha sido registrado."));
+        }
+
         Membresia membresia = membresiaRepository.findById(request.getMembresiaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Membresía", request.getMembresiaId()));
         SolicitudMembresia solicitud = SolicitudMembresia.builder()
