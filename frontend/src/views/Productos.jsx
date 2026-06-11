@@ -10,7 +10,8 @@ import {
   Edit2, 
   AlertTriangle,
   ShoppingBag,
-  RotateCcw
+  RotateCcw,
+  ClipboardList
 } from 'lucide-react';
 import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
@@ -57,6 +58,23 @@ const Productos = () => {
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [lastVentaData, setLastVentaData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Ajuste de Inventario
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustForm, setAdjustForm] = useState({
+    productoId: '',
+    tipo: 'ENTRADA',
+    cantidad: '',
+    motivo: '',
+    referencia: ''
+  });
+  const [adjustResult, setAdjustResult] = useState(null);
+  const [isAdjusting, setIsAdjusting] = useState(false);
+
+  // Historial de movimientos
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [movements, setMovements] = useState([]);
+  const [loadingMovements, setLoadingMovements] = useState(false);
 
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
@@ -122,8 +140,12 @@ const Productos = () => {
       showAlert("Validación", "El precio del producto debe ser mayor a 0.");
       return;
     }
-    if (parseInt(productForm.stock) < 0 || isNaN(parseInt(productForm.stock))) {
-      showAlert("Validación", "El stock inicial no puede ser negativo.");
+    if (parseFloat(productForm.precio) > 200) {
+      showAlert("Validación", "El precio no puede superar los S/ 200.00.");
+      return;
+    }
+    if (parseInt(productForm.stock) < 0 || isNaN(parseInt(productForm.stock)) || parseInt(productForm.stock) > 99) {
+      showAlert("Validación", "El stock inicial debe ser entre 0 y 99.");
       return;
     }
     if (parseInt(productForm.stockMinimo) < 0 || isNaN(parseInt(productForm.stockMinimo))) {
@@ -206,6 +228,57 @@ const Productos = () => {
         } catch (err) { showAlert("Error", "Error al reactivar producto"); }
       }
     });
+  };
+
+  const handleAdjustSubmit = async (e) => {
+    e.preventDefault();
+    if (isAdjusting) return;
+    if (!adjustForm.productoId) {
+      showAlert("Validación", "Debe seleccionar un producto.");
+      return;
+    }
+    const cantidad = parseInt(adjustForm.cantidad);
+    if (!cantidad || cantidad <= 0) {
+      showAlert("Validación", "La cantidad debe ser mayor a 0.");
+      return;
+    }
+    setIsAdjusting(true);
+    try {
+      const resp = await api.post('/inventario/ajustes', {
+        productoId: Number(adjustForm.productoId),
+        tipo: adjustForm.tipo,
+        cantidad: cantidad,
+        motivo: adjustForm.motivo.trim() || null,
+        referencia: adjustForm.referencia.trim() || null
+      });
+      setAdjustResult(resp.data);
+      setShowAdjustModal(false);
+      setAdjustForm({ productoId: '', tipo: 'ENTRADA', cantidad: '', motivo: '', referencia: '' });
+      await fetchData();
+      showAlert(
+        "Ajuste Registrado",
+        `${resp.data.tipo === 'ENTRADA' ? 'Ingresaron' : resp.data.tipo === 'SALIDA' ? 'Salieron' : 'Se ajustaron a'} ${resp.data.cantidad} unidades de "${resp.data.productoNombre}". Stock: ${resp.data.stockAnterior} → ${resp.data.stockNuevo}`
+      );
+    } catch (err) {
+      const msg = err.response?.data?.mensaje || err.response?.data?.message || "Error al realizar ajuste de inventario";
+      showAlert("Error", msg);
+    } finally {
+      setIsAdjusting(false);
+    }
+  };
+
+  const openHistory = async () => {
+    setShowHistoryModal(true);
+    setLoadingMovements(true);
+    try {
+      const resp = await api.get('/inventario/movimientos');
+      setMovements(resp.data);
+    } catch (err) {
+      showAlert("Error", "No se pudo cargar el historial de movimientos.");
+      setMovements([]);
+    } finally {
+      setLoadingMovements(false);
+    }
   };
 
   const handleEditCategory = (cat) => {
@@ -523,7 +596,19 @@ const Productos = () => {
                 </div>
 
                 {role === 'ADMINISTRADOR' && (
-                  <button className="btn-primary" onClick={() => { setCategoryForm({ nombre: '' }); setShowCategoryModal(true); }} style={{ flex: '1 1 auto', minWidth: '160px', padding: '10px 16px', display: 'flex', justifyContent: 'center' }}>
+                  <button className="btn-primary" onClick={() => { setShowAdjustModal(true); }} style={{ flex: '1 1 auto', minWidth: '140px', padding: '10px 16px', display: 'flex', justifyContent: 'center', background: 'var(--accent-secondary)' }}>
+                    <ClipboardList size={18} /> AJUSTAR
+                  </button>
+                )}
+
+                {role === 'ADMINISTRADOR' && (
+                  <button className="btn-primary" onClick={openHistory} style={{ flex: '1 1 auto', minWidth: '140px', padding: '10px 16px', display: 'flex', justifyContent: 'center', background: 'rgba(255, 165, 0, 0.12)', border: '1px solid rgba(255, 165, 0, 0.3)', color: '#ff8c00' }}>
+                    <Search size={18} /> HISTORIAL
+                  </button>
+                )}
+
+                {role === 'ADMINISTRADOR' && (
+                  <button className="btn-primary" onClick={() => { setCategoryForm({ nombre: '' }); setShowCategoryModal(true); }} style={{ flex: '1 1 auto', minWidth: '140px', padding: '10px 16px', display: 'flex', justifyContent: 'center' }}>
                     <Plus size={18} /> CATEGORÍA
                   </button>
                 )}
@@ -872,15 +957,26 @@ const Productos = () => {
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Precio (S/)</label>
-            <input required type="text" inputMode="decimal" value={productForm.precio} onChange={e => setProductForm({...productForm, precio: e.target.value.replace(/[^0-9.]/g, '')})} />
+            <input required type="text" inputMode="decimal" value={productForm.precio} onChange={e => {
+              let val = e.target.value.replace(/[^0-9.]/g, '');
+              const parts = val.split('.');
+              if (parts.length > 2) return;
+              if (parts[1] && parts[1].length > 2) return;
+              if (parseFloat(val) > 200) return;
+              setProductForm({...productForm, precio: val});
+            }} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Stock Inicial</label>
-            <input required type="text" inputMode="numeric" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value.replace(/\D/g, '')})} />
+            <input required type="text" inputMode="numeric" maxLength="2" value={productForm.stock} disabled={!!editingProduct} onChange={e => setProductForm({...productForm, stock: e.target.value.replace(/\D/g, '').slice(0, 2)})} style={{ opacity: editingProduct ? 0.5 : 1, cursor: editingProduct ? 'not-allowed' : 'text' }} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Stock Mínimo Alerta</label>
-            <input required type="text" inputMode="numeric" value={productForm.stockMinimo} onChange={e => setProductForm({...productForm, stockMinimo: e.target.value.replace(/\D/g, '')})} />
+            <input required type="text" inputMode="numeric" maxLength="2" value={productForm.stockMinimo} onChange={e => {
+              const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+              if (val !== '' && parseInt(val) > 15) return;
+              setProductForm({...productForm, stockMinimo: val});
+            }} />
           </div>
           <div>
             <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Categoría</label>
@@ -981,6 +1077,117 @@ const Productos = () => {
         </form>
       </Modal>
 
+      <Modal isOpen={showAdjustModal} onClose={() => { setShowAdjustModal(false); setAdjustForm({ productoId: '', tipo: 'ENTRADA', cantidad: '', motivo: '', referencia: '' }); }} title="Ajuste de Inventario">
+        <form onSubmit={handleAdjustSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ background: 'rgba(255, 165, 0, 0.1)', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255, 165, 0, 0.3)', fontSize: '0.85rem', color: 'var(--text-main)' }}>
+            <strong>📦 ¿Para qué sirve?</strong> Registra entradas, salidas o ajustes manuales de stock. Cada movimiento queda auditado con motivo y fecha.
+          </div>
+
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Producto</label>
+            <select required value={adjustForm.productoId} onChange={e => setAdjustForm({...adjustForm, productoId: e.target.value})} style={{ width: '100%', padding: '12px', background: 'var(--panel-bg)', color: 'var(--text-main)', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+              <option value="">Seleccionar producto...</option>
+              {productos.filter(p => p.activo !== false).map(p => (
+                <option key={p.id} value={p.id}>{p.nombre} (Stock: {p.stock})</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Tipo de Movimiento</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
+              {[
+                { id: 'ENTRADA', label: 'Entrada', desc: 'Compra / Ingreso', color: '#00ff7f' },
+                { id: 'SALIDA', label: 'Salida', desc: 'Baja / Pérdida', color: '#ff3e3e' },
+                { id: 'AJUSTE', label: 'Ajuste', desc: 'Corrección', color: '#f59e0b' }
+              ].map(t => (
+                <div key={t.id} onClick={() => setAdjustForm({...adjustForm, tipo: t.id})} style={{ padding: '10px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', background: adjustForm.tipo === t.id ? `${t.color}20` : 'var(--panel-bg)', border: adjustForm.tipo === t.id ? `1px solid ${t.color}` : '1px solid var(--panel-border)', color: adjustForm.tipo === t.id ? t.color : 'var(--text-main)' }}>
+                  <div style={{ fontSize: '0.9rem' }}>{t.label}</div>
+                  <div style={{ fontSize: '0.6rem', opacity: 0.7 }}>{t.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              {adjustForm.tipo === 'ENTRADA' ? 'Cantidad a Ingresar' : adjustForm.tipo === 'SALIDA' ? 'Cantidad a Retirar' : 'Stock Final (Ajuste Directo)'}
+            </label>
+            <input required type="text" inputMode="numeric" maxLength="2" value={adjustForm.cantidad} onChange={e => setAdjustForm({...adjustForm, cantidad: e.target.value.replace(/\D/g, '').slice(0, 2)})} placeholder="Ej: 4" />
+          </div>
+
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Motivo <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>(Obligatorio - sustento del ajuste)</span></label>
+            <textarea required value={adjustForm.motivo} onChange={e => setAdjustForm({...adjustForm, motivo: e.target.value.replace(/[0-9]/g, '')})} placeholder="Ej: Compra especial: proteínas por oferta - Supermercado Metropolitano" style={{ width: '100%', height: '70px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)', borderRadius: '12px', padding: '12px' }}></textarea>
+          </div>
+
+          <div>
+            <label style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Referencia <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>(Opcional - factura, N° pedido, etc.)</span></label>
+            <input type="text" value={adjustForm.referencia} onChange={e => setAdjustForm({...adjustForm, referencia: e.target.value})} placeholder="Ej: Factura #001-12345" />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+            <button type="button" onClick={() => { setShowAdjustModal(false); setAdjustForm({ productoId: '', tipo: 'ENTRADA', cantidad: '', motivo: '', referencia: '' }); }} style={{ flex: 1, padding: '14px', background: 'transparent', color: 'var(--text-main)' }}>CANCELAR</button>
+            <button type="submit" className="btn-primary" disabled={isAdjusting} style={{ flex: 1, padding: '14px' }}>{isAdjusting ? 'PROCESANDO...' : 'REGISTRAR AJUSTE'}</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={showHistoryModal} onClose={() => setShowHistoryModal(false)} title="Historial de Ajustes de Inventario">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '70vh' }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '8px 12px', background: 'var(--panel-bg)', borderRadius: '8px' }}>
+            {movements.length} movimiento{ movements.length !== 1 ? 's' : '' } registrado{ movements.length !== 1 ? 's' : '' }
+          </div>
+          {loadingMovements ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando movimientos...</div>
+          ) : movements.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+              <ClipboardList size={48} style={{ opacity: 0.2, marginBottom: '12px' }} />
+              <p>No hay movimientos registrados.</p>
+            </div>
+          ) : (
+            <div style={{ overflowY: 'auto', maxHeight: '55vh' }}>
+              <table className="responsive-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--panel-bg)', textAlign: 'left', position: 'sticky', top: 0 }}>
+                    <th style={{ padding: '10px 8px' }}>Fecha</th>
+                    <th>Producto</th>
+                    <th>Tipo</th>
+                    <th>Cant.</th>
+                    <th>Stock</th>
+                    <th>Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movements.map(m => (
+                    <tr key={m.id} style={{ borderBottom: '1px solid var(--panel-border)' }}>
+                      <td data-label="FECHA" style={{ padding: '10px 8px', whiteSpace: 'nowrap', fontSize: '0.7rem' }}>
+                        {new Date(m.fechaCreacion).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td data-label="PRODUCTO" style={{ fontWeight: 600 }}>{m.productoNombre}</td>
+                      <td data-label="TIPO">
+                        <span style={{
+                          padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold',
+                          background: m.tipo === 'ENTRADA' ? 'rgba(0,255,127,0.15)' : m.tipo === 'SALIDA' ? 'rgba(255,62,62,0.15)' : 'rgba(245,158,11,0.15)',
+                          color: m.tipo === 'ENTRADA' ? '#00ff7f' : m.tipo === 'SALIDA' ? '#ff3e3e' : '#f59e0b'
+                        }}>
+                          {m.tipo}
+                        </span>
+                      </td>
+                      <td data-label="CANT" style={{ fontWeight: 'bold' }}>{m.cantidad}</td>
+                      <td data-label="STOCK" style={{ fontSize: '0.7rem' }}>{m.stockAnterior} → {m.stockNuevo}</td>
+                      <td data-label="MOTIVO" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={m.motivo || ''}>
+                        {m.motivo || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Modal>
+
       <Modal isOpen={showCheckoutModal} onClose={() => setShowCheckoutModal(false)} title="Finalizar Transacción">
         <form onSubmit={handleFinalizeSale} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
@@ -1056,13 +1263,13 @@ const Productos = () => {
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>RUC (Obligatorio para Factura)</label>
                   <div style={{ position: 'relative' }}>
-                    <input required type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="11" placeholder="Ej: 20601234567" style={{ borderColor: '#3b82f6', width: '100%' }} />
+                    <input required type="text" value={checkoutForm.clienteDocumento} disabled onBlur={handleDocumentLookup} maxLength="11" placeholder="Ej: 20601234567" style={{ borderColor: '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
                     {isSearchingDoc && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6' }}>Buscando...</div>}
                   </div>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>Razón Social</label>
-                  <input required type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value})} placeholder="Ej: Mi Empresa S.A.C." style={{ borderColor: '#3b82f6' }} />
+                  <input required type="text" value={checkoutForm.clienteNombre} disabled placeholder="Ej: Mi Empresa S.A.C." style={{ borderColor: '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
                 </div>
               </div>
             )}
@@ -1078,13 +1285,13 @@ const Productos = () => {
                   DNI {cartTotal > 700 ? '(Obligatorio)' : '(Opcional para Boleta)'}
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <input type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="8" placeholder="Ej: 71234567" style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%' }} />
+                  <input type="text" value={checkoutForm.clienteDocumento} disabled onBlur={handleDocumentLookup} maxLength="8" placeholder="Ej: 71234567" style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
                   {isSearchingDoc && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6' }}>Buscando...</div>}
                 </div>
                 <label style={{ fontSize: '0.75rem', color: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', fontWeight: 'bold', marginTop: '8px', display: 'block' }}>
                   Nombre Completo {cartTotal > 700 ? '(Obligatorio)' : ''}
                 </label>
-                <input type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value})} placeholder={cartTotal > 700 ? "Requerido por SUNAT" : "Público General"} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%' }} />
+                <input type="text" value={checkoutForm.clienteNombre} disabled placeholder={cartTotal > 700 ? "Requerido por SUNAT" : "Público General"} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
               </div>
             )}
 
@@ -1092,7 +1299,14 @@ const Productos = () => {
             {checkoutForm.metodoPago === 'EFECTIVO' && (
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monto Recibido S/ (Calculadora Opcional)</label>
-                <input type="number" step="0.01" value={checkoutForm.montoRecibido} onChange={e => setCheckoutForm({...checkoutForm, montoRecibido: e.target.value})} placeholder={`Ej: ${cartTotal.toFixed(2)}`} />
+                <input type="text" inputMode="decimal" value={checkoutForm.montoRecibido} onChange={e => {
+                  let val = e.target.value.replace(/[^0-9.]/g, '');
+                  const parts = val.split('.');
+                  if (parts.length > 2) return;
+                  if (parts[1] && parts[1].length > 2) return;
+                  if (parseFloat(val) > 200) return;
+                  setCheckoutForm({...checkoutForm, montoRecibido: val});
+                }} placeholder={`Ej: ${Math.min(cartTotal, 200).toFixed(2)}`} />
                 {checkoutForm.montoRecibido > cartTotal && (
                   <div style={{ color: '#00ff7f', fontSize: '0.85rem', marginTop: '6px', fontWeight: 'bold', padding: '6px', background: 'rgba(0, 255, 127, 0.1)', borderRadius: '6px' }}>
                     VUELTO A ENTREGAR: S/ {(checkoutForm.montoRecibido - cartTotal).toFixed(2)}

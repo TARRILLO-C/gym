@@ -756,7 +756,7 @@ const Membresias = () => {
         <form onSubmit={handleCreatePlan} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Nombre Identificador</label>
-            <input required type="text" value={planFormData.nombre} onChange={e => setPlanFormData({...planFormData, nombre: e.target.value})} placeholder="Ej: Trimestre Promocional" />
+            <input required type="text" value={planFormData.nombre} onChange={e => setPlanFormData({...planFormData, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')})} placeholder="Ej: Trimestre Promocional" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -766,10 +766,15 @@ const Membresias = () => {
                 required 
                 type="number" 
                 min="1" 
+                max="365"
                 step="1" 
                 placeholder="Ej: 30" 
                 value={planFormData.duracionDias} 
-                onChange={e => setPlanFormData({...planFormData, duracionDias: e.target.value})} 
+                onChange={e => {
+                  const val = parseInt(e.target.value);
+                  if (val > 365) return;
+                  setPlanFormData({...planFormData, duracionDias: e.target.value});
+                }} 
                 onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === '.') e.preventDefault(); }}
               />
             </div>
@@ -777,14 +782,18 @@ const Membresias = () => {
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Precio Público (S/)</label>
               <input 
                 required 
-                type="number" 
-                min="0.01" 
-                max="1000"
-                step="0.01" 
+                type="text"
+                inputMode="decimal" 
                 placeholder="Ej: 99.00" 
                 value={planFormData.precio} 
-                onChange={e => setPlanFormData({...planFormData, precio: e.target.value})} 
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+                onChange={e => {
+                  let val = e.target.value.replace(/[^0-9.]/g, '');
+                  const parts = val.split('.');
+                  if (parts.length > 2) return;
+                  if (parts[1] && parts[1].length > 2) return;
+                  if (parseFloat(val) > 1000) return;
+                  setPlanFormData({...planFormData, precio: val});
+                }} 
               />
             </div>
           </div>
@@ -799,10 +808,10 @@ const Membresias = () => {
                 step="0.01" 
                 placeholder="Ej: 33.00" 
                 value={planFormData.precioCuota} 
-                onChange={e => setPlanFormData({...planFormData, precioCuota: e.target.value})} 
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+                disabled
+                style={{ opacity: 0.6, cursor: 'not-allowed' }}
               />
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>* Útil para pagos segmentados.</p>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>* Calculado automáticamente según precio, duración y frecuencia.</p>
             </div>
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Frecuencia de Cobro</label>
@@ -920,7 +929,7 @@ const Membresias = () => {
 
           <div>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Fecha de Inicio</label>
-            <input type="date" value={susFormData.fechaInicio} onChange={e => setSusFormData({...susFormData, fechaInicio: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }} />
+            <input type="date" value={susFormData.fechaInicio} onChange={e => setSusFormData({...susFormData, fechaInicio: e.target.value})} max={new Date().toISOString().split('T')[0]} style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }} />
           </div>
 
           {/* Checkbox/Switch para Comprobante Electrónico */}

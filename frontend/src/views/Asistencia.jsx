@@ -187,21 +187,19 @@ const Asistencia = () => {
             gap: 10px;
             padding: 12px 28px;
             border-radius: 30px;
-            background: var(--panel-bg);
-            color: var(--text-muted);
-            border: 1px solid var(--panel-border);
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.25);
             cursor: pointer;
-            font-weight: 500;
+            font-weight: 600;
             font-size: 0.95rem;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
           }
           .history-soft-btn:hover {
-            color: var(--accent-primary);
-            border-color: var(--accent-primary);
-            background: rgba(255, 62, 62, 0.04);
+            background: rgba(59, 130, 246, 0.18);
+            border-color: #3b82f6;
             transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(255, 62, 62, 0.1);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.15);
           }
           .history-soft-btn:active {
             transform: translateY(0);

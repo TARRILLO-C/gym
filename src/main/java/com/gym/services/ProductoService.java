@@ -86,6 +86,11 @@ public class ProductoService {
         aplicarCategoria(producto, producto.getCategoriaId());
     }
 
+    @Transactional
+    public Producto guardar(Producto producto) {
+        return productoRepository.save(producto);
+    }
+
     private void aplicarCategoria(Producto producto, Long categoriaId) {
         CategoriaProducto categoria = categoriaProductoService.resolverPorId(categoriaId);
         producto.setCategoria(categoria);

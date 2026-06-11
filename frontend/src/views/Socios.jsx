@@ -51,6 +51,12 @@ const Socios = () => {
   });
   const [isSearchingDni, setIsSearchingDni] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
@@ -145,8 +151,10 @@ const Socios = () => {
     try {
       if (editingId) {
         await api.put(`/socios/${editingId}`, formData);
+        showToast('Socio actualizado');
       } else {
         await api.post('/socios', formData);
+        showToast('Socio registrado');
       }
       closeModal();
       fetchSocios();
@@ -500,6 +508,27 @@ const Socios = () => {
           </div>
         </div>
       </Modal>
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: '30px', right: '30px', zIndex: 9999,
+          background: toast.type === 'success' ? '#00ff7f' : '#ff3e3e',
+          color: '#000', padding: '14px 24px', borderRadius: '12px',
+          fontWeight: 'bold', fontSize: '0.95rem', boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          animation: 'slideInUp 0.3s ease'
+        }}>
+          <CheckCircle size={20} />
+          {toast.message}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideInUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
     </PageLayout>
   );
 };

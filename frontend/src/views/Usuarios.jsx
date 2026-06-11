@@ -272,7 +272,7 @@ const Usuarios = () => {
                         <div>
                           <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
                             {u.username}
-                            {isMe && <span style={{ marginLeft: 6, fontSize: '0.7rem', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '2px 7px', borderRadius: 20, verticalAlign: 'middle' }}>Tú</span>}
+
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID #{u.id}</div>
                         </div>
@@ -342,8 +342,8 @@ const Usuarios = () => {
               Nombre de Usuario <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input required type="text" value={formData.username}
-              onChange={e => setFormData({ ...formData, username: e.target.value.replace(/[^a-zA-Z0-9._]/g, '') })}
-              placeholder="Ej: maria.recepcion"
+              onChange={e => setFormData({ ...formData, username: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '') })}
+              placeholder="Ej: Maria Recepcion"
               style={{ width: '100%' }} />
           </div>
 
