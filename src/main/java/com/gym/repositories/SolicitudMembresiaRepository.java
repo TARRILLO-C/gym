@@ -8,4 +8,5 @@ import java.util.List;
 public interface SolicitudMembresiaRepository extends JpaRepository<SolicitudMembresia, Long> {
     List<SolicitudMembresia> findByEstado(EstadoSolicitud estado);
     List<SolicitudMembresia> findByEstadoOrderByFechaSolicitudDesc(EstadoSolicitud estado);
+    boolean existsByNumeroOperacion(String numeroOperacion);
 }
