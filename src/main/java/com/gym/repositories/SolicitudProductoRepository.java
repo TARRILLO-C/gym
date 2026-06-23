@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SolicitudProductoRepository extends JpaRepository<SolicitudProducto, Long> {
+    boolean existsByNumeroOperacion(String numeroOperacion);
 
     @Query("SELECT s FROM SolicitudProducto s "
             + "LEFT JOIN FETCH s.items i "
