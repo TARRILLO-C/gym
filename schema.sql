@@ -7,6 +7,7 @@ CREATE TABLE `socios` (
   `fecha_nacimiento` date DEFAULT NULL,
   `nombre_completo` varchar(150) NOT NULL,
   `telefono` varchar(15) DEFAULT NULL,
+  `face_descriptor` LONGTEXT DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK_dni` (`dni`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

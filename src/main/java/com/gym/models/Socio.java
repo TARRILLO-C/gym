@@ -51,6 +51,10 @@ public class Socio {
     @Column(name = "estado", nullable = false)
     private EstadoSocio estado;
 
+    @Lob
+    @Column(name = "face_descriptor", columnDefinition = "LONGTEXT")
+    private String faceDescriptor;
+
     // ── Relaciones ──────────────────────────────────────────────────────────
 
     /**

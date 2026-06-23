@@ -130,6 +130,7 @@ public class SocioService {
         existente.setEmail(datosNuevos.getEmail());
         existente.setFechaNacimiento(datosNuevos.getFechaNacimiento());
         existente.setEstado(datosNuevos.getEstado());
+        existente.setFaceDescriptor(datosNuevos.getFaceDescriptor());
 
         log.info("Socio ID {} actualizado.", id);
         return socioRepository.save(existente);

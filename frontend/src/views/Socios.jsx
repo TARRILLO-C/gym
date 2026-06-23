@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   UserPlus, 
   Search, 
@@ -9,7 +9,8 @@ import {
   RotateCcw,
   CheckCircle,
   XCircle,
-  User
+  User,
+  Camera
 } from 'lucide-react';
 import axios from 'axios';
 import api from '../services/api';
@@ -47,11 +48,113 @@ const Socios = () => {
     telefono: '',
     email: '',
     fechaNacimiento: '',
-    estado: 'ACTIVO'
+    estado: 'ACTIVO',
+    faceDescriptor: ''
   });
   const [isSearchingDni, setIsSearchingDni] = useState(false);
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [toast, setToast] = useState(null);
+
+  // States for Facial Recognition
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [faceDetectionStatus, setFaceDetectionStatus] = useState('');
+  const [tempDescriptor, setTempDescriptor] = useState(null);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const startCamera = async () => {
+    setLoadingModels(true);
+    setFaceDetectionStatus('Cargando modelos...');
+    try {
+      if (!window.faceapi) {
+        throw new Error('La librería de reconocimiento facial no está disponible en la página.');
+      }
+      
+      if (!modelsLoaded) {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+        await Promise.all([
+          window.faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          window.faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        setModelsLoaded(true);
+      }
+      
+      setCameraActive(true);
+      setFaceDetectionStatus('Iniciando cámara...');
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+      streamRef.current = stream;
+      
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(e => console.error("Error playing video stream", e));
+        }
+      }, 100);
+      
+      setFaceDetectionStatus('Buscando rostro...');
+    } catch (err) {
+      console.error(err);
+      showAlert('Error de Reconocimiento Facial', 'No se pudo acceder a la cámara o cargar los modelos. Asegúrese de otorgar permisos de cámara. Detalle: ' + err.message);
+      setCameraActive(false);
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+    setFaceDetectionStatus('');
+    setTempDescriptor(null);
+  };
+
+  const captureFace = () => {
+    if (tempDescriptor) {
+      setFormData(prev => ({
+        ...prev,
+        faceDescriptor: JSON.stringify(Array.from(tempDescriptor))
+      }));
+      showToast('Rostro escaneado correctamente.', 'success');
+      stopCamera();
+    } else {
+      showAlert('Error', 'No se ha detectado ningún rostro válido en la cámara.');
+    }
+  };
+
+  useEffect(() => {
+    let intervalId;
+    if (cameraActive && videoRef.current && modelsLoaded) {
+      intervalId = setInterval(async () => {
+        if (!videoRef.current) return;
+        try {
+          const detection = await window.faceapi.detectSingleFace(videoRef.current)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+          
+          if (detection) {
+            setFaceDetectionStatus('¡Rostro Detectado! Listo para registrar.');
+            setTempDescriptor(detection.descriptor);
+          } else {
+            setFaceDetectionStatus('Colóquese frente a la cámara...');
+            setTempDescriptor(null);
+          }
+        } catch (e) {
+          console.error("Error detecting face", e);
+        }
+      }, 700);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [cameraActive, modelsLoaded]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -210,7 +313,7 @@ const Socios = () => {
 
   const openModalForNew = () => {
     setEditingId(null);
-    setFormData({ nombreCompleto: '', dni: '', ruc: '', razonSocial: '', telefono: '', email: '', fechaNacimiento: '', estado: 'ACTIVO' });
+    setFormData({ nombreCompleto: '', dni: '', ruc: '', razonSocial: '', telefono: '', email: '', fechaNacimiento: '', estado: 'ACTIVO', faceDescriptor: '' });
     setShowModal(true);
   };
 
@@ -224,12 +327,16 @@ const Socios = () => {
       telefono: socio.telefono || '',
       email: socio.email || '',
       fechaNacimiento: socio.fechaNacimiento ? socio.fechaNacimiento.split('T')[0] : '',
-      estado: socio.estado || 'ACTIVO'
+      estado: socio.estado || 'ACTIVO',
+      faceDescriptor: socio.faceDescriptor || ''
     });
     setShowModal(true);
   };
 
-  const closeModal = () => setShowModal(false);
+  const closeModal = () => {
+    stopCamera();
+    setShowModal(false);
+  };
 
   // Filtrado de Socios (Texto y Estado)
   const filteredSocios = (Array.isArray(socios) ? socios : [])
@@ -314,8 +421,9 @@ const Socios = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Avatar name={socio?.nombreCompleto || 'S'} />
                         <div>
-                          <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             {socio?.nombreCompleto || 'Sin nombre'}
+                            {socio?.faceDescriptor && <Camera size={14} style={{ color: '#22c55e' }} title="Rostro registrado" />}
                           </div>
                           {socio?.razonSocial && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>RS: {socio.razonSocial}</div>}
                         </div>
@@ -471,6 +579,73 @@ const Socios = () => {
               </select>
             </div>
           </div>
+
+          {/* Sección de Reconocimiento Facial */}
+          <div style={{ border: '1px dashed var(--panel-border)', borderRadius: '12px', padding: '16px', marginTop: '8px', background: 'rgba(255,255,255,0.01)' }}>
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '0.88rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+              <Camera size={16} color="var(--accent-secondary)" /> Reconocimiento Facial (Opcional)
+            </h4>
+            
+            {formData.faceDescriptor ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(34,197,94,0.08)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)' }}>
+                <span style={{ color: '#22c55e', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle size={14} /> Rostro registrado para este socio
+                </span>
+                <button type="button" onClick={() => setFormData({ ...formData, faceDescriptor: '' })} className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent' }}>
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <div>
+                {!cameraActive ? (
+                  <button 
+                    type="button" 
+                    onClick={startCamera} 
+                    className="btn-secondary" 
+                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', color: '#a78bfa', fontWeight: 600 }}
+                    disabled={loadingModels}
+                  >
+                    {loadingModels ? 'Cargando modelos IA...' : 'Iniciar Cámara para Registrar Rostro'}
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', width: '100%', maxWidth: '240px', aspectRatio: '4/3', borderRadius: '10px', overflow: 'hidden', border: '2px solid var(--panel-border)', background: '#000' }}>
+                      <video 
+                        ref={videoRef} 
+                        autoPlay 
+                        muted 
+                        playsInline
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: tempDescriptor ? '#22c55e' : 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>
+                      {faceDetectionStatus}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                      <button 
+                        type="button" 
+                        onClick={stopCamera} 
+                        className="btn-secondary" 
+                        style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
+                      >
+                        Detener Cámara
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={captureFace} 
+                        className="btn-primary" 
+                        disabled={!tempDescriptor}
+                        style={{ flex: 1, padding: '8px', fontSize: '0.8rem', opacity: tempDescriptor ? 1 : 0.5 }}
+                      >
+                        Vincular Rostro
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
             <button type="button" onClick={closeModal} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-main)' }}>CANCELAR</button>
             <button 

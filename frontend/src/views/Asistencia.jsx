@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldCheck, 
   Search, 
@@ -7,7 +7,8 @@ import {
   User,
   Clock,
   History,
-  X
+  X,
+  Camera
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -19,6 +20,45 @@ const Asistencia = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // States for Facial Recognition
+  const [accessMode, setAccessMode] = useState('DNI'); // 'DNI' | 'FACIAL'
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [faceDetectionStatus, setFaceDetectionStatus] = useState('');
+  const [cooldown, setCooldown] = useState(false);
+
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const cooldownRef = useRef(false);
+  const faceDetectionActiveRef = useRef(false);
+  const matcherRef = useRef(null);
+  const modelsLoadedRef = useRef(false);
+  const cameraContainerRef = useRef(null);
+
+  // When cameraActive changes, move the always-mounted <video> into the visible container
+  useEffect(() => {
+    const vid = videoRef.current;
+    const container = cameraContainerRef.current;
+    if (!vid || !container) return;
+
+    if (cameraActive) {
+      vid.style.display = 'block';
+      vid.style.width = '100%';
+      vid.style.height = '100%';
+      vid.style.objectFit = 'cover';
+      vid.style.position = 'static';
+      if (!container.contains(vid)) {
+        container.prepend(vid);
+      }
+    } else {
+      vid.style.display = 'none';
+      vid.style.width = '0';
+      vid.style.height = '0';
+      vid.style.position = 'absolute';
+    }
+  }, [cameraActive]);
 
   const fetchHistory = async () => {
     setLoadingHistory(true);
@@ -35,6 +75,29 @@ const Asistencia = () => {
     }
   };
 
+  const registerAttendanceByDni = async (dniVal) => {
+    setLoading(true);
+    setResult(null);
+    try {
+      const resp = await api.post('/asistencias/registrar-ingreso', { dni: dniVal });
+      setResult({
+        success: true,
+        message: '¡Acceso Concedido!',
+        data: resp.data
+      });
+      return true;
+    } catch (err) {
+      const errorMsg = err.response?.data?.mensaje || 'Error desconocido';
+      setResult({
+        success: false,
+        message: errorMsg
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!dni || dni.length !== 8) {
@@ -44,28 +107,204 @@ const Asistencia = () => {
       });
       return;
     }
-
-    setLoading(true);
-    setResult(null);
-    try {
-      const resp = await api.post('/asistencias/registrar-ingreso', { dni });
-      setResult({
-        success: true,
-        message: '¡Acceso Concedido!',
-        data: resp.data
-      });
+    const success = await registerAttendanceByDni(dni);
+    if (success) {
       setDni('');
-    } catch (err) {
-      const errorMsg = err.response?.data?.mensaje || 'Error desconocido';
-      
-      setResult({
-        success: false,
-        message: errorMsg
-      });
-    } finally {
-      setLoading(false);
     }
   };
+
+  const fetchActiveMembersForFace = async () => {
+    try {
+      const resp = await api.get('/socios');
+      const activeOnes = resp.data.filter(s => s.estado === 'ACTIVO');
+      return activeOnes;
+    } catch (err) {
+      console.error("Error fetching active members", err);
+      return [];
+    }
+  };
+
+  const buildFaceMatcher = (members) => {
+    const labeled = members
+      .filter(m => m.faceDescriptor && m.faceDescriptor.trim() !== '')
+      .map(m => {
+        try {
+          const arr = JSON.parse(m.faceDescriptor);
+          return new window.faceapi.LabeledFaceDescriptors(m.dni, [new Float32Array(arr)]);
+        } catch (e) {
+          console.error('Error parsing descriptor for DNI ' + m.dni, e);
+          return null;
+        }
+      })
+      .filter(Boolean);
+    if (labeled.length === 0) return null;
+    console.log(`[FaceAPI] Matcher built with ${labeled.length} registered face(s).`);
+    return new window.faceapi.FaceMatcher(labeled, 0.6);
+  };
+
+  // Self-contained detection loop — no dependency on React state closures
+  const COOLDOWN_MS = 15000; // 15 seconds between detections
+
+  const runDetectionLoop = async (members) => {
+    faceDetectionActiveRef.current = true;
+    console.log('[FaceAPI] Detection loop started.');
+
+    while (faceDetectionActiveRef.current) {
+      // Wait for video to be ready
+      if (!videoRef.current || !videoRef.current.srcObject || videoRef.current.readyState < 2) {
+        await new Promise(r => setTimeout(r, 300));
+        continue;
+      }
+
+      // If in cooldown, skip detection entirely
+      if (isProcessingRef.current || cooldownRef.current) {
+        await new Promise(r => setTimeout(r, 500));
+        continue;
+      }
+
+      try {
+        const detection = await window.faceapi
+          .detectSingleFace(videoRef.current)
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        if (!faceDetectionActiveRef.current) break;
+
+        if (detection && matcherRef.current) {
+          const bestMatch = matcherRef.current.findBestMatch(detection.descriptor);
+          console.log('[FaceAPI] Best match:', bestMatch.label, 'distance:', bestMatch.distance.toFixed(3));
+
+          if (bestMatch.label !== 'unknown') {
+            // Lock immediately to prevent any concurrent detection
+            if (isProcessingRef.current) continue;
+            isProcessingRef.current = true;
+            cooldownRef.current = true;
+            setCooldown(true);
+
+            const matchedSocio = members.find(m => m.dni === bestMatch.label);
+            setFaceDetectionStatus(`✅ Identificado: ${matchedSocio?.nombreCompleto || bestMatch.label}`);
+
+            const ok = await registerAttendanceByDni(bestMatch.label);
+
+            if (ok) {
+              // Countdown cooldown
+              const startTime = Date.now();
+              while (faceDetectionActiveRef.current && (Date.now() - startTime) < COOLDOWN_MS) {
+                const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - startTime)) / 1000);
+                setFaceDetectionStatus(`✅ Ingreso registrado. Próxima detección en ${remaining}s...`);
+                await new Promise(r => setTimeout(r, 1000));
+              }
+            } else {
+              await new Promise(r => setTimeout(r, 3000));
+            }
+
+            cooldownRef.current = false;
+            isProcessingRef.current = false;
+            setCooldown(false);
+            setFaceDetectionStatus('Alinee su rostro frente a la cámara.');
+          } else {
+            setFaceDetectionStatus('Rostro detectado — buscando coincidencia...');
+          }
+        } else {
+          setFaceDetectionStatus('Alinee su rostro frente a la cámara.');
+        }
+      } catch (err) {
+        if (faceDetectionActiveRef.current) {
+          console.error('[FaceAPI] Detection error:', err);
+        }
+      }
+
+      await new Promise(r => setTimeout(r, 800));
+    }
+    console.log('[FaceAPI] Detection loop stopped.');
+  };
+
+  const startFacialRecognition = async () => {
+    faceDetectionActiveRef.current = false; // stop any previous loop
+    setLoadingModels(true);
+    setFaceDetectionStatus('Cargando modelos de IA...');
+    try {
+      if (!window.faceapi) {
+        throw new Error('La librería face-api no se ha cargado. Recarga la página.');
+      }
+
+      // Load AI models only once
+      if (!modelsLoadedRef.current) {
+        setFaceDetectionStatus('Descargando modelos de IA (primera vez)...');
+        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+        await Promise.all([
+          window.faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          window.faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        modelsLoadedRef.current = true;
+        console.log('[FaceAPI] Models loaded successfully.');
+      }
+
+      // Fetch active members and build matcher
+      setFaceDetectionStatus('Cargando base de datos facial...');
+      const members = await fetchActiveMembersForFace();
+      const faceCount = members.filter(m => m.faceDescriptor && m.faceDescriptor.trim() !== '').length;
+
+      if (faceCount === 0) {
+        alert('No hay socios con rostros registrados. Vaya a "Socios", edite un socio y registre su rostro.');
+        setAccessMode('DNI');
+        return;
+      }
+
+      matcherRef.current = buildFaceMatcher(members);
+
+      // Request camera stream FIRST, then set state
+      setFaceDetectionStatus('Iniciando cámara...');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = stream;
+
+      // Attach to the always-mounted video element immediately
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(e => console.warn('Autoplay warning:', e));
+        console.log('[FaceAPI] Camera stream attached and playing.');
+      } else {
+        console.error('[FaceAPI] videoRef.current is null even before setCameraActive!');
+      }
+
+      setCameraActive(true);
+      setFaceDetectionStatus('Alinee su rostro frente a la cámara.');
+
+      // Start the detection loop
+      runDetectionLoop(members);
+
+    } catch (err) {
+      console.error('[FaceAPI] Startup error:', err);
+      alert('Error: ' + err.message);
+      setAccessMode('DNI');
+      setCameraActive(false);
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  const stopFacialRecognition = () => {
+    faceDetectionActiveRef.current = false;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+    setCooldown(false);
+    cooldownRef.current = false;
+    isProcessingRef.current = false;
+    setFaceDetectionStatus('');
+  };
+
+  useEffect(() => {
+    if (accessMode === 'FACIAL') {
+      startFacialRecognition();
+    } else {
+      stopFacialRecognition();
+    }
+    return () => stopFacialRecognition();
+  }, [accessMode]);
 
   return (
     <PageLayout
@@ -181,6 +420,14 @@ const Asistencia = () => {
             from { opacity: 0; transform: translateY(40px) scale(0.95); }
             to { opacity: 1; transform: translateY(0) scale(1); }
           }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+          }
           .history-soft-btn {
             display: flex;
             align-items: center;
@@ -241,31 +488,119 @@ const Asistencia = () => {
           </button>
         </div>
 
-        <section className="card asistencia-card">
-          <form className="asistencia-form" onSubmit={handleRegister}>
-            <div className="asistencia-input-wrapper">
-              <Search 
-                size={24} 
-                color="var(--text-muted)" 
-                style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} 
-              />
-              <input 
-                type="text" 
-                placeholder="Ej: 72839401" 
-                value={dni}
-                onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
-                style={{ width: '100%', paddingLeft: '56px', fontSize: '1.2rem', height: '64px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)', borderRadius: '12px' }}
-                maxLength={8}
-              />
-            </div>
+        <section className="card asistencia-card" style={{ display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
+          {/* 
+            Hidden video element always in the DOM so videoRef.current is always populated.
+            Visibility is controlled by the facial recognition panel below.
+          */}
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            style={{ display: 'none', width: 0, height: 0, position: 'absolute' }}
+          />
+          
+          {/* Selector de modo de acceso */}
+          <div style={{ display: 'flex', gap: '8px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '30px', padding: '4px', width: 'fit-content' }}>
             <button 
-              type="submit" 
-              className="btn-primary asistencia-btn" 
-              disabled={loading || !dni || dni.length !== 8}
+              type="button"
+              onClick={() => setAccessMode('DNI')}
+              style={{
+                padding: '10px 24px', borderRadius: '25px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600,
+                background: accessMode === 'DNI' ? 'var(--accent-primary)' : 'transparent',
+                color: accessMode === 'DNI' ? '#000' : 'var(--text-muted)',
+                transition: 'all .2s'
+              }}
             >
-              {loading ? 'Validando...' : 'REGISTRAR'}
+              DNI Manual / Barras
             </button>
-          </form>
+            <button 
+              type="button"
+              onClick={() => setAccessMode('FACIAL')}
+              style={{
+                padding: '10px 24px', borderRadius: '25px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600,
+                background: accessMode === 'FACIAL' ? 'var(--accent-secondary)' : 'transparent',
+                color: accessMode === 'FACIAL' ? '#000' : 'var(--text-muted)',
+                transition: 'all .2s'
+              }}
+            >
+              📷 Reconocimiento Facial
+            </button>
+          </div>
+
+          {accessMode === 'DNI' ? (
+            <form className="asistencia-form" onSubmit={handleRegister} style={{ width: '100%' }}>
+              <div className="asistencia-input-wrapper">
+                <Search 
+                  size={24} 
+                  color="var(--text-muted)" 
+                  style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} 
+                />
+                <input 
+                  type="text" 
+                  placeholder="Ej: 72839401" 
+                  value={dni}
+                  onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+                  style={{ width: '100%', paddingLeft: '56px', fontSize: '1.2rem', height: '64px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)', borderRadius: '12px' }}
+                  maxLength={8}
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="btn-primary asistencia-btn" 
+                disabled={loading || !dni || dni.length !== 8}
+              >
+                {loading ? 'Validando...' : 'REGISTRAR'}
+              </button>
+            </form>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', width: '100%' }}>
+              {loadingModels && (
+                <div style={{ padding: '16px', color: 'var(--text-muted)', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '28px', height: '28px', border: '3px solid var(--panel-border)', borderTopColor: 'var(--accent-secondary)', borderRadius: '50%', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
+                  <span>{faceDetectionStatus}</span>
+                </div>
+              )}
+
+              {/* Camera container — the always-mounted <video> node is moved here by useEffect */}
+              <div
+                ref={cameraContainerRef}
+                style={{
+                  position: 'relative',
+                  width: '100%', maxWidth: '320px', aspectRatio: '4/3',
+                  borderRadius: '16px', overflow: 'hidden',
+                  border: `3px solid ${cooldown ? '#22c55e' : 'var(--panel-border)'}`,
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.3)',
+                  background: '#111',
+                  display: loadingModels ? 'none' : 'flex',
+                  alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                {cooldown && (
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(34,197,94,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', zIndex: 2 }}>
+                    <CheckCircle size={64} style={{ filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.5))' }} />
+                  </div>
+                )}
+              </div>
+
+              {!loadingModels && (
+                <div style={{
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  color: cooldown ? '#22c55e' : 'var(--text-main)',
+                  background: 'var(--panel-bg)',
+                  padding: '8px 24px',
+                  borderRadius: '30px',
+                  border: '1px solid var(--panel-border)',
+                  textAlign: 'center',
+                  animation: cooldown ? 'pulse 1s infinite' : 'none'
+                }}>
+                  {faceDetectionStatus}
+                </div>
+              )}
+            </div>
+          )}
 
           {result && (
             <div 

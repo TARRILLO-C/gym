@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
+import com.gym.exceptions.DuplicateResourceException;
+
 /**
  * Servicio de control de acceso (asistencia) del gimnasio.
  *
@@ -62,7 +64,16 @@ public class AsistenciaService {
         // 2. Verificar suscripción activa (lanza SuscripcionInactivaException si no tiene)
         suscripcionService.obtenerSuscripcionActivaOFallar(socio.getId());
 
-        // 3. Registrar ingreso
+        // 3. Anti-duplicado: bloquear si ya ingresó en los últimos 30 minutos
+        LocalDateTime hace30min = LocalDateTime.now().minusMinutes(30);
+        long ingresosRecientes = asistenciaRepository
+                .countBySocioIdAndFechaHoraIngresoBetween(socio.getId(), hace30min, LocalDateTime.now());
+        if (ingresosRecientes > 0) {
+            throw new DuplicateResourceException(
+                    "El socio " + socio.getNombreCompleto() + " ya registró ingreso en los últimos 30 minutos.");
+        }
+
+        // 4. Registrar ingreso
         Asistencia asistencia = Asistencia.builder()
                 .socio(socio)
                 .fechaHoraIngreso(LocalDateTime.now())
