@@ -26,6 +26,9 @@ public class Usuario {
     @Column(nullable = false)
     private boolean activo = true;
 
+    @Column(columnDefinition = "int default 0")
+    private int intentos_fallidos = 0;
+
     public Usuario() {}
 
     public Usuario(String username, String password, String rol) {
@@ -72,5 +75,13 @@ public class Usuario {
 
     public void setActivo(boolean activo) {
         this.activo = activo;
+    }
+
+    public int getIntentos_fallidos() {
+        return intentos_fallidos;
+    }
+
+    public void setIntentos_fallidos(int intentos_fallidos) {
+        this.intentos_fallidos = intentos_fallidos;
     }
 }
