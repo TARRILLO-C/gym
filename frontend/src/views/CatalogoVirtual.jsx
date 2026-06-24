@@ -1196,18 +1196,19 @@ const CatalogoVirtual = () => {
                       <div style={{ marginBottom: '24px' }}>
                         <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
                         <div style={{ position: 'relative' }}>
-                          <input type="text" required style={{ 
+                          <input type="text" required disabled style={{ 
                             width: '100%', 
                             padding: '14px 16px', 
                             borderRadius: '10px', 
                             border: validationErrors.nombreCompleto ? '2px solid #dc2626' : (solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                            backgroundColor: '#ffffff', 
+                            backgroundColor: '#f1f5f9', 
                             color: '#000000',
                             fontSize: '0.95rem',
                             transition: 'all 0.2s ease',
-                            boxShadow: validationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                            boxShadow: validationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none',
+                            cursor: 'not-allowed'
                           }}
-                            value={solicitudForm.nombreCompleto} onChange={e => {setSolicitudForm({...solicitudForm, nombreCompleto: e.target.value}); setValidationErrors({...validationErrors, nombreCompleto: null});}} placeholder="Se autocompletará si el DNI es válido" />
+                            value={solicitudForm.nombreCompleto} placeholder="Se autocompletará automáticamente" />
                           {solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto && (
                             <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                           )}
@@ -1655,18 +1656,19 @@ const CatalogoVirtual = () => {
                     <div style={{ marginBottom: '24px' }}>
                       <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
                       <div style={{ position: 'relative' }}>
-                        <input type="text" required style={{ 
+                        <input type="text" required disabled style={{ 
                           width: '100%', 
                           padding: '14px 16px', 
                           borderRadius: '10px', 
                           border: productValidationErrors.nombreCompleto ? '2px solid #dc2626' : (productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                          backgroundColor: '#ffffff', 
+                          backgroundColor: '#f1f5f9', 
                           color: '#000000',
                           fontSize: '0.95rem',
                           transition: 'all 0.2s ease',
-                          boxShadow: productValidationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
+                          boxShadow: productValidationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none',
+                          cursor: 'not-allowed'
                         }}
-                          value={productForm.nombreCompleto} onChange={e => {setProductForm({...productForm, nombreCompleto: e.target.value}); setProductValidationErrors({...productValidationErrors, nombreCompleto: null});}} placeholder="Se autocompletará si el DNI es válido" />
+                          value={productForm.nombreCompleto} placeholder="Se autocompletará automáticamente" />
                         {productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto && (
                           <CheckCircle2 size={20} color="#16a34a" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)' }} />
                         )}
