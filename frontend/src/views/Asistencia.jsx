@@ -20,6 +20,9 @@ const Asistencia = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
 
   // States for Facial Recognition
   const [accessMode, setAccessMode] = useState('DNI'); // 'DNI' | 'FACIAL'
@@ -305,6 +308,19 @@ const Asistencia = () => {
     }
     return () => stopFacialRecognition();
   }, [accessMode]);
+
+  const filteredHistory = historyData.filter(record => {
+    const nombre = record.socio?.nombreCompleto?.toLowerCase() || '';
+    const dni = record.socio?.dni || '';
+    const q = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm || nombre.includes(q) || dni.includes(q);
+
+    const fecha = record.fechaHoraIngreso ? new Date(record.fechaHoraIngreso) : null;
+    const matchesFechaDesde = !fechaDesde || (fecha && fecha >= new Date(fechaDesde));
+    const matchesFechaHasta = !fechaHasta || (fecha && fecha <= new Date(fechaHasta + 'T23:59:59'));
+
+    return matchesSearch && matchesFechaDesde && matchesFechaHasta;
+  });
 
   return (
     <PageLayout
@@ -670,10 +686,43 @@ const Asistencia = () => {
               </button>
             </div>
             <div style={{ overflowY: 'auto', flex: 1, position: 'relative' }}>
+              <div style={{ display: 'flex', gap: '12px', padding: '16px 32px', borderBottom: '1px solid var(--panel-border)', flexWrap: 'wrap', background: 'rgba(255,255,255,0.015)', position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(8px)' }}>
+                <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
+                  <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre o DNI..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s]/g, ''))}
+                    style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button onClick={() => { const d = new Date(); setFechaDesde(d.toISOString().split('T')[0]); setFechaHasta(d.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Hoy</button>
+                  <button onClick={() => { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const from = new Date(d.setDate(diff)); const to = new Date(); setFechaDesde(from.toISOString().split('T')[0]); setFechaHasta(to.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Semana</button>
+
+                  <button onClick={() => { const d = new Date(); const from = new Date(d); from.setDate(d.getDate() - 30); setFechaDesde(from.toISOString().split('T')[0]); setFechaHasta(d.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>30 Días</button>
+                  <button onClick={() => { const d = new Date(); setFechaDesde(new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0]); setFechaHasta(d.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Año</button>
+                  <div style={{ width: '1px', height: '28px', background: 'var(--panel-border)', margin: '0 4px' }} />
+                  <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '140px' }} />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>→</span>
+                  <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '140px' }} />
+                  {(searchTerm || fechaDesde || fechaHasta) && (
+                    <button onClick={() => { setSearchTerm(''); setFechaDesde(''); setFechaHasta(''); }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'rgba(255,62,62,0.1)', color: '#ff3e3e', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }} title="Limpiar filtros">
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
               {historyData.length === 0 ? (
                 <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <History size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
                   <p>No hay registros de asistencia aún.</p>
+                </div>
+              ) : filteredHistory.length === 0 ? (
+                <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Search size={48} style={{ opacity: 0.2, margin: '0 auto 16px' }} />
+                  <p>No se encontraron resultados con los filtros aplicados.</p>
                 </div>
               ) : (
                 <table className="history-table">
@@ -685,7 +734,7 @@ const Asistencia = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {historyData.map((record) => (
+                    {filteredHistory.map((record) => (
                       <tr key={record.id}>
                         <td style={{ fontWeight: 500 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

@@ -6,9 +6,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import jakarta.validation.Valid;
+
+import org.springframework.format.annotation.DateTimeFormat;
 
 /**
  * Controlador REST para el control de acceso y registro de asistencias.
@@ -47,5 +52,15 @@ public class AsistenciaController {
     @GetMapping("/hoy")
     public ResponseEntity<List<Asistencia>> listarDeHoy() {
         return ResponseEntity.ok(asistenciaService.listarDeHoy());
+    }
+
+    @GetMapping("/buscar")
+    public ResponseEntity<List<Asistencia>> buscar(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta) {
+        LocalDateTime desde = fechaDesde != null ? fechaDesde.atStartOfDay() : null;
+        LocalDateTime hasta = fechaHasta != null ? fechaHasta.atTime(LocalTime.MAX) : null;
+        return ResponseEntity.ok(asistenciaService.buscar(search, desde, hasta));
     }
 }

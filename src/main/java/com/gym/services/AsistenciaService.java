@@ -118,4 +118,17 @@ public class AsistenciaService {
         LocalDateTime hasta = hoy.atTime(LocalTime.MAX);
         return asistenciaRepository.findByFechaHoraIngresoBetween(desde, hasta);
     }
+
+    /**
+     * Busca asistencias por nombre de socio, DNI y/o rango de fechas.
+     *
+     * @param search      texto para buscar por nombre o DNI (opcional)
+     * @param fechaDesde  inicio del rango (opcional)
+     * @param fechaHasta  fin del rango (opcional)
+     * @return lista de asistencias que coinciden con los filtros
+     */
+    @Transactional(readOnly = true)
+    public List<Asistencia> buscar(String search, LocalDateTime fechaDesde, LocalDateTime fechaHasta) {
+        return asistenciaRepository.buscar(search, fechaDesde, fechaHasta);
+    }
 }
