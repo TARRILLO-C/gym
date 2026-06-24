@@ -175,3 +175,20 @@ CREATE TABLE `detalle_solicitud_producto` (
   CONSTRAINT `FK_detalle_sol_producto` FOREIGN KEY (`producto_id`) REFERENCES `productos` (`id`),
   CONSTRAINT `FK_detalle_sol_solicitud` FOREIGN KEY (`solicitud_producto_id`) REFERENCES `solicitudes_producto` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `cierres_caja` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `fecha` date NOT NULL,
+  `username` varchar(100) NOT NULL,
+  `monto_inicial` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `monto_final_esperado` decimal(10,2) DEFAULT NULL,
+  `monto_final_real` decimal(10,2) DEFAULT NULL,
+  `diferencia` decimal(10,2) DEFAULT NULL,
+  `estado` varchar(20) NOT NULL DEFAULT 'ABIERTO',
+  `observaciones` varchar(500) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `closed_at` datetime(6) DEFAULT NULL,
+  `resumen_json` TEXT DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK_cierre_fecha` (`fecha`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

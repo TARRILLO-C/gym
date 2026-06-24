@@ -16,7 +16,8 @@ import {
   FileText,
   Menu,
   X,
-  DollarSign
+  DollarSign,
+  Ban
 } from 'lucide-react';
 import { ThemeContext } from '../context/ThemeContext';
 import { API_BASE_URL } from '../services/api';

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import CierreCaja from './CierreCaja';
 import {
   RefreshCw,
   Download,
@@ -25,6 +26,7 @@ const todayStr = () => new Date().toISOString().split('T')[0];
 
 const MonitorCaja = () => {
   const [ventas, setVentas] = useState([]);
+  const [showCierreModal, setShowCierreModal] = useState(false);
   const [pagos, setPagos] = useState([]);
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -205,6 +207,10 @@ const MonitorCaja = () => {
           <FileText size={16} />
           PDF
         </button>
+        <button className="btn-export" onClick={() => setShowCierreModal(true)} style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316', border: '1px solid rgba(249,115,22,0.3)' }}>
+          <DollarSign size={16} />
+          Cierre de Caja
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '24px' }}>
@@ -359,6 +365,8 @@ const MonitorCaja = () => {
           )}
         </div>
       </div>
+
+      {showCierreModal && <CierreCaja onClose={() => setShowCierreModal(false)} />}
     </PageLayout>
   );
 };

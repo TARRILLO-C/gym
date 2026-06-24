@@ -46,4 +46,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             + "LEFT JOIN FETCH d.producto "
             + "WHERE v.id = :id")
     Optional<Venta> findByIdWithDetalles(Long id);
+
+    @Query("SELECT v.metodoPago, COALESCE(SUM(v.total), 0) FROM Venta v "
+            + "WHERE v.fecha BETWEEN :inicio AND :fin AND v.activo <> false "
+            + "GROUP BY v.metodoPago")
+    List<Object[]> findResumenMetodos(LocalDateTime inicio, LocalDateTime fin);
 }
