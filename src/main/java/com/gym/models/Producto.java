@@ -8,6 +8,7 @@ import lombok.*;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Entidad que representa un Producto del punto de venta del gimnasio.
@@ -76,6 +77,9 @@ public class Producto {
     @Min(value = 0, message = "El stock mínimo de alerta no puede ser negativo")
     @Column(name = "stock_minimo", nullable = false, columnDefinition = "int default 5")
     private Integer stockMinimo = 5;
+
+    @Column(name = "fecha_vencimiento")
+    private LocalDate fechaVencimiento;
 
     @Builder.Default
     @Column(name = "activo", nullable = false)

@@ -2,8 +2,11 @@ package com.gym.repositories;
 
 import com.gym.models.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -54,4 +57,20 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
      * NonUniqueResultException si existen duplicados (por reinicios previos).
      */
     java.util.Optional<Producto> findFirstByNombre(String nombre);
+
+    /**
+     * Retorna productos activos con fecha de vencimiento entre el rango dado.
+     */
+    List<Producto> findByFechaVencimientoBetween(LocalDate start, LocalDate end);
+
+    /**
+     * Retorna productos activos cuya fecha de vencimiento ya pasó.
+     */
+    List<Producto> findByFechaVencimientoBeforeAndActivoTrue(LocalDate date);
+
+    /**
+     * Retorna productos activos con fecha de vencimiento asignada, ordenados por fecha ascendente.
+     */
+    @Query("SELECT p FROM Producto p WHERE p.activo = true AND p.fechaVencimiento IS NOT NULL ORDER BY p.fechaVencimiento ASC")
+    List<Producto> findActivosConVencimientoOrderByFecha();
 }

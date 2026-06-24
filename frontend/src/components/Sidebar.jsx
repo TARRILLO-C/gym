@@ -15,7 +15,8 @@ import {
   Store,
   FileText,
   Menu,
-  X
+  X,
+  DollarSign
 } from 'lucide-react';
 import { ThemeContext } from '../context/ThemeContext';
 import { API_BASE_URL } from '../services/api';
@@ -50,6 +51,7 @@ const Sidebar = () => {
     { name: 'Membresías', path: '/membresias', icon: CreditCard, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
     { name: 'Productos', path: '/productos', icon: Package, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
     { name: 'Ventas', path: '/ventas', icon: Receipt, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+    { name: 'Monitor de Caja', path: '/monitor-caja', icon: DollarSign, roles: ['ADMINISTRADOR'] },
     { name: 'Personal', path: '/usuarios', icon: UserCog, roles: ['ADMINISTRADOR'] },
     { name: 'Catálogo Web', path: '/configuracion-catalogo', icon: Store, roles: ['ADMINISTRADOR'] },
   ].filter(item => item.roles.includes(role));

@@ -98,6 +98,7 @@ CREATE TABLE `productos` (
   `nombre` varchar(150) NOT NULL,
   `precio` decimal(10,2) NOT NULL,
   `stock` int NOT NULL,
+  `fecha_vencimiento` date DEFAULT NULL,
   `activo` bit(1) NOT NULL DEFAULT b'1',
   PRIMARY KEY (`id`),
   KEY `FK_producto_categoria` (`categoria_id`),

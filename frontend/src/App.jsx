@@ -12,6 +12,7 @@ import Login from './views/Login';
 import ConfiguracionCatalogo from './views/ConfiguracionCatalogo';
 import CatalogoVirtual from './views/CatalogoVirtual';
 import SolicitudesMembresia from './views/SolicitudesMembresia';
+import MonitorCaja from './views/MonitorCaja';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 import './App.css';
@@ -48,6 +49,7 @@ const AppLayout = () => {
             <Route path="/membresias" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Membresias /></ProtectedRoute>} />
             <Route path="/productos" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Productos /></ProtectedRoute>} />
             <Route path="/ventas" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Ventas /></ProtectedRoute>} />
+            <Route path="/monitor-caja" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><MonitorCaja /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Usuarios /></ProtectedRoute>} />
             <Route path="/configuracion-catalogo" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><ConfiguracionCatalogo /></ProtectedRoute>} />
           </Routes>

@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -122,6 +123,22 @@ public class ProductoService {
         Producto guardado = productoRepository.save(p);
         log.info("Stock descontado: {} (-{}), quedan {}", guardado.getNombre(), cantidad, guardado.getStock());
         return guardado;
+    }
+
+    /**
+     * Retorna productos activos con fecha de vencimiento, ordenados del más próximo al más lejano.
+     */
+    @Transactional(readOnly = true)
+    public List<Producto> productosPorVencer() {
+        return productoRepository.findActivosConVencimientoOrderByFecha();
+    }
+
+    /**
+     * Retorna productos activos ya vencidos.
+     */
+    @Transactional(readOnly = true)
+    public List<Producto> productosVencidos() {
+        return productoRepository.findByFechaVencimientoBeforeAndActivoTrue(LocalDate.now());
     }
 
     /**

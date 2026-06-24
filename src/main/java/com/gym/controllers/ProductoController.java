@@ -45,4 +45,14 @@ public class ProductoController {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/por-vencer")
+    public ResponseEntity<List<Producto>> productosPorVencer() {
+        return ResponseEntity.ok(productoService.productosPorVencer());
+    }
+
+    @GetMapping("/vencidos")
+    public ResponseEntity<List<Producto>> productosVencidos() {
+        return ResponseEntity.ok(productoService.productosVencidos());
+    }
 }
