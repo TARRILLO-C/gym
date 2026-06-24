@@ -8,7 +8,6 @@ import {
   DollarSign,
   TrendingUp,
   Package,
-  AlertTriangle,
   Clock,
   User,
   X
@@ -150,17 +149,7 @@ const MonitorCaja = () => {
     doc.save(`MonitorCaja_${todayStr()}.pdf`);
   };
 
-  const lowStockProducts = productos
-    .filter(p => p.stock <= p.stockMinimo && p.activo !== false)
-    .sort((a, b) => (a.stock / a.stockMinimo) - (b.stock / b.stockMinimo));
 
-  const [venciendo, setVenciendo] = useState([]);
-  const [vencidos, setVencidos] = useState([]);
-
-  useEffect(() => {
-    api.get('/productos/por-vencer').then(r => setVenciendo(Array.isArray(r.data) ? r.data : [])).catch(() => {});
-    api.get('/productos/vencidos').then(r => setVencidos(Array.isArray(r.data) ? r.data : [])).catch(() => {});
-  }, []);
 
   return (
     <PageLayout
@@ -307,58 +296,7 @@ const MonitorCaja = () => {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-        <div className="rank-card">
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Package size={20} color="var(--accent-primary)" />
-            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Productos con Stock Bajo</h3>
-          </div>
-          {lowStockProducts.length === 0 ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>Todos los productos tienen stock suficiente.</div>
-          ) : (
-            lowStockProducts.slice(0, 10).map((p, i) => {
-              const ratio = p.stock / p.stockMinimo;
-              return (
-                <div className="rank-item" key={p.id}>
-                  <div className="rank-pos" style={{ background: ratio <= 0.3 ? 'rgba(255,62,62,0.15)' : ratio <= 0.7 ? 'rgba(249,115,22,0.15)' : 'rgba(34,197,94,0.15)', color: ratio <= 0.3 ? '#ff3e3e' : ratio <= 0.7 ? '#f97316' : '#22c55e' }}>{i + 1}</div>
-                  <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{p.nombre}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Stock: {p.stock} / Mín: {p.stockMinimo}</div></div>
-                  <span className={ratio <= 0.3 ? 'badge-err' : ratio <= 0.7 ? 'badge-warn' : 'badge-ok'} style={{ whiteSpace: 'nowrap' }}>{p.stock} uds</span>
-                </div>
-              );
-            })
-          )}
-        </div>
 
-        <div className="rank-card">
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle size={20} color="#f97316" />
-            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Productos Próximos a Vencer</h3>
-          </div>
-          {venciendo.length === 0 && vencidos.length === 0 ? (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay productos con fecha de vencimiento registrada.</div>
-          ) : (
-            <>
-              {vencidos.slice(0, 5).map((p, i) => (
-                <div className="rank-item" key={'v-' + p.id}>
-                  <div className="rank-pos" style={{ background: 'rgba(255,62,62,0.15)', color: '#ff3e3e' }}>!</div>
-                  <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{p.nombre}</div><div style={{ fontSize: '0.8rem', color: '#ff3e3e' }}>Vencido: {new Date(p.fechaVencimiento).toLocaleDateString('es-PE')}</div></div>
-                  <span className="badge-err">VENCIDO</span>
-                </div>
-              ))}
-              {venciendo.slice(0, 10 - vencidos.slice(0, 5).length).map((p, i) => {
-                const dias = Math.ceil((new Date(p.fechaVencimiento) - now) / (1000 * 60 * 60 * 24));
-                return (
-                  <div className="rank-item" key={'p-' + p.id}>
-                    <div className="rank-pos" style={{ background: dias <= 7 ? 'rgba(255,62,62,0.15)' : dias <= 15 ? 'rgba(249,115,22,0.15)' : 'rgba(59,130,246,0.15)', color: dias <= 7 ? '#ff3e3e' : dias <= 15 ? '#f97316' : '#3b82f6' }}>{i + 1}</div>
-                    <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{p.nombre}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Vence: {new Date(p.fechaVencimiento).toLocaleDateString('es-PE')} ({dias} días)</div></div>
-                    <span className={dias <= 7 ? 'badge-err' : dias <= 15 ? 'badge-warn' : 'badge-ok'}>{dias} días</span>
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
-      </div>
     </PageLayout>
   );
 };
