@@ -282,21 +282,21 @@ const Ventas = () => {
 
           <div style={{ flex: 1, position: 'relative', minWidth: 200 }}>
             <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={activeTab === 'productos' ? "Buscar por socio o método de pago..." : "Buscar por socio, membresía o método..."} style={{ paddingLeft: 36, width: '100%', borderRadius: 10, padding: '9px 12px 9px 36px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', outline: 'none' }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s_]/g, ''))} placeholder={activeTab === 'productos' ? "Buscar por socio o método de pago..." : "Buscar por socio, membresía o método..."} style={{ paddingLeft: 36, width: '100%', borderRadius: 10, padding: '9px 12px 9px 36px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', outline: 'none' }} />
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--panel-border)' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Desde:</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--panel-bg)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--panel-border)' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Hasta:</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', cursor: 'pointer' }} />
-            </div>
-            {(startDate || endDate) && (
-              <button onClick={() => { setStartDate(''); setEndDate(''); }} style={{ padding: '8px 12px', background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                Limpiar
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={() => { const d = new Date(); setStartDate(d.toISOString().split('T')[0]); setEndDate(d.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Hoy</button>
+            <button onClick={() => { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const from = new Date(d.setDate(diff)); const to = new Date(); setStartDate(from.toISOString().split('T')[0]); setEndDate(to.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Semana</button>
+            <button onClick={() => { const d = new Date(); const from = new Date(d); from.setDate(d.getDate() - 30); setStartDate(from.toISOString().split('T')[0]); setEndDate(d.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>30 Días</button>
+            <button onClick={() => { const d = new Date(); setStartDate(new Date(d.getFullYear(), 0, 1).toISOString().split('T')[0]); setEndDate(d.toISOString().split('T')[0]); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Año</button>
+            <div style={{ width: '1px', height: '28px', background: 'var(--panel-border)', margin: '0 4px' }} />
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '140px' }} />
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>→</span>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '140px' }} />
+            {(search || startDate || endDate) && (
+              <button onClick={() => { setSearch(''); setStartDate(''); setEndDate(''); }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'rgba(255,62,62,0.1)', color: '#ff3e3e', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }} title="Limpiar filtros">
+                <Ban size={16} />
               </button>
             )}
           </div>
