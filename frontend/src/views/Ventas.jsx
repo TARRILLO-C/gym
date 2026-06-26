@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Search,
@@ -7,7 +7,9 @@ import {
   Printer,
   Trash2,
   FilePlus,
-  Ban
+  Ban,
+  TrendingUp,
+  Award
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -231,6 +233,34 @@ const Ventas = () => {
       const comentario = p.comentario?.toLowerCase() || '';
       return socioNombre.includes(term) || planNombre.includes(term) || metodo.includes(term) || comentario.includes(term);
     });
+
+  const productoRanking = useMemo(() => {
+    const counts = {};
+    (ventas || []).forEach(v => {
+      if (v.activo === false) return;
+      (v.detalles || []).forEach(d => {
+        const nombre = d.producto?.nombre || 'Producto sin nombre';
+        counts[nombre] = (counts[nombre] || 0) + (d.cantidad || 0);
+      });
+    });
+    return Object.entries(counts)
+      .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 10);
+  }, [ventas]);
+
+  const suscripcionRanking = useMemo(() => {
+    const counts = {};
+    (pagos || []).forEach(p => {
+      if (p.venta?.activo === false) return;
+      const nombre = p.suscripcion?.membresia?.nombre || 'Plan sin nombre';
+      counts[nombre] = (counts[nombre] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 10);
+  }, [pagos]);
 
   return (<>
     <PageLayout
@@ -527,6 +557,48 @@ const Ventas = () => {
               </tbody>
             </table>
           )
+        )}
+      </div>
+
+      {/* Ranquin de productos más vendidos */}
+      <div className="card" style={{ marginTop: '24px', padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <TrendingUp size={22} color="#f97316" />
+          <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: 700, fontSize: '1.1rem' }}>Ranquin de productos más vendidos</h3>
+        </div>
+        {productoRanking.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>No hay datos de ventas de productos.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {productoRanking.map((item, idx) => (
+              <div key={item.nombre} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--panel-border)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', background: idx === 0 ? '#f97316' : idx === 1 ? '#64748b' : idx === 2 ? '#92400e' : 'var(--panel-border)', color: idx < 3 ? '#fff' : 'var(--text-muted)' }}>{idx + 1}</div>
+                <div style={{ flex: 1, fontWeight: 600, color: 'var(--text-main)' }}>{item.nombre}</div>
+                <div style={{ fontWeight: 700, color: '#f97316', fontSize: '0.95rem' }}>{item.cantidad} vendidos</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Ranquin de suscripciones más vendidas */}
+      <div className="card" style={{ marginTop: '16px', padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+          <Award size={22} color="#a78bfa" />
+          <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: 700, fontSize: '1.1rem' }}>Ranquin de suscripciones más vendidas</h3>
+        </div>
+        {suscripcionRanking.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>No hay datos de suscripciones.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {suscripcionRanking.map((item, idx) => (
+              <div key={item.nombre} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--panel-border)' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', background: idx === 0 ? '#a78bfa' : idx === 1 ? '#64748b' : idx === 2 ? '#92400e' : 'var(--panel-border)', color: idx < 3 ? '#fff' : 'var(--text-muted)' }}>{idx + 1}</div>
+                <div style={{ flex: 1, fontWeight: 600, color: 'var(--text-main)' }}>{item.nombre}</div>
+                <div style={{ fontWeight: 700, color: '#a78bfa', fontSize: '0.95rem' }}>{item.cantidad} ventas</div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </PageLayout>

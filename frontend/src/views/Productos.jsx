@@ -79,6 +79,7 @@ const Productos = () => {
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
   const [socioSearch, setSocioSearch] = useState('');
+  const [showSocioDropdown, setShowSocioDropdown] = useState(false);
   const role = sessionStorage.getItem('role');
 
   useEffect(() => { fetchData(); }, []);
@@ -1194,18 +1195,33 @@ const Productos = () => {
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Asociar a un Socio (Opcional)</label>
             <div style={{ position: 'relative', marginTop: '6px' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input type="text" placeholder="Buscar por DNI o Nombre..." value={socioSearch} onChange={e => setSocioSearch(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s]/g, ''))} style={{ paddingLeft: '40px' }} />
-              {socioSearch && filteredSocios.length > 0 && (
+              <input 
+                type="text" 
+                placeholder="Buscar por DNI o Nombre..." 
+                value={socioSearch} 
+                onChange={e => {
+                  const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\\s]/g, '');
+                  setSocioSearch(val);
+                  setShowSocioDropdown(true);
+                  if (val === '') {
+                    setCheckoutForm({...checkoutForm, socioId: null, clienteNombre: '', clienteDocumento: ''});
+                  }
+                }} 
+                onFocus={() => setShowSocioDropdown(true)}
+                style={{ paddingLeft: '40px' }} 
+              />
+              {showSocioDropdown && socioSearch && filteredSocios.length > 0 && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-color)', border: '1px solid var(--panel-border)', borderRadius: '12px', zIndex: 1100, maxHeight: '150px', overflowY: 'auto' }}>
                   {filteredSocios.map(s => (
                     <div key={s.id} onClick={() => { 
                       setCheckoutForm({
                         ...checkoutForm, 
                         socioId: s.id, 
-                        clienteNombre: checkoutForm.tipoComprobante === 'FACTURA' ? (s.razonSocial || s.nombreCompleto) : s.nombreCompleto,
-                        clienteDocumento: checkoutForm.tipoComprobante === 'FACTURA' ? (s.ruc || s.dni) : s.dni
+                        clienteNombre: checkoutForm.tipoComprobante === 'FACTURA' ? (s.razonSocial || '') : s.nombreCompleto,
+                        clienteDocumento: checkoutForm.tipoComprobante === 'FACTURA' ? (s.ruc || '') : s.dni
                       }); 
                       setSocioSearch(s.nombreCompleto); 
+                      setShowSocioDropdown(false);
                     }} style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
                       {s.nombreCompleto} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({s.dni})</span>
                     </div>
@@ -1234,11 +1250,20 @@ const Productos = () => {
                 <div 
                   key={tipo.id} 
                   onClick={() => {
+                    let doc = '';
+                    let nom = '';
+                    if (checkoutForm.socioId) {
+                      const s = socios.find(socio => socio.id === checkoutForm.socioId);
+                      if (s) {
+                        nom = tipo.id === 'FACTURA' ? (s.razonSocial || '') : s.nombreCompleto;
+                        doc = tipo.id === 'FACTURA' ? (s.ruc || '') : s.dni;
+                      }
+                    }
                     setCheckoutForm({
                       ...checkoutForm, 
                       tipoComprobante: tipo.id,
-                      clienteDocumento: '',
-                      clienteNombre: ''
+                      clienteDocumento: doc,
+                      clienteNombre: nom
                     });
                   }} 
                   style={{ 
@@ -1263,13 +1288,13 @@ const Productos = () => {
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>RUC (Obligatorio para Factura)</label>
                   <div style={{ position: 'relative' }}>
-                    <input required type="text" value={checkoutForm.clienteDocumento} disabled onBlur={handleDocumentLookup} maxLength="11" placeholder="Ej: 20601234567" style={{ borderColor: '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
+                    <input required type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="11" placeholder="Ej: 20601234567" disabled={!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.ruc} style={{ borderColor: '#3b82f6', width: '100%', opacity: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.ruc) ? 0.6 : 1, cursor: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.ruc) ? 'not-allowed' : 'text' }} />
                     {isSearchingDoc && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6' }}>Buscando...</div>}
                   </div>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>Razón Social</label>
-                  <input required type="text" value={checkoutForm.clienteNombre} disabled placeholder="Ej: Mi Empresa S.A.C." style={{ borderColor: '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
+                  <input required type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value.toUpperCase()})} placeholder="Ej: Mi Empresa S.A.C." disabled={!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial} style={{ borderColor: '#3b82f6', width: '100%', opacity: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial) ? 0.6 : 1, cursor: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial) ? 'not-allowed' : 'text' }} />
                 </div>
               </div>
             )}
@@ -1285,13 +1310,13 @@ const Productos = () => {
                   DNI {cartTotal > 700 ? '(Obligatorio)' : '(Opcional para Boleta)'}
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <input type="text" value={checkoutForm.clienteDocumento} disabled onBlur={handleDocumentLookup} maxLength="8" placeholder="Ej: 71234567" style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
+                  <input type="text" value={checkoutForm.clienteDocumento} onChange={e => setCheckoutForm({...checkoutForm, clienteDocumento: e.target.value.replace(/\D/g, '')})} onBlur={handleDocumentLookup} maxLength="8" placeholder="Ej: 71234567" disabled={!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.dni} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.dni) ? 0.6 : 1, cursor: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.dni) ? 'not-allowed' : 'text' }} />
                   {isSearchingDoc && <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#3b82f6' }}>Buscando...</div>}
                 </div>
                 <label style={{ fontSize: '0.75rem', color: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', fontWeight: 'bold', marginTop: '8px', display: 'block' }}>
                   Nombre Completo {cartTotal > 700 ? '(Obligatorio)' : ''}
                 </label>
-                <input type="text" value={checkoutForm.clienteNombre} disabled placeholder={cartTotal > 700 ? "Requerido por SUNAT" : "Público General"} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: 0.6, cursor: 'not-allowed' }} />
+                <input type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value.toUpperCase()})} placeholder={cartTotal > 700 ? "Requerido por SUNAT" : "Público General"} disabled={!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto) ? 0.6 : 1, cursor: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto) ? 'not-allowed' : 'text' }} />
               </div>
             )}
 
