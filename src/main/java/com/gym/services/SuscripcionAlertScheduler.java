@@ -19,12 +19,28 @@ public class SuscripcionAlertScheduler {
     private final EmailService emailService;
 
     /**
+     * Calcula la fecha sumando días hábiles (salta sábados y domingos).
+     */
+    private LocalDate sumarDiasHabiles(LocalDate fecha, int dias) {
+        LocalDate result = fecha;
+        int agregados = 0;
+        while (agregados < dias) {
+            result = result.plusDays(1);
+            if (result.getDayOfWeek().getValue() < 6) {
+                agregados++;
+            }
+        }
+        return result;
+    }
+
+    /**
      * Se ejecuta todos los dias a las 08:00 AM.
-     * Busca las suscripciones que vencen exactamente en 2 dias y envia un correo de alerta.
+     * Busca las suscripciones que vencen exactamente en 5 dias habiles y envia un correo de alerta.
      */
     @Scheduled(cron = "0 0 8 * * ?")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public void verificarYEnviarAlertasDeVencimiento() {
-        LocalDate fechaObjetivo = LocalDate.now().plusDays(2);
+        LocalDate fechaObjetivo = sumarDiasHabiles(LocalDate.now(), 5);
         log.info("Iniciando tarea programada: buscando suscripciones que vencen el {}", fechaObjetivo);
 
         List<Suscripcion> suscripcionesPorVencer = suscripcionRepository.findByFechaFinAndActivoTrue(fechaObjetivo);
