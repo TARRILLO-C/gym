@@ -46,18 +46,16 @@ const Productos = () => {
 
   const [checkoutForm, setCheckoutForm] = useState({
     socioId: '', 
-    metodoPago: 'EFECTIVO', 
     tipoComprobante: 'BOLETA', 
-    numeroTarjeta: '', 
-    numeroOperacion: '', 
-    montoRecibido: '',
     clienteNombre: '',
-    clienteDocumento: ''
+    clienteDocumento: '',
+    pagos: [{ metodoPago: 'EFECTIVO', monto: '', numeroOperacion: '' }]
   });
 
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [lastVentaData, setLastVentaData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cajaAbierta, setCajaAbierta] = useState(true);
 
   // Ajuste de Inventario
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -87,14 +85,16 @@ const Productos = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [prodResp, socioResp, catResp] = await Promise.all([
+      const [prodResp, socioResp, catResp, cajaResp] = await Promise.all([
         api.get('/productos'),
         api.get('/socios'),
-        api.get('/categorias-producto')
+        api.get('/categorias-producto'),
+        api.get('/cierre-caja/hoy').catch(() => null)
       ]);
       setProductos(prodResp.data);
       setSocios(socioResp.data);
       setCategorias(catResp.data);
+      setCajaAbierta(cajaResp && cajaResp.status === 200 && cajaResp.data && cajaResp.data.estado === 'ABIERTO');
       if (role === 'ADMINISTRADOR') {
         try {
           const catTodasResp = await api.get('/categorias-producto/todas');
@@ -401,43 +401,33 @@ const Productos = () => {
       }
     }
 
-    if (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '') {
-      if (parseFloat(checkoutForm.montoRecibido) < cartTotal) {
-        showAlert("Atención", "El efectivo recibido (S/ " + checkoutForm.montoRecibido + ") es menor al Total a Pagar (S/ " + cartTotal.toFixed(2) + ").");
-        setIsSubmitting(false);
-        return;
-      }
-    }
-
-    if (checkoutForm.metodoPago === 'TARJETA') {
-        if (!checkoutForm.numeroTarjeta || checkoutForm.numeroTarjeta.length !== 16) {
-          showAlert("Atención", "Debe ingresar exactamente los 16 dígitos de la Tarjeta.");
-          setIsSubmitting(false);
-          return;
-        }
-    }
-
-    if (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) {
-      showAlert("Atención", "Debe ingresar el número de operación de la transferencia.");
+    const sumaPagos = checkoutForm.pagos.reduce((acc, p) => acc + (parseFloat(p.monto) || 0), 0);
+    if (Math.abs(sumaPagos - cartTotal) > 0.01) {
+      showAlert("Atención", "La suma de los pagos (S/ " + sumaPagos.toFixed(2) + ") debe coincidir con el Total a Pagar (S/ " + cartTotal.toFixed(2) + ").");
       setIsSubmitting(false);
       return;
     }
-    if (checkoutForm.metodoPago === 'YAPE_PLIN' && checkoutForm.numeroOperacion) {
-      if (checkoutForm.numeroOperacion.length !== 9) {
-        showAlert("Atención", "El Nº de Celular (Yape/Plin) debe tener exactamente 9 dígitos.");
-        setIsSubmitting(false);
-        return;
-      }
+
+    const metodos = checkoutForm.pagos.map(p => p.metodoPago);
+    if (new Set(metodos).size !== metodos.length) {
+      const repetido = metodos.filter((item, index) => metodos.indexOf(item) !== index)[0];
+      showAlert("Atención", `No puede agregar el mismo método de pago más de una vez. Por favor, sume los montos de ${repetido} en una sola fila.`);
+      setIsSubmitting(false);
+      return;
     }
+
+    // Las referencias ya no son obligatorias según el usuario.
 
     try {
       const payload = {
         socioId: checkoutForm.socioId || null,
-        metodoPago: checkoutForm.metodoPago,
         tipoComprobante: checkoutForm.tipoComprobante,
         clienteNombre: checkoutForm.clienteNombre,
         clienteDocumento: checkoutForm.clienteDocumento,
-        referencia: checkoutForm.metodoPago === 'TARJETA' ? checkoutForm.numeroTarjeta : checkoutForm.numeroOperacion,
+        pagos: checkoutForm.pagos.map(p => ({
+          metodoPago: p.metodoPago,
+          monto: parseFloat(p.monto)
+        })),
         detalles: cart.map(item => ({ producto: { id: item.producto.id }, cantidad: item.cantidad }))
       };
       
@@ -446,7 +436,7 @@ const Productos = () => {
       
       setLastVentaData(ventaRealData);
       setCart([]);
-      setCheckoutForm({...checkoutForm, numeroTarjeta: '', numeroOperacion: '', montoRecibido: '', socioId: '', clienteNombre: '', clienteDocumento: ''});
+      setCheckoutForm({...checkoutForm, pagos: [{ metodoPago: 'EFECTIVO', monto: '', numeroOperacion: '' }], socioId: '', clienteNombre: '', clienteDocumento: ''});
       setSocioSearch('');
       setShowCheckoutModal(false);
       
@@ -469,7 +459,9 @@ const Productos = () => {
       });
       fetchData();
     } catch (err) { 
-        showAlert("Error", "Error al procesar la venta"); 
+        console.error(err);
+        const errMsg = err.response?.data?.error || err.response?.data?.message || err.message || "Error al procesar la venta";
+        showAlert("Error", errMsg);
     } finally {
         setIsSubmitting(false);
     }
@@ -620,6 +612,24 @@ const Productos = () => {
               </div>
             )}
           </div>
+
+          {activeTab === 'pos' && !cajaAbierta && (
+            <div style={{
+              background: 'rgba(255, 62, 62, 0.1)',
+              border: '1px solid rgba(255, 62, 62, 0.3)',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              color: '#ff3e3e',
+              fontWeight: 'bold',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <AlertTriangle size={24} />
+              <span>⚠️ La caja del día no ha sido abierta. Debe abrir la caja desde el Monitor de Caja antes de poder registrar ventas.</span>
+            </div>
+          )}
 
           {activeTab === 'pos' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
@@ -893,8 +903,8 @@ const Productos = () => {
                 <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Total</span>
                 <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
               </div>
-              <button className="btn-primary" style={{ width: '100%', padding: '16px' }} disabled={cart.length === 0} onClick={() => setShowCheckoutModal(true)}>
-                FINALIZAR VENTA
+              <button className="btn-primary" style={{ width: '100%', padding: '16px' }} disabled={cart.length === 0 || !cajaAbierta} onClick={() => setShowCheckoutModal(true)}>
+                {cajaAbierta ? 'FINALIZAR VENTA' : 'CAJA CERRADA'}
               </button>
             </div>
           </div>
@@ -934,8 +944,8 @@ const Productos = () => {
               <button onClick={() => setShowMobileCart(false)} style={{ flex: 1, padding: '12px', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--panel-border)', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
                 SEGUIR
               </button>
-              <button className="btn-primary" style={{ flex: 1, padding: '12px' }} disabled={cart.length === 0} onClick={() => { setShowMobileCart(false); setShowCheckoutModal(true); }}>
-                COMPRAR
+              <button className="btn-primary" style={{ flex: 1, padding: '12px' }} disabled={cart.length === 0 || !cajaAbierta} onClick={() => { setShowMobileCart(false); setShowCheckoutModal(true); }}>
+                {cajaAbierta ? 'COMPRAR' : 'CAJA CERRADA'}
               </button>
             </div>
           </div>
@@ -1231,13 +1241,61 @@ const Productos = () => {
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Método de Pago</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px', marginBottom: '16px' }}>
-              {['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'YAPE_PLIN'].map(metodo => (
-                <div key={metodo} onClick={() => setCheckoutForm({...checkoutForm, metodoPago: metodo})} style={{ padding: '12px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', background: checkoutForm.metodoPago === metodo ? 'rgba(255, 62, 62, 0.1)' : 'var(--panel-bg)', border: checkoutForm.metodoPago === metodo ? '1px solid var(--accent-primary)' : '1px solid var(--panel-border)', color: checkoutForm.metodoPago === metodo ? 'var(--accent-primary)' : 'var(--text-main)' }}>
-                  {metodo.replace('_', ' / ')}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Métodos de Pago (Mixto)</label>
+              <button type="button" onClick={() => setCheckoutForm({...checkoutForm, pagos: [...checkoutForm.pagos, {metodoPago: 'YAPE_PLIN', monto: '', numeroOperacion: ''}]})} style={{ background: 'var(--accent-primary)', color: 'white', padding: '4px 8px', borderRadius: '6px', border: 'none', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                + Agregar Pago
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+              {checkoutForm.pagos.map((pago, index) => (
+                <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                  <select 
+                    value={pago.metodoPago} 
+                    onChange={e => {
+                      const newPagos = [...checkoutForm.pagos];
+                      newPagos[index].metodoPago = e.target.value;
+                      if (e.target.value === 'EFECTIVO') newPagos[index].numeroOperacion = '';
+                      setCheckoutForm({...checkoutForm, pagos: newPagos});
+                    }} 
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--panel-border)', outline: 'none' }}
+                  >
+                    <option value="EFECTIVO">Efectivo</option>
+                    <option value="TARJETA">Tarjeta</option>
+                    <option value="TRANSFERENCIA">Transferencia</option>
+                    <option value="YAPE_PLIN">Yape / Plin</option>
+                  </select>
+                  
+                  <div style={{ position: 'relative', width: '100px' }}>
+                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>S/</span>
+                    <input 
+                      type="number" step="0.01" min="0" required
+                      placeholder="0.00" 
+                      value={pago.monto} 
+                      onChange={e => {
+                        const newPagos = [...checkoutForm.pagos];
+                        newPagos[index].monto = e.target.value;
+                        setCheckoutForm({...checkoutForm, pagos: newPagos});
+                      }} 
+                      style={{ width: '100%', padding: '10px 10px 10px 25px', borderRadius: '8px', background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--panel-border)', outline: 'none' }} 
+                    />
+                  </div>
+
+                  {/* Referencia removida */}
+                  
+                  {checkoutForm.pagos.length > 1 && (
+                    <button type="button" onClick={() => {
+                      const newPagos = checkoutForm.pagos.filter((_, i) => i !== index);
+                      setCheckoutForm({...checkoutForm, pagos: newPagos});
+                    }} style={{ color: '#ff3e3e', background: 'rgba(255,62,62,0.1)', border: 'none', cursor: 'pointer', fontSize: '1.2rem', width: '36px', height: '36px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      ×
+                    </button>
+                  )}
                 </div>
               ))}
+            </div>
+            <div style={{ textAlign: 'right', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Suma: S/ {(checkoutForm.pagos.reduce((acc, p) => acc + (parseFloat(p.monto) || 0), 0)).toFixed(2)} / S/ {cartTotal.toFixed(2)}
             </div>
 
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Tipo de Comprobante</label>
@@ -1320,46 +1378,7 @@ const Productos = () => {
               </div>
             )}
 
-            {/* Configuración Dinámica de Métodos de Pago */}
-            {checkoutForm.metodoPago === 'EFECTIVO' && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monto Recibido S/ (Calculadora Opcional)</label>
-                <input type="text" inputMode="decimal" value={checkoutForm.montoRecibido} onChange={e => {
-                  let val = e.target.value.replace(/[^0-9.]/g, '');
-                  const parts = val.split('.');
-                  if (parts.length > 2) return;
-                  if (parts[1] && parts[1].length > 2) return;
-                  if (parseFloat(val) > 200) return;
-                  setCheckoutForm({...checkoutForm, montoRecibido: val});
-                }} placeholder={`Ej: ${Math.min(cartTotal, 200).toFixed(2)}`} />
-                {checkoutForm.montoRecibido > cartTotal && (
-                  <div style={{ color: '#00ff7f', fontSize: '0.85rem', marginTop: '6px', fontWeight: 'bold', padding: '6px', background: 'rgba(0, 255, 127, 0.1)', borderRadius: '6px' }}>
-                    VUELTO A ENTREGAR: S/ {(checkoutForm.montoRecibido - cartTotal).toFixed(2)}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {checkoutForm.metodoPago === 'TARJETA' && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Nº de Tarjeta (Aprobación POS)</label>
-                <input required type="text" maxLength="16" value={checkoutForm.numeroTarjeta} onChange={e => setCheckoutForm({...checkoutForm, numeroTarjeta: e.target.value.replace(/\D/g, '')})} placeholder="Ej: 1234567890123456 (16 dígitos)" />
-              </div>
-            )}
-            
-            {checkoutForm.metodoPago === 'TRANSFERENCIA' && (
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Nº de Operación Bancaria</label>
-                <input required type="text" maxLength="24" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value.replace(/\D/g, '')})} placeholder="Ej: 00234141 (Máx 24 dígitos)" />
-              </div>
-            )}
-            
-            {checkoutForm.metodoPago === 'YAPE_PLIN' && (
-              <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Celular Referencia (9 dígitos)</label>
-                <input required type="text" maxLength="9" value={checkoutForm.numeroOperacion} onChange={e => setCheckoutForm({...checkoutForm, numeroOperacion: e.target.value.replace(/\D/g, '')})} placeholder="Nº Operación o Celular (Máx 9 dígitos)" />
-              </div>
-            )}
+
 
           </div>
           <div style={{ background: 'rgba(255, 62, 62, 0.05)', padding: '20px', borderRadius: '16px', textAlign: 'center', border: '1px dashed rgba(255, 62, 62, 0.3)' }}>
@@ -1376,10 +1395,7 @@ const Productos = () => {
               (checkoutForm.tipoComprobante === 'FACTURA' && (checkoutForm.clienteDocumento.length !== 11 || !checkoutForm.clienteNombre.trim())) ||
               (checkoutForm.tipoComprobante === 'BOLETA' && cartTotal > 700 && (checkoutForm.clienteDocumento.length !== 8 || !checkoutForm.clienteNombre.trim())) ||
               (checkoutForm.tipoComprobante === 'BOLETA' && checkoutForm.clienteDocumento.length > 0 && checkoutForm.clienteDocumento.length !== 8) ||
-              (checkoutForm.metodoPago === 'EFECTIVO' && checkoutForm.montoRecibido !== '' && parseFloat(checkoutForm.montoRecibido) < cartTotal) ||
-              (checkoutForm.metodoPago === 'TARJETA' && checkoutForm.numeroTarjeta.length !== 16) ||
-              (checkoutForm.metodoPago === 'TRANSFERENCIA' && !checkoutForm.numeroOperacion) ||
-              (checkoutForm.metodoPago === 'YAPE_PLIN' && checkoutForm.numeroOperacion.length > 0 && checkoutForm.numeroOperacion.length !== 9) ||
+
               cart.length === 0
             }
             style={{ 

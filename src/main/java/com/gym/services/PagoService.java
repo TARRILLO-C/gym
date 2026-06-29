@@ -2,6 +2,7 @@ package com.gym.services;
 
 import com.gym.models.CategoriaProducto;
 import com.gym.models.Pago;
+import com.gym.models.PagoVenta;
 import com.gym.models.Suscripcion;
 import com.gym.models.Venta;
 import com.gym.models.DetalleVenta;
@@ -128,11 +129,17 @@ public class PagoService {
             clienteDoc = sus.getSocio().getDni();
         }
 
+        // Construir PagoVenta con el método resuelto (Feature 4: soporte pagos mixtos)
+        PagoVenta pagoVenta = PagoVenta.builder()
+                .metodoPago(metodo)
+                .monto(monto)
+                .build();
+
         Venta venta;
         try {
             venta = ventaService.registrarVenta(
                     sus.getSocio().getId(),
-                    metodo,
+                    java.util.List.of(pagoVenta),
                     java.util.List.of(detalle),
                     tipoComp,
                     clienteNom,
@@ -141,7 +148,7 @@ public class PagoService {
             );
         } catch (Exception e) {
             log.error("ERROR CRITICO en registrarVenta: {} | clase: {}", e.getMessage(), e.getClass().getName(), e);
-            throw e;  // re-lanzar para no silenciar, pero ahora veremos el stack trace completo
+            throw e;
         }
 
         pago.setVenta(venta);

@@ -25,4 +25,13 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
             + "AND (p.venta IS NULL OR p.venta.activo <> false) "
             + "GROUP BY p.metodoPago")
     List<Object[]> findResumenMetodos(LocalDateTime inicio, LocalDateTime fin);
+
+    /**
+     * Resumen de pagos de suscripción agrupado por método para una sesión.
+     * (Pagos cuya venta vinculada pertenece a esa sesión.)
+     */
+    @Query("SELECT p.metodoPago, COALESCE(SUM(p.monto), 0) FROM Pago p " +
+           "WHERE p.venta.sesion.id = :sesionId AND p.venta.activo = true " +
+           "GROUP BY p.metodoPago")
+    List<Object[]> findResumenMetodosBySesion(Long sesionId);
 }

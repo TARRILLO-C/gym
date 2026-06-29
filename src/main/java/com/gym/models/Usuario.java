@@ -29,6 +29,10 @@ public class Usuario {
     @Column(name = "intentos_fallidos", columnDefinition = "int default 0", nullable = false)
     private int intentosFallidos = 0;
 
+    /** PIN hasheado para operaciones sensibles (anulaciones, retiros de fondos) */
+    @Column(name = "pin_admin", length = 64)
+    private String pinAdmin;
+
 
     public Usuario() {}
 
@@ -85,4 +89,13 @@ public class Usuario {
     public void setIntentosFallidos(int intentosFallidos) {
         this.intentosFallidos = intentosFallidos;
     }
+
+    public String getPinAdmin() {
+        return pinAdmin;
+    }
+
+    public void setPinAdmin(String pinAdmin) {
+        this.pinAdmin = pinAdmin;
+    }
 }
+

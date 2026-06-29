@@ -1,7 +1,8 @@
-﻿package com.gym.services;
+package com.gym.services;
 
 import com.gym.models.CierreCaja;
 import com.gym.repositories.CierreCajaRepository;
+import com.gym.repositories.EgresoRepository;
 import com.gym.repositories.PagoRepository;
 import com.gym.repositories.VentaRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,23 +27,32 @@ public class CierreCajaService {
     private final CierreCajaRepository cierreCajaRepository;
     private final VentaRepository ventaRepository;
     private final PagoRepository pagoRepository;
+    private final EgresoRepository egresoRepository;
 
     @Transactional
     public CierreCaja abrirCaja(String username, BigDecimal montoInicial, String observaciones) {
         LocalDate hoy = LocalDate.now();
 
+        // Control de auditoría: verificar si hay alguna caja abierta de días anteriores
+        List<CierreCaja> cajasAbiertas = cierreCajaRepository.findByEstado("ABIERTO");
+        for (CierreCaja caja : cajasAbiertas) {
+            if (!caja.getFecha().equals(hoy)) {
+                throw new RuntimeException("Existe una caja abierta del día anterior (" + caja.getFecha() + "). Debe cerrarla antes de abrir una nueva.");
+            }
+        }
+
         if (cierreCajaRepository.findByFecha(hoy).isPresent()) {
-            throw new RuntimeException("Ya existe un cierre de caja abierto para hoy.");
+            throw new RuntimeException("Ya se ha registrado una caja para el día de hoy (sea abierta o cerrada). No se permite abrir más de una caja al día.");
         }
 
         CierreCaja cierre = CierreCaja.builder()
-                .fecha(hoy)
-                .username(username)
-                .montoInicial(montoInicial)
-                .estado("ABIERTO")
-                .observaciones(observaciones)
-                .createdAt(LocalDateTime.now())
-                .build();
+                 .fecha(hoy)
+                 .username(username)
+                 .montoInicial(montoInicial)
+                 .estado("ABIERTO")
+                 .observaciones(observaciones)
+                 .createdAt(LocalDateTime.now())
+                 .build();
 
         return cierreCajaRepository.save(cierre);
     }
@@ -59,6 +69,10 @@ public class CierreCajaService {
 
         List<Object[]> ventasDelDia = ventaRepository.findResumenMetodos(desde, hasta);
         List<Object[]> pagosDelDia = pagoRepository.findResumenMetodos(desde, hasta);
+        BigDecimal egresosDelDia = egresoRepository.sumEgresosByFecha(desde, hasta);
+        if (egresosDelDia == null) {
+            egresosDelDia = BigDecimal.ZERO;
+        }
 
         Map<String, BigDecimal> resumen = new HashMap<>();
         BigDecimal totalGeneral = BigDecimal.ZERO;
@@ -80,6 +94,7 @@ public class CierreCajaService {
         Map<String, Object> result = new HashMap<>();
         result.put("detalle", resumen);
         result.put("total", totalGeneral.setScale(2, RoundingMode.HALF_UP));
+        result.put("egresos", egresosDelDia.setScale(2, RoundingMode.HALF_UP));
         result.put("fecha", fecha.toString());
         return result;
     }
@@ -94,7 +109,11 @@ public class CierreCajaService {
         }
 
         Map<String, Object> resumen = obtenerResumenCaja(cierre.getFecha());
-        BigDecimal montoEsperado = ((BigDecimal) resumen.get("total")).add(cierre.getMontoInicial());
+        @SuppressWarnings("unchecked")
+        Map<String, BigDecimal> detalle = (Map<String, BigDecimal>) resumen.get("detalle");
+        BigDecimal totalEfectivo = detalle != null ? detalle.getOrDefault("EFECTIVO", BigDecimal.ZERO) : BigDecimal.ZERO;
+        BigDecimal totalEgresos = (BigDecimal) resumen.getOrDefault("egresos", BigDecimal.ZERO);
+        BigDecimal montoEsperado = totalEfectivo.add(cierre.getMontoInicial()).subtract(totalEgresos);
         BigDecimal diferencia = montoFinalReal.subtract(montoEsperado);
 
         cierre.setMontoFinalEsperado(montoEsperado);

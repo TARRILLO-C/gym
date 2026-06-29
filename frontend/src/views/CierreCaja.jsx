@@ -1,309 +1,357 @@
-﻿import React, { useState, useEffect } from 'react';
-import { RefreshCw, DollarSign, TrendingUp, Calendar, Clock, CheckCircle, XCircle, AlertTriangle, FileText, Download, Search, X, User, Ban } from 'lucide-react';
-import api from '../services/api';
-import * as XLSX from 'xlsx';
+import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
-import { autoTable } from 'jspdf-autotable';
+import 'jspdf-autotable';
+import { Download, AlertTriangle, CheckCircle, Clock, Plus, X, Lock, RefreshCw } from 'lucide-react';
+import api from '../services/api';
 
-const formatMoney = (n) => 'S/ ' + parseFloat(n || 0).toFixed(2);
-const today = () => new Date().toISOString().split('T')[0];
+const CierreCaja = ({ isOpen, onClose }) => {
+    // ── ESTADOS DE SESIÓN ──
+    const [sesionActiva, setSesionActiva] = useState(null);
+    const [resumen, setResumen] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-const CierreCaja = ({ onClose }) => {
-  const [cierre, setCierre] = useState(null);
-  const [resumen, setResumen] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState('');
+    // ── ESTADOS FORMULARIOS ──
+    // Apertura
+    const [montoInicial, setMontoInicial] = useState('');
+    const [turnoSeleccionado, setTurnoSeleccionado] = useState('Mañana');
+    const [observacionesApertura, setObservacionesApertura] = useState('');
+    
+    // Cierre (Ciego)
+    const [montoFisicoCajero, setMontoFisicoCajero] = useState('');
+    const [fondoParaSiguiente, setFondoParaSiguiente] = useState('');
+    const [observacionesCierre, setObservacionesCierre] = useState('');
+    const [resultadoCierre, setResultadoCierre] = useState(null); // Almacena el resultado tras cerrar
 
-  const [montoApertura, setMontoApertura] = useState('0');
-  const [obsApertura, setObsApertura] = useState('');
-  const [montoCierre, setMontoCierre] = useState('');
-  const [obsCierre, setObsCierre] = useState('');
+    // Movimientos (Egresos/Retiros)
+    const [movimientoTipo, setMovimientoTipo] = useState('EGRESO');
+    const [movimientoMonto, setMovimientoMonto] = useState('');
+    const [movimientoDesc, setMovimientoDesc] = useState('');
+    const [pinAdmin, setPinAdmin] = useState(''); // Solo para RETIRO_FONDOS
 
-  const username = sessionStorage.getItem('username') || 'admin';
+    useEffect(() => {
+        if (isOpen) {
+            verificarSesionActiva();
+            setResultadoCierre(null);
+        }
+    }, [isOpen]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [cResp, rResp] = await Promise.all([
-        api.get('/cierre-caja/hoy'),
-        api.get('/cierre-caja/resumen')
-      ]);
-      setCierre(cResp.data || null);
-      setResumen(rResp.data);
-    } catch (err) {
-      setError('Error al cargar datos de caja.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    // ── API: VERIFICAR SESIÓN ──
+    const verificarSesionActiva = async () => {
+        setLoading(true);
+        try {
+            // 1. Ver si hay sesión abierta
+            const resActiva = await api.get('/sesiones-caja/activa');
+            
+            if (resActiva.status === 200 && resActiva.data) {
+                setSesionActiva(resActiva.data);
+                // 2. Traer el resumen financiero (que NO incluye montoEsperadoEfectivo por seguridad)
+                const resResumen = await api.get('/sesiones-caja/activa/resumen');
+                setResumen(resResumen.data);
+            } else {
+                // 3. No hay sesión. Sugerir fondo basado en la última cerrada
+                setSesionActiva(null);
+                const resUltima = await api.get('/sesiones-caja/ultima-cerrada');
+                if (resUltima.data?.fondoParaSiguiente) {
+                    setMontoInicial(resUltima.data.fondoParaSiguiente.toString());
+                } else {
+                    setMontoInicial('0.00');
+                }
+            }
+        } catch (error) {
+            console.error('Error al verificar sesión:', error);
+            alert('Error de conexión al verificar el estado de la caja.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => { fetchData(); }, []);
+    // ── API: ABRIR CAJA ──
+    const handleAbrirCaja = async (e) => {
+        e.preventDefault();
+        if (!montoInicial) {
+            alert("Por favor ingrese el monto inicial de apertura.");
+            return;
+        }
+        try {
+            const username = localStorage.getItem('username') || 'Usuario Desconocido';
+            const payload = {
+                username,
+                turno: turnoSeleccionado,
+                montoInicial: parseFloat(montoInicial || 0),
+                observaciones: observacionesApertura
+            };
+            await api.post('/sesiones-caja/abrir', payload);
+            alert('¡Caja abierta exitosamente!');
+            verificarSesionActiva();
+        } catch (error) {
+            alert(error.response?.data?.error || 'Error al abrir caja');
+        }
+    };
 
-  const abrirCaja = async () => {
-    setActionLoading(true);
-    setError('');
-    try {
-      const resp = await api.post('/cierre-caja/abrir', {
-        username,
-        montoInicial: montoApertura,
-        observaciones: obsApertura
-      });
-      setCierre(resp.data);
-      setMontoApertura('0');
-      setObsApertura('');
-    } catch (err) {
-      setError(err.response?.data?.mensaje || 'Error al abrir caja.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    // ── API: CERRAR CAJA (CIEGO) ──
+    const handleCerrarCaja = async (e) => {
+        e.preventDefault();
+        
+        if (montoFisicoCajero === '') {
+            alert('Por favor ingrese el Total EFECTIVO físico en gaveta.');
+            return;
+        }
+        if (fondoParaSiguiente === '') {
+            alert('Por favor ingrese cuánto dejará en caja para el siguiente turno.');
+            return;
+        }
 
-  const cerrarCaja = async () => {
-    if (!montoCierre || parseFloat(montoCierre) < 0) {
-      setError('Ingrese un monto real válido.');
-      return;
-    }
-    setActionLoading(true);
-    setError('');
-    try {
-      const resp = await api.post('/cierre-caja/cerrar', {
-        cierreId: cierre.id,
-        montoFinalReal: montoCierre,
-        observaciones: obsCierre
-      });
-      setCierre(resp.data);
-    } catch (err) {
-      setError(err.response?.data?.mensaje || 'Error al cerrar caja.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+        if (!window.confirm('¿Está seguro de cerrar la caja? Esta acción es irreversible.')) return;
 
-  const totalEsperado = resumen ? (parseFloat(resumen.total || 0) + parseFloat(cierre?.montoInicial || 0)).toFixed(2) : '0.00';
+        try {
+            const payload = {
+                sesionId: sesionActiva.id,
+                montoFinalReal: parseFloat(montoFisicoCajero || 0),
+                fondoParaSiguiente: parseFloat(fondoParaSiguiente || 0),
+                observaciones: observacionesCierre
+            };
+            const res = await api.post('/sesiones-caja/cerrar', payload);
+            
+            // Mostrar resultado del cierre
+            setResultadoCierre(res.data);
+            setSesionActiva(null);
+        } catch (error) {
+            alert(error.response?.data?.error || 'Error al cerrar caja');
+        }
+    };
 
-  const exportExcel = () => {
-    const detalle = resumen?.detalle || {};
-    const data = Object.entries(detalle).map(([metodo, monto]) => ({
-      'Método de Pago': metodo,
-      'Total': parseFloat(monto).toFixed(2)
-    }));
-    data.push({ 'Método de Pago': 'TOTAL', 'Total': (resumen?.total || 0).toFixed(2) });
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
-    XLSX.writeFile(wb, 'CierreCaja_' + today() + '.xlsx');
-  };
+    // ── API: REGISTRAR MOVIMIENTO ──
+    const handleRegistrarMovimiento = async (e) => {
+        e.preventDefault();
+        
+        if (!movimientoDesc || !movimientoMonto) {
+            alert("Por favor complete el motivo y el monto.");
+            return;
+        }
 
-  const exportPdf = () => {
-    const detalle = resumen?.detalle || {};
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Cierre de Caja', 14, 20);
-    doc.setFontSize(10);
-    doc.text('Fecha: ' + new Date().toLocaleDateString('es-PE'), 14, 28);
-    doc.text('Estado: ' + (cierre?.estado || 'SIN APERTURA'), 14, 34);
-    autoTable(doc, {
-      startY: 40,
-      head: [['Método de Pago', 'Total']],
-      body: [
-        ...Object.entries(detalle).map(([m, t]) => [m, 'S/ ' + parseFloat(t).toFixed(2)]),
-        ['TOTAL', 'S/ ' + (resumen?.total || 0).toFixed(2)]
-      ],
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [255, 62, 62] }
-    });
-    doc.save('CierreCaja_' + today() + '.pdf');
-  };
+        try {
+            const username = localStorage.getItem('username') || 'Cajero';
+            
+            if (movimientoTipo === 'EGRESO') {
+                const payload = { descripcion: movimientoDesc, monto: parseFloat(movimientoMonto), username };
+                await api.post('/sesiones-caja/egresos', payload);
+            } else {
+                if (!pinAdmin) {
+                    alert('El PIN de administrador es obligatorio para retiros de fondos.');
+                    return;
+                }
+                const payload = { descripcion: movimientoDesc, monto: parseFloat(movimientoMonto), username, pinAdmin };
+                await api.post('/sesiones-caja/retiros', payload);
+            }
 
-  const estadoColor = (est) => {
-    if (est === 'CERRADO') return { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', icon: CheckCircle, label: 'Cerrada' };
-    if (est === 'DIFERENCIA') return { bg: 'rgba(255,62,62,0.12)', color: '#ff3e3e', icon: AlertTriangle, label: 'Con Diferencia' };
-    return { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6', icon: TrendingUp, label: 'Abierta' };
-  };
+            alert('Movimiento registrado exitosamente');
+            setMovimientoMonto('');
+            setMovimientoDesc('');
+            setPinAdmin('');
+            verificarSesionActiva(); // Refrescar totales
+        } catch (error) {
+            if (error.response?.status === 403) {
+                alert('PIN de administrador incorrecto.');
+            } else {
+                alert(error.response?.data?.error || 'Error al registrar el movimiento.');
+            }
+        }
+    };
 
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.6)', zIndex: 9999,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '20px'
-    }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{
-        background: 'var(--bg-color)',
-        border: '1px solid var(--panel-border)',
-        borderRadius: '20px',
-        width: '100%', maxWidth: '800px',
-        maxHeight: '90vh', overflowY: 'auto',
-        padding: '28px'
-      }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4rem' }}>
-            <Ban size={24} color="var(--accent-primary)" /> Cierre de <span className="text-gradient">Caja</span>
-          </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}>
-            <X size={24} />
-          </button>
-        </div>
+    // Estilos compartidos de UI
+    const modalStyle = {
+        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000,
+        display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px',
+        backdropFilter: 'blur(8px)'
+    };
+    const modalContent = {
+        background: 'var(--bg-color)', border: '1px solid var(--panel-border)', borderRadius: '16px',
+        width: '100%', maxWidth: '950px', maxHeight: '90vh', overflowY: 'auto', padding: '30px',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.7)', position: 'relative'
+    };
+    const inputStyle = {
+        width: '100%', padding: '14px 18px', marginBottom: '16px', borderRadius: '10px',
+        border: '1px solid var(--panel-border)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)',
+        fontSize: '1rem', transition: 'border-color 0.3s'
+    };
+    const btnStyle = {
+        width: '100%', padding: '16px', background: 'var(--accent-secondary)', color: '#fff',
+        border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer',
+        transition: 'transform 0.2s, filter 0.2s', marginTop: '10px'
+    };
+    const cardStyle = {
+        background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '12px',
+        border: '1px solid var(--panel-border)', marginBottom: '24px'
+    };
 
-        <style>{`
-          .cc-card { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 16px; padding: 24px; }
-          .cc-stat { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 16px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; flex: 1; min-width: 180px; }
-          .cc-stat-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-          .btn-cc { display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 0.9rem; transition: all 0.2s; }
-          .btn-cc:hover { transform: translateY(-1px); }
-          .btn-cc:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        `}</style>
+    if (!isOpen) return null;
 
-        {error && (
-          <div style={{ padding: '14px 20px', background: 'rgba(255,62,62,0.1)', border: '1px solid rgba(255,62,62,0.3)', borderRadius: '12px', color: '#ff3e3e', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <AlertTriangle size={20} /> {error}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginBottom: '20px', flexWrap: 'wrap' }}>
-          <button className="btn-cc" onClick={fetchData} style={{ background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--panel-border)' }}>
-            <RefreshCw size={16} /> Actualizar
-          </button>
-          <button className="btn-cc" onClick={exportExcel} style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}>
-            <Download size={16} /> Excel
-          </button>
-          <button className="btn-cc" onClick={exportPdf} style={{ background: 'rgba(255,62,62,0.12)', color: '#ff3e3e', border: '1px solid rgba(255,62,62,0.3)' }}>
-            <FileText size={16} /> PDF
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '24px' }}>
-          <div className="cc-stat">
-            <div className="cc-stat-icon" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}><Calendar size={24} /></div>
-            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Fecha</div><div style={{ fontSize: '1.3rem', fontWeight: 800 }}>{new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
-          </div>
-          <div className="cc-stat">
-            <div className="cc-stat-icon" style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}><User size={24} /></div>
-            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Usuario</div><div style={{ fontSize: '1.3rem', fontWeight: 800 }}>{username}</div></div>
-          </div>
-          <div className="cc-stat">
-            <div className="cc-stat-icon" style={cierre ? { background: estadoColor(cierre.estado).bg, color: estadoColor(cierre.estado).color } : { background: 'rgba(100,100,100,0.1)', color: 'var(--text-muted)' }}>
-              {cierre ? React.createElement(estadoColor(cierre.estado).icon, { size: 24 }) : <XCircle size={24} />}
-            </div>
-            <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Estado</div><div style={{ fontSize: '1.3rem', fontWeight: 800 }}>{cierre ? estadoColor(cierre.estado).label : 'Sin apertura'}</div></div>
-          </div>
-        </div>
-
-        {!cierre && !loading && (
-          <div className="cc-card" style={{ marginBottom: '24px' }}>
-            <h3 style={{ margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '10px' }}><DollarSign size={22} color="var(--accent-primary)" /> Abrir Caja</h3>
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Monto Inicial (S/)</label>
-                <input type="number" step="0.01" min="0" value={montoApertura} onChange={(e) => setMontoApertura(e.target.value)} style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ flex: '2 1 300px' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Observaciones (opcional)</label>
-                <input type="text" value={obsApertura} onChange={(e) => setObsApertura(e.target.value)} placeholder="Ej: Caja aperturada con fondo inicial" style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-              <button className="btn-cc" onClick={abrirCaja} disabled={actionLoading || !montoApertura} style={{ background: 'var(--accent-primary)', color: '#fff', padding: '12px 32px' }}>
-                {actionLoading ? 'Abriendo...' : 'Abrir Caja'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {resumen && (
-          <div className="cc-card" style={{ marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}><TrendingUp size={22} color="var(--accent-secondary)" /> Resumen de Ingresos del Día</h3>
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                {cierre && <span>Monto Inicial: <strong style={{ color: 'var(--text-main)' }}>{formatMoney(cierre.montoInicial)}</strong></span>}
-              </div>
-            </div>
-
-            {Object.keys(resumen.detalle || {}).length === 0 ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No hay ingresos registrados hoy.</div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left', padding: '12px 16px', borderBottom: '1px solid var(--panel-border)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.8rem', textTransform: 'uppercase' }}>Método de Pago</th>
-                      <th style={{ textAlign: 'right', padding: '12px 16px', borderBottom: '1px solid var(--panel-border)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.8rem', textTransform: 'uppercase' }}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(resumen.detalle).map(([metodo, monto]) => (
-                      <tr key={metodo}>
-                        <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontWeight: 600 }}>{metodo}</td>
-                        <td style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'right', fontWeight: 700, color: 'var(--accent-primary)' }}>{formatMoney(monto)}</td>
-                      </tr>
-                    ))}
-                    <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                      <td style={{ padding: '14px 16px', fontWeight: 800, fontSize: '1rem' }}>TOTAL INGRESOS</td>
-                      <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, fontSize: '1rem', color: 'var(--accent-primary)' }}>{formatMoney(resumen.total)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {cierre && cierre.estado === 'ABIERTO' && (
-              <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--panel-border)' }}>
-                <h4 style={{ margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
-                  <DollarSign size={20} color="#22c55e" /> Cerrar Caja
-                </h4>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <div>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Monto Esperado</label>
-                    <div style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700, minWidth: '160px' }}>
-                      {formatMoney(totalEsperado)}
+    return (
+        <div style={modalStyle}>
+            <div style={modalContent}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '20px' }}>
+                    <div>
+                        <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', margin: 0, fontWeight: '700' }}>Gestión de Caja</h2>
+                        <p style={{ color: 'var(--accent-secondary)', margin: 0, marginTop: '8px', fontSize: '1.1rem', fontWeight: '500' }}>
+                            {sesionActiva ? `Sesión Activa: Turno ${sesionActiva.turno}` : 'Ninguna sesión activa'}
+                        </p>
                     </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Monto Real Contado (S/)</label>
-                    <input type="number" step="0.01" min="0" value={montoCierre} onChange={(e) => setMontoCierre(e.target.value)} placeholder="0.00" style={{ padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700, outline: 'none', width: '180px' }} />
-                  </div>
-                  <div style={{ flex: '1 1 200px' }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Observaciones</label>
-                    <input type="text" value={obsCierre} onChange={(e) => setObsCierre(e.target.value)} placeholder="Opcional" style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
-                  <button className="btn-cc" onClick={cerrarCaja} disabled={actionLoading || montoCierre === ''} style={{ background: '#22c55e', color: '#fff', padding: '12px 32px' }}>
-                    {actionLoading ? 'Cerrando...' : 'Cerrar Caja'}
-                  </button>
+                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-main)', cursor: 'pointer', borderRadius: '50%', padding: '10px', display: 'flex' }}>
+                        <X size={24} />
+                    </button>
                 </div>
-                {montoCierre && parseFloat(montoCierre) >= 0 && (
-                  <div style={{ marginTop: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.95rem' }}>
-                    <AlertTriangle size={20} color="#f97316" />
-                    <span>Diferencia estimada: <strong style={{ color: Math.abs(parseFloat(montoCierre) - parseFloat(totalEsperado)) > 0.5 ? '#ff3e3e' : '#22c55e' }}>
-                      {formatMoney(parseFloat(montoCierre) - parseFloat(totalEsperado))}
-                    </strong></span>
-                  </div>
+
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-main)' }}>
+                        <RefreshCw className="animate-spin" size={48} style={{ margin: '0 auto', color: 'var(--accent-secondary)' }} />
+                        <p style={{ marginTop: '16px', fontSize: '1.1rem', color: 'var(--text-muted)' }}>Cargando estado de la caja...</p>
+                    </div>
+                ) : resultadoCierre ? (
+                    <div style={{ textAlign: 'center', ...cardStyle, maxWidth: '500px', margin: '0 auto' }}>
+                        <CheckCircle size={70} color="#4ade80" style={{ margin: '0 auto 20px' }} />
+                        <h3 style={{ fontSize: '2rem', color: 'var(--text-main)', margin: '0 0 15px 0' }}>¡Turno Cerrado!</h3>
+                        <div style={{ textAlign: 'left', background: 'rgba(255,255,255,0.05)', padding: '25px', borderRadius: '12px', marginBottom: '25px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '1.1rem' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Estado:</span>
+                                <strong style={{ color: resultadoCierre.estado === 'CUADRADA' ? '#4ade80' : resultadoCierre.estado === 'FALTANTE' ? 'var(--accent-primary)' : '#60a5fa' }}>{resultadoCierre.estado}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '1.1rem' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Declarado:</span>
+                                <strong>S/ {parseFloat(resultadoCierre.montoFinalReal || 0).toFixed(2)}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '1.1rem' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Esperado:</span>
+                                <strong>S/ {parseFloat(resultadoCierre.montoFinalEsperado || 0).toFixed(2)}</strong>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid var(--panel-border)', fontSize: '1.2rem' }}>
+                                <strong>Diferencia:</strong>
+                                <strong style={{ color: resultadoCierre.diferencia < 0 ? 'var(--accent-primary)' : 'var(--text-main)' }}>S/ {parseFloat(resultadoCierre.diferencia || 0).toFixed(2)}</strong>
+                            </div>
+                        </div>
+                        <button onClick={onClose} style={{...btnStyle, background: 'var(--text-main)', color: 'var(--bg-color)'}}>Volver al Dashboard</button>
+                    </div>
+                ) : !sesionActiva ? (
+                    <div style={{ maxWidth: '450px', margin: '40px auto' }}>
+                        <div style={cardStyle}>
+                            <h3 style={{ marginBottom: '24px', color: 'var(--text-main)', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}><Clock size={24} color="var(--accent-secondary)" /> Abrir Nuevo Turno</h3>
+                            <form onSubmit={handleAbrirCaja}>
+                                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Turno</label>
+                                <select style={inputStyle} value={turnoSeleccionado} onChange={e => setTurnoSeleccionado(e.target.value)}>
+                                    <option value="Mañana">Mañana</option>
+                                    <option value="Tarde">Tarde</option>
+                                    <option value="Noche">Noche</option>
+                                    <option value="General">General (Día completo)</option>
+                                </select>
+                                
+                                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Fondo Inicial S/ (Sencillo)</label>
+                                <input type="number" step="0.01" style={{...inputStyle, fontSize: '1.2rem', fontWeight: 'bold'}} value={montoInicial} onChange={e => setMontoInicial(e.target.value)} />
+                                
+                                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Observaciones (Opcional)</label>
+                                <textarea rows="2" style={{...inputStyle, resize: 'none'}} value={observacionesApertura} onChange={e => setObservacionesApertura(e.target.value)} placeholder="Ej: La caja inicia con S/10 en monedas..." />
+                                
+                                <button type="submit" style={{...btnStyle, background: 'var(--accent-secondary)'}}>Abrir Caja Ahora</button>
+                            </form>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '30px' }}>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                            <div style={cardStyle}>
+                                <h3 style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '12px', marginBottom: '20px', fontSize: '1.4rem' }}>Resumen de Ingresos</h3>
+                                {resumen && (
+                                    <div style={{ color: 'var(--text-muted)', lineHeight: '2' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
+                                            <span>Fondo Inicial:</span> <strong style={{ color: 'var(--text-main)' }}>S/ {parseFloat(resumen.montoInicial || 0).toFixed(2)}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
+                                            <span>Total Ingresos Generales:</span> <strong style={{ color: 'var(--text-main)' }}>S/ {parseFloat(resumen.totalIngresos || 0).toFixed(2)}</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
+                                            <span>Salidas (Egresos/Retiros):</span> <strong style={{ color: 'var(--accent-primary)' }}>- S/ {parseFloat(resumen.totalMovimientos || 0).toFixed(2)}</strong>
+                                        </div>
+                                        
+                                        <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px dashed var(--panel-border)' }}>
+                                            <p style={{ fontSize: '0.85rem', textTransform: 'uppercase', marginBottom: '10px', color: 'var(--text-muted)' }}>Desglose por Método (Solo Ingresos)</p>
+                                            {Object.entries(resumen.detalle || {}).map(([m, val]) => (
+                                                <div key={m} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginBottom: '5px' }}>
+                                                    <span>{String(m).replace('_', ' ')}</span>
+                                                    <strong style={{ color: 'var(--text-main)' }}>S/ {parseFloat(val || 0).toFixed(2)}</strong>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={cardStyle}>
+                                <h3 style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '12px', marginBottom: '20px', fontSize: '1.4rem' }}>Registrar Salida de Dinero</h3>
+                                <form onSubmit={handleRegistrarMovimiento}>
+                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                        <button type="button" onClick={() => setMovimientoTipo('EGRESO')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: movimientoTipo === 'EGRESO' ? 'var(--text-main)' : 'rgba(255,255,255,0.05)', color: movimientoTipo === 'EGRESO' ? 'var(--bg-color)' : 'var(--text-main)', fontWeight: 'bold', transition: 'all 0.2s' }}>
+                                            Egreso (Gasto)
+                                        </button>
+                                        <button type="button" onClick={() => setMovimientoTipo('RETIRO_FONDOS')} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: movimientoTipo === 'RETIRO_FONDOS' ? '#3b82f6' : 'rgba(255,255,255,0.05)', color: movimientoTipo === 'RETIRO_FONDOS' ? '#fff' : 'var(--text-main)', fontWeight: 'bold', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                            <Lock size={16} /> Retiro a Banco
+                                        </button>
+                                    </div>
+                                    
+                                    <input type="text" placeholder="Motivo / Descripción" style={inputStyle} value={movimientoDesc} onChange={e => setMovimientoDesc(e.target.value)} />
+                                    <input type="number" step="0.01" placeholder="Monto S/" style={inputStyle} value={movimientoMonto} onChange={e => setMovimientoMonto(e.target.value)} />
+                                    
+                                    {movimientoTipo === 'RETIRO_FONDOS' && (
+                                        <div style={{ position: 'relative' }}>
+                                            <input type="password" placeholder="PIN de Administrador" style={{...inputStyle, borderColor: '#3b82f6'}} value={pinAdmin} onChange={e => setPinAdmin(e.target.value)} />
+                                        </div>
+                                    )}
+                                    
+                                    <button type="submit" style={{...btnStyle, background: movimientoTipo === 'RETIRO_FONDOS' ? '#3b82f6' : 'rgba(255,255,255,0.1)', color: 'var(--text-main)', border: '1px solid var(--panel-border)'}}>
+                                        <Plus size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
+                                        Registrar {movimientoTipo === 'EGRESO' ? 'Egreso' : 'Retiro'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div style={{ ...cardStyle, border: '2px solid var(--accent-secondary)', background: 'linear-gradient(to bottom right, rgba(255, 138, 0, 0.05), transparent)' }}>
+                            <h3 style={{ color: 'var(--accent-secondary)', marginBottom: '12px', fontSize: '1.6rem' }}>Cierre de Turno (Ciego)</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '25px', lineHeight: '1.5' }}>
+                                Cuente el dinero físico en su gaveta e ingréselo aquí. El sistema calculará las diferencias internamente para auditoría.
+                            </p>
+
+                            <form onSubmit={handleCerrarCaja} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
+                                    <label style={{ display: 'block', marginBottom: '10px', color: 'var(--text-main)', fontSize: '1.1rem' }}>
+                                        Total EFECTIVO físico en gaveta:
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '1.5rem', fontWeight: 'bold' }}>S/</span>
+                                        <input type="number" step="0.01" style={{...inputStyle, paddingLeft: '45px', fontSize: '2rem', fontWeight: 'bold', background: '#000', marginBottom: 0, height: '70px'}} placeholder="0.00" value={montoFisicoCajero} onChange={e => setMontoFisicoCajero(e.target.value)} />
+                                    </div>
+                                </div>
+
+                                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>¿Cuánto dejará en caja para el siguiente turno?</label>
+                                <input type="number" step="0.01" style={inputStyle} placeholder="S/ 0.00" value={fondoParaSiguiente} onChange={e => setFondoParaSiguiente(e.target.value)} />
+                                
+                                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)' }}>Observaciones Finales (Opcional)</label>
+                                <textarea rows="2" style={{...inputStyle, resize: 'none'}} value={observacionesCierre} onChange={e => setObservacionesCierre(e.target.value)} />
+                                
+                                <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
+                                    <div style={{ background: 'rgba(255, 138, 0, 0.1)', padding: '15px', borderRadius: '10px', color: 'var(--accent-secondary)', fontSize: '0.9rem', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                        <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+                                        <span>Asegúrese de haber contado bien. Al cerrar la caja, la sesión actual terminará y no podrá registrar más movimientos.</span>
+                                    </div>
+                                    <button type="submit" style={{...btnStyle, padding: '20px', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '1px'}}>
+                                        Finalizar Turno y Cerrar Caja
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 )}
-              </div>
-            )}
-
-            {cierre && cierre.estado !== 'ABIERTO' && (
-              <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--panel-border)', display: 'flex', gap: '24px', flexWrap: 'wrap', fontSize: '0.95rem' }}>
-                <div><span style={{ color: 'var(--text-muted)' }}>Monto Inicial:</span> <strong>{formatMoney(cierre.montoInicial)}</strong></div>
-                <div><span style={{ color: 'var(--text-muted)' }}>Esperado:</span> <strong>{formatMoney(cierre.montoFinalEsperado)}</strong></div>
-                <div><span style={{ color: 'var(--text-muted)' }}>Real:</span> <strong>{formatMoney(cierre.montoFinalReal)}</strong></div>
-                <div><span style={{ color: 'var(--text-muted)' }}>Diferencia:</span> <strong style={{ color: parseFloat(cierre.diferencia || 0) > 0.5 ? '#ff3e3e' : '#22c55e' }}>{formatMoney(cierre.diferencia)}</strong></div>
-                <div><span style={{ color: 'var(--text-muted)' }}>Cerrado por:</span> <strong>{cierre.username}</strong></div>
-                {cierre.observaciones && <div><span style={{ color: 'var(--text-muted)' }}>Obs:</span> <strong>{cierre.observaciones}</strong></div>}
-              </div>
-            )}
-          </div>
-        )}
-
-        {loading && <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Cargando datos de caja...</div>}
-
-        <div style={{ textAlign: 'right', marginTop: '16px' }}>
-          <button onClick={onClose} style={{ padding: '10px 24px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 600 }}>
-            Cerrar
-          </button>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default CierreCaja;

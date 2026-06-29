@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface CierreCajaRepository extends JpaRepository<CierreCaja, Long> {
 
     Optional<CierreCaja> findByFecha(LocalDate fecha);
+    java.util.List<CierreCaja> findByEstado(String estado);
 }

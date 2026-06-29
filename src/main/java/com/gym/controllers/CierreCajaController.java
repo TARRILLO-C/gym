@@ -21,7 +21,7 @@ public class CierreCajaController {
     private final CierreCajaService cierreCajaService;
 
     @PostMapping("/abrir")
-    public ResponseEntity<CierreCaja> abrirCaja(@RequestBody AbrirRequest request) {
+    public ResponseEntity<?> abrirCaja(@RequestBody AbrirRequest request) {
         try {
             CierreCaja cierre = cierreCajaService.abrirCaja(
                     request.getUsername(),
@@ -29,7 +29,7 @@ public class CierreCajaController {
                     request.getObservaciones());
             return ResponseEntity.ok(cierre);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(Map.of("mensaje", e.getMessage()));
         }
     }
 
@@ -44,13 +44,13 @@ public class CierreCajaController {
 
     @GetMapping("/resumen")
     public ResponseEntity<Map<String, Object>> obtenerResumen(
-            @RequestParam(required = false) String fecha) {
+        @RequestParam(required = false) String fecha) {
         LocalDate fechaConsulta = (fecha != null) ? LocalDate.parse(fecha) : LocalDate.now();
         return ResponseEntity.ok(cierreCajaService.obtenerResumenCaja(fechaConsulta));
     }
 
     @PostMapping("/cerrar")
-    public ResponseEntity<CierreCaja> cerrarCaja(@RequestBody CerrarRequest request) {
+    public ResponseEntity<?> cerrarCaja(@RequestBody CerrarRequest request) {
         try {
             CierreCaja cierre = cierreCajaService.cerrarCaja(
                     request.getCierreId(),
@@ -58,7 +58,7 @@ public class CierreCajaController {
                     request.getObservaciones());
             return ResponseEntity.ok(cierre);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(Map.of("mensaje", e.getMessage()));
         }
     }
 

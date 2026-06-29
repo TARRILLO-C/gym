@@ -47,8 +47,28 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
             + "WHERE v.id = :id")
     Optional<Venta> findByIdWithDetalles(Long id);
 
-    @Query("SELECT v.metodoPago, COALESCE(SUM(v.total), 0) FROM Venta v "
-            + "WHERE v.fecha BETWEEN :inicio AND :fin AND v.activo <> false "
-            + "GROUP BY v.metodoPago")
+    /**
+     * Suma del efectivo generado en una sesión (solo ventas válidas).
+     */
+    @Query("SELECT COALESCE(SUM(v.totalEfectivo), 0) FROM Venta v " +
+           "WHERE v.sesion.id = :sesionId AND v.activo = true")
+    java.math.BigDecimal sumEfectivoBySesion(Long sesionId);
+
+    /**
+     * Resumen de ingresos de una sesión agrupado por método de pago
+     * (basado en pagos_venta para soportar pagos mixtos).
+     */
+    @Query("SELECT pv.metodoPago, COALESCE(SUM(pv.monto), 0) " +
+           "FROM PagoVenta pv WHERE pv.venta.sesion.id = :sesionId " +
+           "AND pv.venta.activo = true GROUP BY pv.metodoPago")
+    List<Object[]> findResumenMetodosBySesion(Long sesionId);
+
+    /**
+     * Consulta legado: resumen por rango de fechas (para MonitorCaja).
+     */
+    @Query("SELECT pv.metodoPago, COALESCE(SUM(pv.monto), 0) " +
+           "FROM PagoVenta pv " +
+           "WHERE pv.venta.fecha BETWEEN :inicio AND :fin AND pv.venta.activo = true " +
+           "GROUP BY pv.metodoPago")
     List<Object[]> findResumenMetodos(LocalDateTime inicio, LocalDateTime fin);
 }
