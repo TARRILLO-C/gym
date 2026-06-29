@@ -267,6 +267,8 @@ const Ventas = () => {
       title={<span>Historial de <span className="text-gradient">Ventas</span></span>}
       subtitle="Revisa todas las transacciones realizadas en el gimnasio."
     >
+
+
       <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
         <button 
           onClick={() => setActiveTab('productos')}
@@ -560,46 +562,53 @@ const Ventas = () => {
         )}
       </div>
 
-      {/* Ranquin de productos más vendidos */}
-      <div className="card" style={{ marginTop: '24px', padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <TrendingUp size={22} color="#f97316" />
-          <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: 700, fontSize: '1.1rem' }}>Ranquin de productos más vendidos</h3>
-        </div>
-        {productoRanking.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>No hay datos de ventas de productos.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {productoRanking.map((item, idx) => (
-              <div key={item.nombre} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--panel-border)' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', background: idx === 0 ? '#f97316' : idx === 1 ? '#64748b' : idx === 2 ? '#92400e' : 'var(--panel-border)', color: idx < 3 ? '#fff' : 'var(--text-muted)' }}>{idx + 1}</div>
-                <div style={{ flex: 1, fontWeight: 600, color: 'var(--text-main)' }}>{item.nombre}</div>
-                <div style={{ fontWeight: 700, color: '#f97316', fontSize: '0.95rem' }}>{item.cantidad} vendidos</div>
-              </div>
-            ))}
+      {/* Rankings Inferiores */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginTop: '24px' }}>
+        {/* Ranking de productos más vendidos */}
+        <div className="card stat-card" style={{ padding: '24px', flex: 1, boxShadow: '0 2px 12px rgba(0,0,0,0.03)', transition: 'box-shadow 0.3s ease', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.02)' }} onMouseEnter={e => e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.06)'} onMouseLeave={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.03)'}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <div style={{ background: 'rgba(249, 115, 22, 0.1)', padding: '10px', borderRadius: '12px', display: 'flex' }}>
+              <TrendingUp size={20} color="#f97316" />
+            </div>
+            <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: 600, fontSize: '1.05rem' }}>Ranking de productos más vendidos</h3>
           </div>
-        )}
-      </div>
+          {productoRanking.slice(0, 10).length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20, fontSize: '0.9rem' }}>No hay datos suficientes.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {productoRanking.slice(0, 10).map((item, idx) => (
+                <div key={item.nombre} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'rgba(0,0,0,0.015)', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.02)' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', background: idx === 0 ? 'linear-gradient(135deg, #f97316, #fb923c)' : idx === 1 ? '#94a3b8' : idx === 2 ? '#b45309' : 'rgba(0,0,0,0.04)', color: idx < 3 ? '#fff' : 'var(--text-muted)', boxShadow: idx === 0 ? '0 4px 10px rgba(249, 115, 22, 0.3)' : 'none' }}>{idx + 1}</div>
+                  <div style={{ flex: 1, fontWeight: 500, color: 'var(--text-main)', fontSize: '0.95rem' }}>{item.nombre}</div>
+                  <div style={{ fontWeight: 700, color: '#f97316', fontSize: '0.9rem', background: 'rgba(249, 115, 22, 0.08)', padding: '4px 10px', borderRadius: '20px' }}>{item.cantidad}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* Ranquin de suscripciones más vendidas */}
-      <div className="card" style={{ marginTop: '16px', padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-          <Award size={22} color="#a78bfa" />
-          <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: 700, fontSize: '1.1rem' }}>Ranquin de suscripciones más vendidas</h3>
-        </div>
-        {suscripcionRanking.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>No hay datos de suscripciones.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {suscripcionRanking.map((item, idx) => (
-              <div key={item.nombre} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--panel-bg)', borderRadius: 10, border: '1px solid var(--panel-border)' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', background: idx === 0 ? '#a78bfa' : idx === 1 ? '#64748b' : idx === 2 ? '#92400e' : 'var(--panel-border)', color: idx < 3 ? '#fff' : 'var(--text-muted)' }}>{idx + 1}</div>
-                <div style={{ flex: 1, fontWeight: 600, color: 'var(--text-main)' }}>{item.nombre}</div>
-                <div style={{ fontWeight: 700, color: '#a78bfa', fontSize: '0.95rem' }}>{item.cantidad} ventas</div>
-              </div>
-            ))}
+        {/* Ranking de suscripciones más vendidas */}
+        <div className="card stat-card" style={{ padding: '24px', flex: 1, boxShadow: '0 2px 12px rgba(0,0,0,0.03)', transition: 'box-shadow 0.3s ease', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.02)' }} onMouseEnter={e => e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.06)'} onMouseLeave={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.03)'}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <div style={{ background: 'rgba(167, 139, 250, 0.1)', padding: '10px', borderRadius: '12px', display: 'flex' }}>
+              <Award size={20} color="#a78bfa" />
+            </div>
+            <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: 600, fontSize: '1.05rem' }}>Ranking de suscripciones más vendidas</h3>
           </div>
-        )}
+          {suscripcionRanking.slice(0, 10).length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 20, fontSize: '0.9rem' }}>No hay datos suficientes.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {suscripcionRanking.slice(0, 10).map((item, idx) => (
+                <div key={item.nombre} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: 'rgba(0,0,0,0.015)', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.02)' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', background: idx === 0 ? 'linear-gradient(135deg, #a78bfa, #c084fc)' : idx === 1 ? '#94a3b8' : idx === 2 ? '#b45309' : 'rgba(0,0,0,0.04)', color: idx < 3 ? '#fff' : 'var(--text-muted)', boxShadow: idx === 0 ? '0 4px 10px rgba(167, 139, 250, 0.3)' : 'none' }}>{idx + 1}</div>
+                  <div style={{ flex: 1, fontWeight: 500, color: 'var(--text-main)', fontSize: '0.95rem' }}>{item.nombre}</div>
+                  <div style={{ fontWeight: 700, color: '#a78bfa', fontSize: '0.9rem', background: 'rgba(167, 139, 250, 0.08)', padding: '4px 10px', borderRadius: '20px' }}>{item.cantidad}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </PageLayout>
     <PrintTicket venta={ventaToPrint} />
