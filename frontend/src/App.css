@@ -235,6 +235,25 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Dashboard Cards Grid (4 columnas fijo en Desktop, responsivo en móvil) */
+.dashboard-cards-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .dashboard-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
