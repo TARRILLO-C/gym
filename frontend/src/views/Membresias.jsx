@@ -21,12 +21,14 @@ import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
 import PrintTicket from '../components/ui/PrintTicket';
+import CierreCaja from './CierreCaja';
 
 const Membresias = () => {
   const [activeTab, setActiveTab] = useState('suscripciones');
   const [suscripciones, setSuscripciones] = useState([]);
   const [membresias, setMembresias] = useState([]);
   const [cajaAbierta, setCajaAbierta] = useState(true);
+  const [showCierreModal, setShowCierreModal] = useState(false);
   const [filterMode, setFilterMode] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -511,29 +513,50 @@ const Membresias = () => {
       title={<span>Gestión de <span className="text-gradient">Membresías</span></span>}
       subtitle="Control de socios activos y configuración de planes comerciales."
       actionButton={
-        <div className="tabs-container" style={{ display: 'flex', background: 'var(--panel-bg)', padding: '6px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button 
-            onClick={() => setActiveTab('suscripciones')}
+            onClick={() => setShowCierreModal(true)} 
             style={{ 
-              padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              background: activeTab === 'suscripciones' ? 'rgba(255, 62, 62, 0.1)' : 'transparent',
-              color: activeTab === 'suscripciones' ? 'var(--accent-primary)' : 'var(--text-muted)',
-              fontWeight: '600', transition: '0.3s'
+              padding: '10px 16px', 
+              borderRadius: '12px', 
+              border: '1px solid ' + (cajaAbierta ? 'rgba(34,197,94,0.3)' : 'rgba(255,62,62,0.3)'), 
+              background: cajaAbierta ? 'rgba(34,197,94,0.1)' : 'rgba(255,62,62,0.1)', 
+              color: cajaAbierta ? '#22c55e' : '#ff3e3e', 
+              fontWeight: '600', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px' 
             }}
           >
-            <Users size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Suscripciones
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: cajaAbierta ? '#22c55e' : '#ff3e3e' }}></span>
+            Caja: {cajaAbierta ? 'Abierta' : 'Cerrada'}
           </button>
-          <button 
-            onClick={() => setActiveTab('catalogo')}
-            style={{ 
-              padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-              background: activeTab === 'catalogo' ? 'rgba(255, 62, 62, 0.1)' : 'transparent',
-              color: activeTab === 'catalogo' ? 'var(--accent-primary)' : 'var(--text-muted)',
-              fontWeight: '600', transition: '0.3s'
-            }}
-          >
-            <Settings size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Catálogo de Planes
-          </button>
+
+          <div className="tabs-container" style={{ display: 'flex', background: 'var(--panel-bg)', padding: '6px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+            <button 
+              onClick={() => setActiveTab('suscripciones')}
+              style={{ 
+                padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                background: activeTab === 'suscripciones' ? 'rgba(255, 62, 62, 0.1)' : 'transparent',
+                color: activeTab === 'suscripciones' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                fontWeight: '600', transition: '0.3s'
+              }}
+            >
+              <Users size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Suscripciones
+            </button>
+            <button 
+              onClick={() => setActiveTab('catalogo')}
+              style={{ 
+                padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                background: activeTab === 'catalogo' ? 'rgba(255, 62, 62, 0.1)' : 'transparent',
+                color: activeTab === 'catalogo' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                fontWeight: '600', transition: '0.3s'
+              }}
+            >
+              <Settings size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Catálogo de Planes
+            </button>
+          </div>
         </div>
       }
     >
@@ -550,10 +573,21 @@ const Membresias = () => {
               marginBottom: '10px',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px'
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
-              <AlertCircle size={24} />
-              <span>⚠️ La caja del día no ha sido abierta. Debe abrir la caja desde el Monitor de Caja antes de poder vender planes o registrar cobros.</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AlertCircle size={24} />
+                <span>La caja del día no ha sido abierta. Debe abrir la caja antes de registrar ventas.</span>
+              </div>
+              <button 
+                onClick={() => setShowCierreModal(true)} 
+                className="btn-primary" 
+                style={{ background: '#ff3e3e', color: 'white', padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                ABRIR CAJA
+              </button>
             </div>
           )}
 
@@ -1390,6 +1424,8 @@ const Membresias = () => {
           100% { transform: translateX(350%); }
         }
       `}</style>
+
+      {showCierreModal && <CierreCaja isOpen={true} onClose={() => { setShowCierreModal(false); fetchData(); }} />}
 
     </PageLayout>
   );
