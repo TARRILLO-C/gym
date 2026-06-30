@@ -136,12 +136,12 @@ const Membresias = () => {
         api.get('/suscripciones'),
         api.get('/membresias'),
         api.get('/socios'),
-        api.get('/cierre-caja/hoy').catch(() => null)
+        api.get('/sesiones-caja/activa').catch(() => null)
       ]);
       setSuscripciones(suscResp.data);
       setMembresias(membResp.data);
       setSocios(socioResp.data);
-      setCajaAbierta(cajaResp && cajaResp.status === 200 && cajaResp.data && cajaResp.data.estado === 'ABIERTO');
+      setCajaAbierta(cajaResp && cajaResp.status === 200 && cajaResp.data && (cajaResp.data.estado === 'ABIERTO' || cajaResp.data.estado === 'ABIERTA'));
     } catch (err) {
       console.error("Error cargando datos:", err);
     } finally {

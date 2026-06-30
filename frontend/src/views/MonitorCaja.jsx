@@ -11,7 +11,10 @@ import {
   Package,
   Clock,
   User,
-  X
+  X,
+  Ban,
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -33,8 +36,23 @@ const MonitorCaja = () => {
   const [filterType, setFilterType] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [monitorSubTab, setMonitorSubTab] = useState('transacciones'); // 'transacciones' o 'cierres'
+  const [monitorSubTab, setMonitorSubTab] = useState('transacciones');
   const [historialCierres, setHistorialCierres] = useState([]);
+  const [selectedCierre, setSelectedCierre] = useState(null);
+  const [selectedCierreMovimientos, setSelectedCierreMovimientos] = useState([]);
+  const [loadingMovimientos, setLoadingMovimientos] = useState(false);
+
+  // Estado del modal de anulación
+  const [anulacionModal, setAnulacionModal] = useState({ show: false, ventaId: null, cliente: '' });
+  const [motivoAnulacion, setMotivoAnulacion] = useState('');
+  const [pinAdmin, setPinAdmin] = useState('');
+  const [anulando, setAnulando] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3500);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -43,7 +61,7 @@ const MonitorCaja = () => {
         api.get('/ventas/productos'),
         api.get('/pagos'),
         api.get('/productos'),
-        api.get('/cierre-caja/historial').catch(() => ({ data: [] }))
+        api.get('/sesiones-caja/historial').catch(() => ({ data: [] }))
       ]);
       setVentas(Array.isArray(vResp.data) ? vResp.data : []);
       setPagos(Array.isArray(pResp.data) ? pResp.data : []);
@@ -57,6 +75,25 @@ const MonitorCaja = () => {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (selectedCierre) {
+      setLoadingMovimientos(true);
+      api.get(`/sesiones-caja/${selectedCierre.id}/movimientos`)
+        .then(res => {
+          setSelectedCierreMovimientos(res.data || []);
+        })
+        .catch(err => {
+          console.error('Error fetching movements', err);
+          setSelectedCierreMovimientos([]);
+        })
+        .finally(() => {
+          setLoadingMovimientos(false);
+        });
+    } else {
+      setSelectedCierreMovimientos([]);
+    }
+  }, [selectedCierre]);
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -156,6 +193,43 @@ const MonitorCaja = () => {
   };
 
 
+
+  const handleAnularComprobante = async () => {
+    if (!motivoAnulacion.trim()) {
+      showToast('El motivo de anulación es obligatorio.', 'error');
+      return;
+    }
+    if (!pinAdmin.trim()) {
+      showToast('El PIN de administrador es obligatorio.', 'error');
+      return;
+    }
+    setAnulando(true);
+    try {
+      await api.post(`/ventas/${anulacionModal.ventaId}/anular`, {
+        motivoAnulacion: motivoAnulacion.trim(),
+        pinAdmin: pinAdmin.trim()
+      });
+      showToast('Comprobante anulado exitosamente.', 'success');
+      setAnulacionModal({ show: false, ventaId: null, cliente: '' });
+      setMotivoAnulacion('');
+      setPinAdmin('');
+      fetchData();
+    } catch (err) {
+      if (err.response?.status === 403) {
+        showToast('PIN de administrador incorrecto o sin permisos.', 'error');
+      } else {
+        showToast(err.response?.data?.error || 'Error al anular el comprobante.', 'error');
+      }
+    } finally {
+      setAnulando(false);
+    }
+  };
+
+  const abrirModalAnulacion = (ventaId, cliente) => {
+    setAnulacionModal({ show: true, ventaId, cliente });
+    setMotivoAnulacion('');
+    setPinAdmin('');
+  };
 
   return (
     <PageLayout
@@ -288,7 +362,14 @@ const MonitorCaja = () => {
                       if (diff < 0) diffColor = '#ff3e3e'; // Faltante
 
                       return (
-                        <tr key={c.id}>
+                        <tr 
+                          key={c.id} 
+                          onClick={() => setSelectedCierre(c)}
+                          style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                          onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                          title="Haz clic para ver detalles del turno"
+                        >
                           <td style={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                             {c.aperturaAt ? new Date(c.aperturaAt).toLocaleString('es-PE') : '-'}
                           </td>
@@ -300,9 +381,9 @@ const MonitorCaja = () => {
                             {c.montoFinalReal !== null ? formatMoney(diff) : '-'}
                           </td>
                           <td>
-                            <span className={c.estado === 'ABIERTO' ? 'badge-ok' : 'badge-err'} style={{
-                              background: c.estado === 'ABIERTO' ? 'rgba(34,197,94,0.12)' : 'rgba(255,62,62,0.12)',
-                              color: c.estado === 'ABIERTO' ? '#22c55e' : '#ff3e3e',
+                            <span className={c.estado === 'ABIERTO' || c.estado === 'ABIERTA' ? 'badge-ok' : 'badge-err'} style={{
+                              background: c.estado === 'ABIERTO' || c.estado === 'ABIERTA' ? 'rgba(34,197,94,0.12)' : 'rgba(255,62,62,0.12)',
+                              color: c.estado === 'ABIERTO' || c.estado === 'ABIERTA' ? '#22c55e' : '#ff3e3e',
                               padding: '4px 12px',
                               borderRadius: '20px',
                               fontSize: '0.75rem',
@@ -377,11 +458,12 @@ const MonitorCaja = () => {
                         <th>Método Pago</th>
                         <th>Monto</th>
                         <th>Estado</th>
+                        <th>Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filtered.map((r, i) => (
-                        <tr key={r.id + '-' + i} style={{ opacity: r.activo ? 1 : 0.5 }}>
+                        <tr key={r.id + '-' + i} style={{ opacity: r.activo ? 1 : 0.55 }}>
                           <td style={{ whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Clock size={14} color="var(--text-muted)" />
@@ -398,6 +480,31 @@ const MonitorCaja = () => {
                           <td><span className="badge" style={{ background: 'var(--bg-color)', border: '1px solid var(--panel-border)' }}>{r.metodo}</span></td>
                           <td style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>{formatMoney(r.monto)}</td>
                           <td><span className={r.activo ? 'badge-ok' : 'badge-err'}>{r.estado}</span></td>
+                          <td>
+                            {r.activo && r.tipo === 'Venta Producto' ? (
+                              <button
+                                onClick={() => abrirModalAnulacion(r.id, r.cliente)}
+                                title="Anular Comprobante"
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '5px',
+                                  padding: '5px 12px', borderRadius: '8px',
+                                  border: '1px solid rgba(239,68,68,0.4)',
+                                  background: 'rgba(239,68,68,0.08)',
+                                  color: '#ef4444', cursor: 'pointer',
+                                  fontSize: '0.78rem', fontWeight: 700,
+                                  whiteSpace: 'nowrap', transition: 'all 0.2s'
+                                }}
+                                onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.18)'}
+                                onMouseOut={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
+                              >
+                                <Ban size={13} /> Anular Comprobante
+                              </button>
+                            ) : r.activo ? (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>-</span>
+                            ) : (
+                              <span style={{ color: '#ef4444', fontSize: '0.78rem', fontWeight: 600 }}>✕ Anulada</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                       {filtered.length === 0 && (
@@ -412,7 +519,281 @@ const MonitorCaja = () => {
         )}
       </div>
 
-      {showCierreModal && <CierreCaja isOpen={true} onClose={() => setShowCierreModal(false)} />}
+      {showCierreModal && <CierreCaja isOpen={true} onClose={() => { setShowCierreModal(false); fetchData(); }} />}
+
+      {/* Modal: Detalles de Sesión de Caja */}
+      {selectedCierre && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px', backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            background: 'var(--panel-bg)', border: '1px solid var(--panel-border)',
+            borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '650px',
+            maxHeight: '90vh', overflowY: 'auto',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '16px' }}>
+              <div style={{ background: 'rgba(249,115,22,0.1)', borderRadius: '12px', padding: '10px', display: 'flex' }}>
+                <Clock size={28} color="#f97316" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem', fontWeight: '700' }}>Detalles del Turno</h2>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Usuario: <strong>{selectedCierre.username}</strong> | Turno: <strong>{selectedCierre.turno}</strong>
+                </p>
+              </div>
+              <button onClick={() => setSelectedCierre(null)}
+                style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.05)', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', borderRadius: '50%', padding: '8px', display: 'flex' }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Grid principal */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              {/* Resumen Financiero */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: '700', borderBottom: '1px solid var(--panel-border)', paddingBottom: '8px' }}>Resumen General</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.9rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Estado:</span>
+                    <span className={selectedCierre.estado === 'ABIERTO' || selectedCierre.estado === 'ABIERTA' ? 'badge-ok' : 'badge-err'} style={{
+                      background: selectedCierre.estado === 'ABIERTO' || selectedCierre.estado === 'ABIERTA' ? 'rgba(34,197,94,0.12)' : 'rgba(255,62,62,0.12)',
+                      color: selectedCierre.estado === 'ABIERTO' || selectedCierre.estado === 'ABIERTA' ? '#22c55e' : '#ff3e3e',
+                      padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700'
+                    }}>
+                      {selectedCierre.estado}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Monto Inicial:</span>
+                    <strong style={{ color: 'var(--text-main)' }}>{formatMoney(selectedCierre.montoInicial)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Efectivo Esperado:</span>
+                    <strong style={{ color: 'var(--text-main)' }}>{selectedCierre.montoFinalEsperado !== null ? formatMoney(selectedCierre.montoFinalEsperado) : '-'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Efectivo Real:</span>
+                    <strong style={{ color: 'var(--text-main)' }}>{selectedCierre.montoFinalReal !== null ? formatMoney(selectedCierre.montoFinalReal) : '-'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed var(--panel-border)', paddingTop: '8px' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 'bold' }}>Diferencia:</span>
+                    <strong style={{ 
+                      color: parseFloat(selectedCierre.diferencia || 0) < 0 ? '#ff3e3e' : parseFloat(selectedCierre.diferencia || 0) > 0 ? '#22c55e' : 'var(--text-main)',
+                      fontWeight: 'bold'
+                    }}>
+                      {selectedCierre.montoFinalReal !== null ? formatMoney(selectedCierre.diferencia) : '-'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tiempos y Siguiente Turno */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: '700', borderBottom: '1px solid var(--panel-border)', paddingBottom: '8px' }}>Detalles de Tiempos</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>Apertura:</span>
+                      <strong style={{ color: 'var(--text-main)' }}>{new Date(selectedCierre.aperturaAt).toLocaleString('es-PE')}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>Cierre:</span>
+                      <strong style={{ color: 'var(--text-main)' }}>{selectedCierre.cierreAt ? new Date(selectedCierre.cierreAt).toLocaleString('es-PE') : 'Aún abierto'}</strong>
+                    </div>
+                  </div>
+                </div>
+                {selectedCierre.cierreAt && (
+                  <div style={{ borderTop: '1px dashed var(--panel-border)', paddingTop: '8px', marginTop: '10px', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Fondo Siguiente:</span>
+                    <strong style={{ color: '#f97316' }}>{formatMoney(selectedCierre.fondoParaSiguiente)}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Detalle de Ingresos por Métodos de Pago */}
+            {(() => {
+              let resumen = null;
+              try {
+                if (selectedCierre.resumenJson) {
+                  resumen = JSON.parse(selectedCierre.resumenJson);
+                }
+              } catch(e) {}
+
+              if (!resumen) return null;
+
+              return (
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)', marginBottom: '20px' }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: '700', borderBottom: '1px solid var(--panel-border)', paddingBottom: '8px' }}>Desglose de Ingresos</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+                    {Object.entries(resumen.detalle || {}).map(([metodo, valor]) => (
+                      <div key={metodo} style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid var(--panel-border)', textAlign: 'center' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '4px', letterSpacing: '0.5px' }}>
+                          {metodo.replace('_', ' ')}
+                        </span>
+                        <strong style={{ color: 'var(--text-main)', fontSize: '1.05rem' }}>{formatMoney(valor)}</strong>
+                      </div>
+                    ))}
+                    <div style={{ background: 'rgba(34,197,94,0.05)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)', textAlign: 'center' }}>
+                      <span style={{ color: '#22c55e', fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Total Ingresos</span>
+                      <strong style={{ color: '#22c55e', fontSize: '1.05rem' }}>{formatMoney(resumen.totalIngresos)}</strong>
+                    </div>
+                    <div style={{ background: 'rgba(239,68,68,0.05)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)', textAlign: 'center' }}>
+                      <span style={{ color: '#ef4444', fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>Gastos/Egresos</span>
+                      <strong style={{ color: '#ef4444', fontSize: '1.05rem' }}>{formatMoney(resumen.totalMovimientos)}</strong>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Listado de movimientos de caja (egresos / retiros) en el turno */}
+            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)', marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: '700', borderBottom: '1px solid var(--panel-border)', paddingBottom: '8px' }}>Movimientos Registrados (Gastos / Retiros)</h3>
+              {loadingMovimientos ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Cargando movimientos...</div>
+              ) : selectedCierreMovimientos.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                  {selectedCierreMovimientos.map(m => (
+                    <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', fontSize: '0.85rem' }}>
+                      <div>
+                        <span style={{ fontWeight: 'bold', color: m.tipo === 'EGRESO' ? '#f97316' : '#3b82f6', marginRight: '8px' }}>
+                          {m.tipo}
+                        </span>
+                        <span style={{ color: 'var(--text-main)' }}>{m.descripcion}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <strong style={{ color: '#ef4444' }}>-{formatMoney(m.monto)}</strong>
+                        <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>By: {m.username}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '10px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                  No se registraron egresos ni retiros de efectivo durante este turno.
+                </div>
+              )}
+            </div>
+
+            {/* Observaciones */}
+            {selectedCierre.observaciones && (
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)', marginBottom: '24px' }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: '700' }}>Observaciones del Cierre</h3>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: '1.4' }}>{selectedCierre.observaciones}</p>
+              </div>
+            )}
+
+            {/* Botón Cerrar */}
+            <button
+              onClick={() => setSelectedCierre(null)}
+              style={{ width: '100%', padding: '14px', borderRadius: '10px', border: 'none', background: '#f97316', color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}
+            >
+              Cerrar Detalles
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Anular Comprobante */}
+      {anulacionModal.show && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px', backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            background: 'var(--panel-bg)', border: '1px solid var(--panel-border)',
+            borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '460px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '8px' }}>
+              <div style={{ background: 'rgba(239,68,68,0.15)', borderRadius: '12px', padding: '10px', display: 'flex' }}>
+                <Ban size={28} color="#ef4444" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>Anular Comprobante</h2>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Venta de: {anulacionModal.cliente}</p>
+              </div>
+              <button onClick={() => setAnulacionModal({ show: false, ventaId: null, cliente: '' })}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Aviso */}
+            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <AlertTriangle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span style={{ color: '#ef4444', fontSize: '0.88rem', lineHeight: '1.5' }}>
+                Esta acción es <strong>irreversible</strong>. El monto será devuelto al saldo de la caja actual y se registrará en la bitácora de auditoría.
+              </span>
+            </div>
+
+            {/* Motivo */}
+            <label style={{ display: 'block', marginBottom: '6px', color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>Motivo de Anulación *</label>
+            <textarea
+              rows={3}
+              placeholder="Ej: Error en el precio, devolución del cliente..."
+              value={motivoAnulacion}
+              onChange={e => setMotivoAnulacion(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-main)', fontSize: '0.95rem', resize: 'none', boxSizing: 'border-box', marginBottom: '16px', outline: 'none' }}
+            />
+
+            {/* PIN Admin */}
+            <label style={{ display: 'block', marginBottom: '6px', color: 'var(--text-muted)', fontSize: '0.88rem', fontWeight: 600 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><ShieldCheck size={15} /> PIN de Administrador *</span>
+            </label>
+            <input
+              type="password"
+              placeholder="••••••"
+              value={pinAdmin}
+              onChange={e => setPinAdmin(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAnularComprobante()}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #3b82f6', background: 'rgba(59,130,246,0.06)', color: 'var(--text-main)', fontSize: '1rem', boxSizing: 'border-box', marginBottom: '24px', outline: 'none', letterSpacing: '4px' }}
+            />
+
+            {/* Botones */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setAnulacionModal({ show: false, ventaId: null, cliente: '' })}
+                disabled={anulando}
+                style={{ flex: 1, padding: '13px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'transparent', color: 'var(--text-main)', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAnularComprobante}
+                disabled={anulando}
+                style={{ flex: 1, padding: '13px', borderRadius: '10px', border: 'none', background: anulando ? '#666' : '#ef4444', color: 'white', fontWeight: 700, cursor: anulando ? 'not-allowed' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'background 0.2s' }}
+              >
+                <Ban size={16} /> {anulando ? 'Anulando...' : 'Confirmar Anulación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      <div style={{
+        position: 'fixed', bottom: '28px', right: '28px',
+        background: toast.type === 'success' ? '#10b981' : '#ef4444',
+        color: 'white', padding: '14px 22px', borderRadius: '10px',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.4)', fontWeight: 700, zIndex: 9999,
+        transform: toast.show ? 'translateY(0)' : 'translateY(120px)',
+        opacity: toast.show ? 1 : 0,
+        transition: 'all 0.35s cubic-bezier(0.68,-0.55,0.265,1.55)',
+        display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '360px'
+      }}>
+        {toast.type === 'success' ? '✓' : '⚠'} {toast.message}
+      </div>
     </PageLayout>
   );
 };
