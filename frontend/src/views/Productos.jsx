@@ -89,12 +89,12 @@ const Productos = () => {
         api.get('/productos'),
         api.get('/socios'),
         api.get('/categorias-producto'),
-        api.get('/cierre-caja/hoy').catch(() => null)
+        api.get('/sesiones-caja/activa').catch(() => null)
       ]);
       setProductos(prodResp.data);
       setSocios(socioResp.data);
       setCategorias(catResp.data);
-      setCajaAbierta(cajaResp && cajaResp.status === 200 && cajaResp.data && cajaResp.data.estado === 'ABIERTO');
+      setCajaAbierta(cajaResp && cajaResp.status === 200 && cajaResp.data && (cajaResp.data.estado === 'ABIERTO' || cajaResp.data.estado === 'ABIERTA'));
       if (role === 'ADMINISTRADOR') {
         try {
           const catTodasResp = await api.get('/categorias-producto/todas');

@@ -1,0 +1,78 @@
+================================================================================
+           DESCRIPCIÓN DETALLADA DEL FLUJO BPMN: CONTROL Y MONITOR DE CAJA
+================================================================================
+
+Este documento describe el flujo de procesos de negocio (BPMN) diseñado para la
+gestión, operación, cierre y auditoría de la caja registradora en el sistema del gimnasio.
+
+El proceso se divide en tres carriles (Swimlanes / Pools) principales:
+1. Cajero (Turno de Trabajo)
+2. Sistema (Backend, Reglas de Negocio y Base de Datos)
+3. Administrador (Auditoría e Historial)
+
+--------------------------------------------------------------------------------
+1. CARRIL: CAJERO (Operador de Turno)
+--------------------------------------------------------------------------------
+Representa las acciones manuales e interacciones del cajero durante su jornada laboral:
+
+* INICIO: El proceso comienza cuando el cajero inicia su turno de trabajo en el gimnasio.
+* Tarea 1 (Solicitar Apertura): El cajero ingresa a la aplicación y solicita abrir
+  la caja registradora desde la interfaz de control.
+* Tarea 2 (Ingresar Monto Inicial): Cuenta el dinero en efectivo asignado físicamente
+  a la gaveta (fondo inicial de sencillo) y registra dicho monto en el sistema.
+* Tarea 3 (Registrar Ventas): Durante su turno, el cajero procesa los pagos de los
+  clientes que compran productos en la tienda o contratan membresías/planes.
+* Tarea 4 (Registrar Movimientos - Opcional): Si surge algún gasto imprevisto de
+  caja (por ejemplo, compra de insumos de limpieza) o se realiza un retiro parcial
+  de seguridad, el cajero debe ingresar este egreso en el sistema.
+* Tarea 5 (Solicitar Cierre): Al finalizar su turno diario, el cajero inicia el
+  proceso de cierre de caja en la aplicación.
+* Tarea 6 (Contar Efectivo Real): El cajero realiza un arqueo físico contando
+  cada billete y moneda en la gaveta y declara el total en el formulario.
+  **NOTA DE CIERRE CIEGO**: El cajero realiza esta declaración sin conocer la cifra
+  que el sistema espera que haya, evitando manipulaciones de saldos.
+* Tarea 7 (Confirmar Cierre): Envía la declaración, finalizando su interacción.
+
+--------------------------------------------------------------------------------
+2. CARRIL: SISTEMA (Backend & Base de Datos)
+--------------------------------------------------------------------------------
+Representa el procesamiento automático de datos, validaciones y reglas de negocio:
+
+* Acción A (Crear Sesión): Al recibir la solicitud de apertura con el monto inicial,
+  el sistema crea un registro en la tabla `sesiones_caja` con el estado 'ABIERTA'.
+* Decisión A (Validar Sesión Activa):
+  - SI hay sesión abierta: El sistema habilita y permite procesar transacciones en
+    las vistas de Productos y Membresías.
+  - NO hay sesión abierta: El sistema bloquea los botones de venta e indica al
+    usuario que debe abrir la caja primero.
+* Acción B (Calcular Diferencia): Al recibir la confirmación de cierre con el monto
+  físico real, el sistema realiza los siguientes cálculos de forma interna:
+    Monto Esperado = Monto Inicial + Total de Ventas en Efectivo - Total Egresos/Retiros.
+    Diferencia = Monto Físico Real - Monto Esperado.
+* Decisión B (Validar Tolerancia de Descuadre):
+  El sistema valida la diferencia contra un margen de tolerancia de S/ 0.50:
+  - SI la diferencia está entre -S/0.50 y S/0.50: La sesión se define como "CUADRADA".
+  - SI la diferencia es menor a -S/0.50: La sesión se define como "FALTANTE".
+  - SI la diferencia es mayor a S/0.50: La sesión se define como "SOBRANTE".
+* Acción C (Guardar Snapshot e Inactivar): El sistema guarda un registro detallado en
+  formato JSON (snapshot de ingresos por métodos de pago, totales, etc.) para auditoría
+  histórica, inactiva la sesión y guarda la hora de cierre (`cierreAt`).
+
+--------------------------------------------------------------------------------
+3. CARRIL: ADMINISTRADOR (Auditoría)
+--------------------------------------------------------------------------------
+Representa el control jerárquico y supervisión de los cierres de caja:
+
+* Tarea 8 (Acceder al Monitor): El administrador ingresa a la sección exclusiva
+  "Monitor de Caja" en la aplicación.
+* Tarea 9 (Consultar Historial): Inspecciona la lista histórica de todos los cierres.
+* Tarea 10 (Ver Detalles y Auditoría): Hace clic en cualquier fila para abrir el modal
+  de detalle. Aquí puede auditar:
+  - Si el dinero cuadró o hubo descuadre (faltante/sobrante).
+  - La lista de gastos de caja (egresos y retiros registrados con descripción y autor).
+  - El desglose de ingresos por método de pago (Efectivo vs Yape/Plin).
+  - Las observaciones o justificaciones escritas por el cajero.
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

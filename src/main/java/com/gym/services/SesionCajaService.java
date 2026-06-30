@@ -37,6 +37,9 @@ public class SesionCajaService {
     @Transactional
     public SesionCaja abrirSesion(String username, BigDecimal montoInicial,
                                    String turno, String observaciones) {
+        if (montoInicial != null && montoInicial.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El monto inicial no puede ser negativo.");
+        }
         // Regla: no puede haber más de una sesión ABIERTA al mismo tiempo
         Optional<SesionCaja> sesionActiva = sesionRepo.findByEstado(EstadoSesion.ABIERTA);
         if (sesionActiva.isPresent()) {
@@ -90,6 +93,13 @@ public class SesionCajaService {
 
         if (sesion.getEstado() != EstadoSesion.ABIERTA) {
             throw new IllegalStateException("La sesión ya fue cerrada.");
+        }
+
+        if (montoFinalReal != null && montoFinalReal.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El monto físico real no puede ser negativo.");
+        }
+        if (fondoParaSiguiente != null && fondoParaSiguiente.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("El fondo para el siguiente turno no puede ser negativo.");
         }
 
         // Calcular monto esperado INTERNAMENTE — nunca se reveló al cajero
