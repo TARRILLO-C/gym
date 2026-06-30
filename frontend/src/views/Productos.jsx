@@ -16,6 +16,7 @@ import {
 import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
 import PrintTicket from '../components/ui/PrintTicket';
+import CierreCaja from './CierreCaja';
 
 const Productos = () => {
   const [activeTab, setActiveTab] = useState('pos'); // 'pos' o 'inventario'
@@ -56,6 +57,7 @@ const Productos = () => {
   const [lastVentaData, setLastVentaData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cajaAbierta, setCajaAbierta] = useState(true);
+  const [showCierreModal, setShowCierreModal] = useState(false);
 
   // Ajuste de Inventario
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -544,15 +546,36 @@ const Productos = () => {
       title={<span>Punto de <span className="text-gradient">Venta</span></span>}
       subtitle="Gestiona tu inventario y realiza ventas rápidas."
       actionButton={
-        <div className="tab-switcher" style={{ display: 'flex', background: 'var(--panel-bg)', padding: '4px', borderRadius: '14px', border: '1px solid var(--panel-border)' }}>
-          <button onClick={() => setActiveTab('pos')} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: activeTab === 'pos' ? 'rgba(255, 62, 62, 0.1)' : 'transparent', color: activeTab === 'pos' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', transition: '0.3s' }}>
-            <ShoppingBag size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Venta
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button 
+            onClick={() => setShowCierreModal(true)} 
+            style={{ 
+              padding: '10px 16px', 
+              borderRadius: '12px', 
+              border: '1px solid ' + (cajaAbierta ? 'rgba(34,197,94,0.3)' : 'rgba(255,62,62,0.3)'), 
+              background: cajaAbierta ? 'rgba(34,197,94,0.1)' : 'rgba(255,62,62,0.1)', 
+              color: cajaAbierta ? '#22c55e' : '#ff3e3e', 
+              fontWeight: '600', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px' 
+            }}
+          >
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: cajaAbierta ? '#22c55e' : '#ff3e3e' }}></span>
+            Caja: {cajaAbierta ? 'Abierta' : 'Cerrada'}
           </button>
-          {role === 'ADMINISTRADOR' && (
-            <button onClick={() => setActiveTab('inventario')} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: activeTab === 'inventario' ? 'rgba(255, 62, 62, 0.1)' : 'transparent', color: activeTab === 'inventario' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', transition: '0.3s' }}>
-              <Package size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Inventario
+
+          <div className="tab-switcher" style={{ display: 'flex', background: 'var(--panel-bg)', padding: '4px', borderRadius: '14px', border: '1px solid var(--panel-border)' }}>
+            <button onClick={() => setActiveTab('pos')} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: activeTab === 'pos' ? 'rgba(255, 62, 62, 0.1)' : 'transparent', color: activeTab === 'pos' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', transition: '0.3s' }}>
+              <ShoppingBag size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Venta
             </button>
-          )}
+            {role === 'ADMINISTRADOR' && (
+              <button onClick={() => setActiveTab('inventario')} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: activeTab === 'inventario' ? 'rgba(255, 62, 62, 0.1)' : 'transparent', color: activeTab === 'inventario' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', transition: '0.3s' }}>
+                <Package size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} /> Inventario
+              </button>
+            )}
+          </div>
         </div>
       }
     >
@@ -624,10 +647,21 @@ const Productos = () => {
               marginBottom: '20px',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px'
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}>
-              <AlertTriangle size={24} />
-              <span>⚠️ La caja del día no ha sido abierta. Debe abrir la caja desde el Monitor de Caja antes de poder registrar ventas.</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <AlertTriangle size={24} />
+                <span>La caja del día no ha sido abierta. Debe abrir la caja antes de registrar ventas.</span>
+              </div>
+              <button 
+                onClick={() => setShowCierreModal(true)} 
+                className="btn-primary" 
+                style={{ background: '#ff3e3e', color: 'white', padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                ABRIR CAJA
+              </button>
             </div>
           )}
 
@@ -1459,6 +1493,8 @@ const Productos = () => {
 
     {/* Etiqueta Térmica Printable (Oculta x defecto) */}
     <PrintTicket venta={lastVentaData} />
+
+    {showCierreModal && <CierreCaja isOpen={true} onClose={() => { setShowCierreModal(false); fetchData(); }} />}
 
     </div>
   );
