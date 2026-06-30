@@ -526,8 +526,8 @@ const Socios = () => {
               value={formData.nombreCompleto}
               onChange={e => setFormData({...formData, nombreCompleto: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')})}
               placeholder="Ej: Juan Pérez"
-              disabled={!!editingId}
-              style={editingId ? { opacity: 0.7, cursor: 'not-allowed', background: 'rgba(0,0,0,0.02)' } : {}}
+              disabled={!!editingId || formData.dni?.length > 0}
+              style={(!!editingId || formData.dni?.length > 0) ? { opacity: 0.7, cursor: 'not-allowed', background: 'rgba(0,0,0,0.02)' } : {}}
             />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

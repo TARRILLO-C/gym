@@ -683,10 +683,50 @@ const Membresias = () => {
                         })()}
                       </td>
                       <td data-label="VENCIMIENTO">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Calendar size={14} color="var(--text-muted)" />
-                          {s?.fechaFin || '-'}
-                        </div>
+                        {(() => {
+                           let color = 'var(--text-muted)';
+                           let bgColor = 'transparent';
+                           let fontWeight = 'normal';
+                           let padding = '0px';
+                           let borderRadius = '0px';
+                           
+                           if (s?.fechaFin) {
+                             const difTime = new Date(s.fechaFin + 'T00:00:00').getTime() - new Date(hoyStrRender + 'T00:00:00').getTime();
+                             const diffDays = Math.ceil(difTime / (1000 * 3600 * 24));
+                             
+                             if (diffDays <= 5 && diffDays >= 0) {
+                               color = '#d97706'; // Naranja más sutil y elegante
+                               bgColor = '#fef3c7';
+                               fontWeight = '500';
+                               padding = '2px 8px';
+                               borderRadius = '4px';
+                             } else if (diffDays < 0) {
+                               color = '#dc2626'; // Rojo más elegante
+                               bgColor = '#fee2e2';
+                               fontWeight = '500';
+                               padding = '2px 8px';
+                               borderRadius = '4px';
+                             }
+                           }
+                           
+                           return (
+                             <div style={{ 
+                               display: 'inline-flex', 
+                               alignItems: 'center', 
+                               gap: '6px', 
+                               color, 
+                               fontWeight, 
+                               backgroundColor: bgColor, 
+                               padding, 
+                               borderRadius,
+                               whiteSpace: 'nowrap', // Esto evita que la fecha se parta en dos líneas
+                               fontSize: '0.9rem' 
+                             }}>
+                               <Calendar size={14} color={color} />
+                               {s?.fechaFin || '-'}
+                             </div>
+                           );
+                        })()}
                       </td>
                       <td data-label="ESTADO">{getEstadoBadge(s)}</td>
                       <td data-label="ACCIONES" style={{ textAlign: 'right' }}>

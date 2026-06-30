@@ -91,11 +91,14 @@ public class EmailService {
         String fechaFin = sus.getFechaFin().format(dtf);
         String nombre = sus.getSocio().getNombreCompleto();
         String plan = sus.getMembresia().getNombre();
+        
+        long diasRestantes = java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), sus.getFechaFin());
+        String textoDias = diasRestantes == 1 ? "1 día" : diasRestantes + " días";
 
         return "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>" +
                 "<h2 style='color: #d9534f; text-align: center;'>¡Aviso de Vencimiento!</h2>" +
                 "<p>Hola <strong>" + nombre + "</strong>,</p>" +
-                "<p>Te escribimos para recordarte que tu plan <strong>" + plan + "</strong> vencerá en 2 días, el <strong>" + fechaFin + "</strong>.</p>" +
+                "<p>Te escribimos para recordarte que tu plan <strong>" + plan + "</strong> vencerá en " + textoDias + ", el <strong>" + fechaFin + "</strong>.</p>" +
                 "<p>¡No pierdas el ritmo! Acércate a recepción para renovar tu membresía y seguir entrenando con nosotros.</p>" +
                 "<br>" +
                 "<p>Saludos cordiales,<br><strong>El equipo del Gimnasio</strong></p>" +

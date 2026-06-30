@@ -1386,7 +1386,7 @@ const Productos = () => {
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>Razón Social</label>
-                  <input required type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value.toUpperCase()})} placeholder="Ej: Mi Empresa S.A.C." disabled={!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial} style={{ borderColor: '#3b82f6', width: '100%', opacity: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial) ? 0.6 : 1, cursor: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial) ? 'not-allowed' : 'text' }} />
+                  <input required type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value.toUpperCase()})} placeholder="Ej: Mi Empresa S.A.C." disabled={(checkoutForm.clienteDocumento?.length > 0) || (!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial)} style={{ borderColor: '#3b82f6', width: '100%', opacity: ((checkoutForm.clienteDocumento?.length > 0) || (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial)) ? 0.6 : 1, cursor: ((checkoutForm.clienteDocumento?.length > 0) || (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.razonSocial)) ? 'not-allowed' : 'text' }} />
                 </div>
               </div>
             )}
@@ -1408,7 +1408,7 @@ const Productos = () => {
                 <label style={{ fontSize: '0.75rem', color: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', fontWeight: 'bold', marginTop: '8px', display: 'block' }}>
                   Nombre Completo {cartTotal > 700 ? '(Obligatorio)' : ''}
                 </label>
-                <input type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value.toUpperCase()})} placeholder={cartTotal > 700 ? "Requerido por SUNAT" : "Público General"} disabled={!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto) ? 0.6 : 1, cursor: (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto) ? 'not-allowed' : 'text' }} />
+                <input type="text" value={checkoutForm.clienteNombre} onChange={e => setCheckoutForm({...checkoutForm, clienteNombre: e.target.value.toUpperCase()})} placeholder={cartTotal > 700 ? "Requerido por SUNAT" : "Público General"} disabled={(checkoutForm.clienteDocumento?.length > 0) || (!!checkoutForm.socioId && !!socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto)} style={{ borderColor: cartTotal > 700 ? '#ff3e3e' : '#3b82f6', width: '100%', opacity: ((checkoutForm.clienteDocumento?.length > 0) || (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto)) ? 0.6 : 1, cursor: ((checkoutForm.clienteDocumento?.length > 0) || (checkoutForm.socioId && socios.find(s=>s.id===checkoutForm.socioId)?.nombreCompleto)) ? 'not-allowed' : 'text' }} />
               </div>
             )}
 
