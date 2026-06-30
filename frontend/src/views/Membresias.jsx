@@ -26,6 +26,7 @@ const Membresias = () => {
   const [activeTab, setActiveTab] = useState('suscripciones');
   const [suscripciones, setSuscripciones] = useState([]);
   const [membresias, setMembresias] = useState([]);
+  const [cajaAbierta, setCajaAbierta] = useState(true);
   const [filterMode, setFilterMode] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -131,14 +132,16 @@ const Membresias = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [suscResp, membResp, socioResp] = await Promise.all([
+      const [suscResp, membResp, socioResp, cajaResp] = await Promise.all([
         api.get('/suscripciones'),
         api.get('/membresias'),
-        api.get('/socios')
+        api.get('/socios'),
+        api.get('/cierre-caja/hoy').catch(() => null)
       ]);
       setSuscripciones(suscResp.data);
       setMembresias(membResp.data);
       setSocios(socioResp.data);
+      setCajaAbierta(cajaResp && cajaResp.status === 200 && cajaResp.data && cajaResp.data.estado === 'ABIERTO');
     } catch (err) {
       console.error("Error cargando datos:", err);
     } finally {
@@ -536,6 +539,24 @@ const Membresias = () => {
     >
       {activeTab === 'suscripciones' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {!cajaAbierta && (
+            <div style={{
+              background: 'rgba(255, 62, 62, 0.1)',
+              border: '1px solid rgba(255, 62, 62, 0.3)',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              color: '#ff3e3e',
+              fontWeight: 'bold',
+              marginBottom: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <AlertCircle size={24} />
+              <span>⚠️ La caja del día no ha sido abierta. Debe abrir la caja desde el Monitor de Caja antes de poder vender planes o registrar cobros.</span>
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto' }}>
               <div style={{ position: 'relative', flex: '1 1 200px' }}>
@@ -579,8 +600,8 @@ const Membresias = () => {
                 </button>
               </div>
             </div>
-            <button className="btn-primary" onClick={() => setShowSusModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Plus size={20} /> VENDER PLAN
+            <button className="btn-primary" disabled={!cajaAbierta} onClick={() => setShowSusModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: cajaAbierta ? 1 : 0.5, cursor: cajaAbierta ? 'pointer' : 'not-allowed' }}>
+              <Plus size={20} /> {cajaAbierta ? 'VENDER PLAN' : 'CAJA CERRADA'}
             </button>
           </div>
 
@@ -678,14 +699,14 @@ const Membresias = () => {
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                           {/* Mostrar botón de cobro si tiene deuda de estado o si se le pasó su próxima fecha de cobro */}
                           {(s?.estadoPago !== 'PAGADO' || (s?.fechaProximoCobro && s?.fechaProximoCobro < hoyStrRender && s?.fechaProximoCobro !== s?.fechaFin)) && s?.activo !== false && (
-                            <button onClick={(e) => { e.stopPropagation(); handleRegistrarCobro(s); }} style={{ background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-secondary)', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Registrar Cobro Pendiente">
+                            <button disabled={!cajaAbierta} onClick={(e) => { e.stopPropagation(); handleRegistrarCobro(s); }} style={{ background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-secondary)', border: 'none', padding: '8px', borderRadius: '8px', cursor: cajaAbierta ? 'pointer' : 'not-allowed', opacity: cajaAbierta ? 1 : 0.4 }} title={cajaAbierta ? "Registrar Cobro Pendiente" : "Caja Cerrada"}>
                               <DollarSign size={18} />
                             </button>
                           )}
                           
                           {/* Botón Renovar oculto solo si el plan fue explícitamente anulado */}
                           {s?.activo !== false && (
-                            <button onClick={(e) => { e.stopPropagation(); handleRenovar(s); }} style={{ background: 'rgba(0, 255, 127, 0.1)', color: '#00ff7f', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Renovar">
+                            <button disabled={!cajaAbierta} onClick={(e) => { e.stopPropagation(); handleRenovar(s); }} style={{ background: 'rgba(0, 255, 127, 0.1)', color: '#00ff7f', border: 'none', padding: '8px', borderRadius: '8px', cursor: cajaAbierta ? 'pointer' : 'not-allowed', opacity: cajaAbierta ? 1 : 0.4 }} title={cajaAbierta ? "Renovar" : "Caja Cerrada"}>
                               <RefreshCw size={18} />
                             </button>
                           )}

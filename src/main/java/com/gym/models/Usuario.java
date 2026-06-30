@@ -26,8 +26,13 @@ public class Usuario {
     @Column(nullable = false)
     private boolean activo = true;
 
-    @Column(columnDefinition = "int default 0")
-    private int intentos_fallidos = 0;
+    @Column(name = "intentos_fallidos", columnDefinition = "int default 0", nullable = false)
+    private int intentosFallidos = 0;
+
+    /** PIN hasheado para operaciones sensibles (anulaciones, retiros de fondos) */
+    @Column(name = "pin_admin", length = 64)
+    private String pinAdmin;
+
 
     public Usuario() {}
 
@@ -77,11 +82,20 @@ public class Usuario {
         this.activo = activo;
     }
 
-    public int getIntentos_fallidos() {
-        return intentos_fallidos;
+    public int getIntentosFallidos() {
+        return intentosFallidos;
     }
 
-    public void setIntentos_fallidos(int intentos_fallidos) {
-        this.intentos_fallidos = intentos_fallidos;
+    public void setIntentosFallidos(int intentosFallidos) {
+        this.intentosFallidos = intentosFallidos;
+    }
+
+    public String getPinAdmin() {
+        return pinAdmin;
+    }
+
+    public void setPinAdmin(String pinAdmin) {
+        this.pinAdmin = pinAdmin;
     }
 }
+

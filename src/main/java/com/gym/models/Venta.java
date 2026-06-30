@@ -25,6 +25,14 @@ public class Venta {
     private Long id;
 
     /**
+     * Sesión de caja a la que pertenece esta venta.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sesion_id")
+    @JsonIgnoreProperties({"movimientos", "resumenJson", "hibernateLazyInitializer", "handler"})
+    private SesionCaja sesion;
+
+    /**
      * Socio que realiza la compra (opcional, permite ventas al público general).
      */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -46,10 +54,19 @@ public class Venta {
     private BigDecimal total;
 
     /**
-     * Método utilizado para el pago.
+     * Fracción del total pagada en efectivo. Solo este monto impacta la gaveta.
+     * Para pagos mixtos: suma de todos los PagoVenta con metodoPago = EFECTIVO.
+     */
+    @Column(name = "total_efectivo", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal totalEfectivo = BigDecimal.ZERO;
+
+    /**
+     * Método utilizado para el pago (legado, se mantiene para compatibilidad).
+     * Para pagos mixtos usar la colección `pagosVenta`.
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "metodo_pago", nullable = false)
+    @Column(name = "metodo_pago")
     private MetodoPago metodoPago;
 
     /**
@@ -123,12 +140,27 @@ public class Venta {
     @Column(name = "motivo_anulacion", length = 255)
     private String motivoAnulacion;
 
+    /** Username del admin que autorizó la anulación */
+    @Column(name = "anulado_por", length = 100)
+    private String anuladoPor;
+
+    /** Timestamp exacto de la anulación */
+    @Column(name = "anulado_at")
+    private LocalDateTime anuladoAt;
+
     /**
      * Lista de productos incluidos en esta venta.
      */
     @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<DetalleVenta> detalles = new ArrayList<>();
+
+    /**
+     * Desglose de métodos de pago (pagos mixtos).
+     */
+    @OneToMany(mappedBy = "venta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PagoVenta> pagosVenta = new ArrayList<>();
 
     public void addDetalle(DetalleVenta detalle) {
         detalles.add(detalle);
