@@ -187,6 +187,12 @@ const Productos = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      showAlert("Error de validación", "Solo se permiten archivos de imagen (PNG, JPG, JPEG, WEBP, GIF, BMP).");
+      e.target.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
       const url = await uploadImage(file);
@@ -196,7 +202,7 @@ const Productos = () => {
       }
       setProductForm(prev => ({ ...prev, imagenUrl: url }));
     } catch (err) {
-      showAlert("Error", "No se pudo subir la imagen a Appwrite. Verifique la conexión.");
+      showAlert("Error", "No se pudo subir la imagen. Verifique que sea un formato de imagen permitido.");
     } finally {
       setUploading(false);
     }

@@ -35,6 +35,31 @@ public class UploadController {
             return ResponseEntity.badRequest().build();
         }
 
+        // Validar que el archivo sea una imagen por su Content-Type
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            log.warn("Intento de subida de archivo no permitido con Content-Type: {}", contentType);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Solo se permiten archivos de imagen (Content-Type no válido)");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
+        // Validar que el archivo tenga una extensión de imagen válida
+        String originalName = file.getOriginalFilename();
+        String extension = "";
+        if (originalName != null && originalName.contains(".")) {
+            extension = originalName.substring(originalName.lastIndexOf(".")).toLowerCase();
+        }
+
+        if (!extension.equals(".jpg") && !extension.equals(".jpeg") && 
+            !extension.equals(".png") && !extension.equals(".gif") && 
+            !extension.equals(".webp") && !extension.equals(".bmp")) {
+            log.warn("Intento de subida de archivo no permitido con extensión: {}", extension);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Solo se permiten archivos de imagen (.jpg, .jpeg, .png, .gif, .webp, .bmp)");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        }
+
         try {
             // Asegurarnos que la carpeta existe localmente
             File directory = new File(UPLOAD_DIR);
@@ -42,11 +67,7 @@ public class UploadController {
                 directory.mkdirs();
             }
 
-            // Nombre único universal
-            String originalName = file.getOriginalFilename();
-            String extension = originalName != null && originalName.contains(".") 
-                    ? originalName.substring(originalName.lastIndexOf(".")) : ".png";
-            String newFileName = "img_" + UUID.randomUUID().toString().replace("-", "") + extension;
+            String newFileName = "img_" + UUID.randomUUID().toString().replace("-", "") + (extension.isEmpty() ? ".png" : extension);
             
             // Guardar físico
             Path filePath = Paths.get(UPLOAD_DIR + newFileName);

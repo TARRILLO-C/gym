@@ -31,10 +31,12 @@ const Dashboard = () => {
     ultimosMiembros: [],
     solicitudesMembresia: [],
     solicitudesVenta: [],
-    actividadSemana: { data: [], max: 1 }
+    actividadSemana: { data: [], max: 1 },
+    ingresosSemana: []
   });
   const [loading, setLoading] = useState(true);
   const [activeRequestTab, setActiveRequestTab] = useState('MEMBRESIA');
+  const [hoveredDay, setHoveredDay] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,6 +90,21 @@ const Dashboard = () => {
         const bajoStock = listaProductos.filter(p => p.stock > 0 && p.stock < (p.stockMinimo ?? 5)).length;
         const agotados = listaProductos.filter(p => p.stock === 0).length;
 
+        const ingresos7Dias = ultimos7Dias.map(dia => {
+          const pagosEnDia = (pagos.data || []).filter(p => p.fechaPago && p.fechaPago.split('T')[0] === dia.fechaStr);
+          const montoPlanes = pagosEnDia.reduce((acc, p) => acc + parseFloat(p.monto || 0), 0);
+
+          const ventasEnDia = (ventas.data || []).filter(v => v.fecha && v.activo !== false && v.fecha.split('T')[0] === dia.fechaStr);
+          const montoProductos = ventasEnDia.reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
+
+          return {
+            ...dia,
+            planes: montoPlanes,
+            productos: montoProductos,
+            total: montoPlanes + montoProductos
+          };
+        });
+
         setStats({
           totalSocios: (socios.data || []).length,
           ingresosHoy: (ingresos.data || []).length,
@@ -102,7 +119,8 @@ const Dashboard = () => {
           ultimosMiembros: (socios.data || []).slice(-4).reverse(),
           solicitudesMembresia: solMembresia.data || [],
           solicitudesVenta: solVenta.data || [],
-          actividadSemana: { data: ultimos7Dias, max: maxAsistencias }
+          actividadSemana: { data: ultimos7Dias, max: maxAsistencias },
+          ingresosSemana: ingresos7Dias
         });
       } catch (err) {
         console.error("Error fetching dashboard stats:", err);
@@ -181,6 +199,162 @@ const Dashboard = () => {
         {!loading && stats.productosAgotados > 0 && (
           <Card title="Productos agotados" value={stats.productosAgotados} icon={PackageX} color="#ff3e3e" to="/productos" />
         )}
+      </section>
+
+      {/* Gráfico de Flujo de Ingresos de la Semana */}
+      <section style={{ marginTop: '24px' }}>
+        <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Flujo de Ingresos Semanales</h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Comparativa diaria de ingresos de membresías y ventas de productos.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'var(--accent-primary)', boxShadow: '0 0 6px var(--accent-primary)' }}></div>
+                <span style={{ color: 'var(--text-muted)' }}>Membresías</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#3b82f6', boxShadow: '0 0 6px #3b82f6' }}></div>
+                <span style={{ color: 'var(--text-muted)' }}>Productos</span>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="skeleton" style={{ height: '220px', width: '100%' }}></div>
+          ) : (
+            <div style={{ position: 'relative', width: '100%' }}>
+              {/* Tooltip flotante */}
+              {hoveredDay !== null && stats.ingresosSemana[hoveredDay] && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  left: `${Math.min(Math.max(40 + hoveredDay * 90, 85), 515)}px`,
+                  transform: 'translate(-50%, -100%)',
+                  backgroundColor: 'var(--bg-color)',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(5px)',
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                  minWidth: '160px'
+                }}>
+                  <p style={{ margin: '0 0 6px 0', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                    {stats.ingresosSemana[hoveredDay].diaNombre} ({stats.ingresosSemana[hoveredDay].fechaStr})
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0' }}>
+                    <span>Membresías:</span>
+                    <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {stats.ingresosSemana[hoveredDay].planes.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0' }}>
+                    <span>Productos:</span>
+                    <span style={{ fontWeight: 'bold', color: '#3b82f6' }}>S/ {stats.ingresosSemana[hoveredDay].productos.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 'bold', borderTop: '1px solid var(--panel-border)', paddingTop: '6px', marginTop: '6px', color: 'var(--text-main)' }}>
+                    <span>Total:</span>
+                    <span style={{ color: '#00ff7f' }}>S/ {stats.ingresosSemana[hoveredDay].total.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Renderizado de gráfico SVG */}
+              <div style={{ width: '100%', overflowX: 'auto' }}>
+                <svg viewBox="0 0 600 220" style={{ width: '100%', minWidth: '550px', height: 'auto', overflow: 'visible' }}>
+                  <defs>
+                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="var(--accent-primary)" stopOpacity="0.0" />
+                    </linearGradient>
+                    <linearGradient id="areaGradProd" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Grid Lines */}
+                  {[0, 0.25, 0.5, 0.75, 1].map((p, idx) => {
+                    const y = 20 + 150 * p;
+                    const maxVal = Math.max(...stats.ingresosSemana.map(d => d.total), 100);
+                    const val = maxVal * (1 - p);
+                    return (
+                      <g key={idx}>
+                        <line x1="40" y1={y} x2="580" y2={y} stroke="var(--panel-border)" strokeWidth="1" strokeDasharray="4 4" />
+                        <text x="35" y={y + 4} fill="var(--text-muted)" fontSize="9" textAnchor="end">S/ {Math.round(val)}</text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Eje X Labels */}
+                  {stats.ingresosSemana.map((d, idx) => (
+                    <text key={idx} x={40 + idx * 90} y="190" fill="var(--text-muted)" fontSize="10" textAnchor="middle">{d.diaNombre}</text>
+                  ))}
+
+                  {/* Draw Areas */}
+                  {(() => {
+                    const maxVal = Math.max(...stats.ingresosSemana.map(d => d.total), 100);
+                    
+                    // Path para membresias
+                    const pointsPlanes = stats.ingresosSemana.map((d, idx) => {
+                      const x = 40 + idx * 90;
+                      const y = 170 - 150 * (d.planes / maxVal);
+                      return { x, y };
+                    });
+                    const dPlanes = pointsPlanes.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                    const dAreaPlanes = `${dPlanes} L ${pointsPlanes[pointsPlanes.length - 1].x} 170 L ${pointsPlanes[0].x} 170 Z`;
+
+                    // Path para productos
+                    const pointsProductos = stats.ingresosSemana.map((d, idx) => {
+                      const x = 40 + idx * 90;
+                      const y = 170 - 150 * (d.productos / maxVal);
+                      return { x, y };
+                    });
+                    const dProductos = pointsProductos.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                    const dAreaProductos = `${dProductos} L ${pointsProductos[pointsProductos.length - 1].x} 170 L ${pointsProductos[0].x} 170 Z`;
+
+                    return (
+                      <>
+                        {/* Area de Productos */}
+                        <path d={dAreaProductos} fill="url(#areaGradProd)" />
+                        <path d={dProductos} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="3 3" />
+
+                        {/* Area de Membresias */}
+                        <path d={dAreaPlanes} fill="url(#areaGrad)" />
+                        <path d={dPlanes} fill="none" stroke="var(--accent-primary)" strokeWidth="3" />
+
+                        {/* Interactive vertical hover zones */}
+                        {stats.ingresosSemana.map((d, idx) => {
+                          const x = 40 + idx * 90;
+                          return (
+                            <g key={idx}
+                               onMouseEnter={() => setHoveredDay(idx)}
+                               onMouseLeave={() => setHoveredDay(null)}
+                               style={{ cursor: 'pointer' }}>
+                              
+                              {/* Vertical Line on Hover */}
+                              {hoveredDay === idx && (
+                                <line x1={x} y1="20" x2={x} y2="170" stroke="var(--accent-primary)" strokeWidth="1.5" strokeDasharray="2 2" />
+                              )}
+
+                              {/* Hover zone transparent rect */}
+                              <rect x={x - 45} y="20" width="90" height="150" fill="transparent" />
+
+                              {/* Points */}
+                              <circle cx={x} cy={170 - 150 * (d.planes / maxVal)} r={hoveredDay === idx ? 6 : 4} fill="var(--accent-primary)" stroke="var(--bg-color)" strokeWidth="2" />
+                              <circle cx={x} cy={170 - 150 * (d.productos / maxVal)} r={hoveredDay === idx ? 5 : 3.5} fill="#3b82f6" stroke="var(--bg-color)" strokeWidth="1.5" />
+                            </g>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </svg>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginTop: '24px' }}>

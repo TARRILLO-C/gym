@@ -15,7 +15,8 @@ import {
   DollarSign,
   XCircle,
   RotateCcw,
-  FileText
+  FileText,
+  MessageSquare
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -246,6 +247,29 @@ const Membresias = () => {
         onConfirm: () => processCobro(montoPredefinido)
       });
     }
+  };
+
+  const handleWhatsAppAlert = (s) => {
+    if (!s || !s.socio) return;
+    const telefono = s.socio.telefono ? s.socio.telefono.replace(/\s+/g, '') : '';
+    if (!telefono) {
+      showAlert("Aviso", "Este socio no tiene un número de teléfono registrado.");
+      return;
+    }
+    
+    let formattedPhone = telefono;
+    if (!formattedPhone.startsWith('+') && !formattedPhone.startsWith('51') && formattedPhone.length === 9) {
+      formattedPhone = `51${formattedPhone}`;
+    }
+    
+    const planNombre = s.membresia?.nombre || 'su plan';
+    const fechaFin = s.fechaFin || '';
+    
+    const mensaje = `Hola ${s.socio.nombreCompleto}, ¡un saludo de The Jungle! 🏋️‍♂️ Te recordamos que tu membresía del plan *${planNombre}* vence el *${fechaFin}*. ¡No detengas tu entrenamiento y renueva con nosotros! 💪`;
+    
+    const encodedText = encodeURIComponent(mensaje);
+    const url = `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedText}`;
+    window.open(url, '_blank');
   };
 
   useEffect(() => {
@@ -731,6 +755,12 @@ const Membresias = () => {
                       <td data-label="ESTADO">{getEstadoBadge(s)}</td>
                       <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          {s?.socio?.telefono && s?.activo !== false && (
+                            <button onClick={(e) => { e.stopPropagation(); handleWhatsAppAlert(s); }} style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title="Enviar recordatorio por WhatsApp">
+                              <MessageSquare size={18} />
+                            </button>
+                          )}
+                          
                           {/* Mostrar botón de cobro si tiene deuda de estado o si se le pasó su próxima fecha de cobro */}
                           {(s?.estadoPago !== 'PAGADO' || (s?.fechaProximoCobro && s?.fechaProximoCobro < hoyStrRender && s?.fechaProximoCobro !== s?.fechaFin)) && s?.activo !== false && (
                             <button disabled={!cajaAbierta} onClick={(e) => { e.stopPropagation(); handleRegistrarCobro(s); }} style={{ background: 'rgba(255, 193, 7, 0.1)', color: 'var(--accent-secondary)', border: 'none', padding: '8px', borderRadius: '8px', cursor: cajaAbierta ? 'pointer' : 'not-allowed', opacity: cajaAbierta ? 1 : 0.4 }} title={cajaAbierta ? "Registrar Cobro Pendiente" : "Caja Cerrada"}>

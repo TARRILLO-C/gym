@@ -307,7 +307,15 @@ const ConfiguracionCatalogo = () => {
               type="file" 
               accept="image/*"
               className="form-control"
-              onChange={(e) => setLogoFile(e.target.files[0])}
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file && !file.type.startsWith('image/')) {
+                  showToast('Solo se permiten archivos de imagen.', 'error');
+                  e.target.value = '';
+                  return;
+                }
+                setLogoFile(file);
+              }}
             />
           </div>
 
@@ -440,8 +448,14 @@ const ConfiguracionCatalogo = () => {
                     style={{ fontSize: '0.8rem', padding: '5px' }}
                     disabled={!!planLoading[plan.id]?.imagen}
                     onChange={(e) => {
-                      if (e.target.files[0]) {
-                        handleUpdateMembresiaImage(plan.id, e.target.files[0]);
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (!file.type.startsWith('image/')) {
+                          showToast('Solo se permiten archivos de imagen.', 'error');
+                          e.target.value = '';
+                          return;
+                        }
+                        handleUpdateMembresiaImage(plan.id, file);
                         e.target.value = '';
                       }
                     }}
@@ -468,7 +482,15 @@ const ConfiguracionCatalogo = () => {
                 type="file" 
                 accept="image/*"
                 className="form-control"
-                onChange={(e) => setSliderFile(e.target.files[0])}
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file && !file.type.startsWith('image/')) {
+                    showToast('Solo se permiten archivos de imagen.', 'error');
+                    e.target.value = '';
+                    return;
+                  }
+                  setSliderFile(file);
+                }}
               />
             </div>
             

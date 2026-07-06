@@ -23,7 +23,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { API_BASE_URL } from '../services/api';
 
 const Sidebar = () => {
-  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
+  const { isDarkMode, toggleTheme, accentTheme, setAccentTheme, accents } = useContext(ThemeContext);
   const navigate = useNavigate();
   const [logoUrl, setLogoUrl] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -123,6 +123,33 @@ const Sidebar = () => {
       </nav>
 
       <div className="sidebar-footer">
+        {/* Selector de Acento de Color */}
+        {accents && (
+          <div className="sidebar-text" style={{ padding: '4px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tema Neón</span>
+            <div style={{ display: 'flex', gap: '8px', padding: '4px 0' }}>
+              {Object.keys(accents).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => setAccentTheme(key)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    backgroundColor: accents[key].primary,
+                    border: accentTheme === key ? '2px solid var(--text-main)' : 'none',
+                    cursor: 'pointer',
+                    boxShadow: accentTheme === key ? `0 0 8px ${accents[key].primary}` : 'none',
+                    transition: 'transform 0.2s',
+                    transform: accentTheme === key ? 'scale(1.2)' : 'none'
+                  }}
+                  title={`Tema ${key}`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <button 
           onClick={toggleTheme} 
           className="nav-link theme-btn"

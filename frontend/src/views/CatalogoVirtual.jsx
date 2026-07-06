@@ -445,36 +445,17 @@ const CatalogoVirtual = () => {
   };
 
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', paddingBottom: '50px' }}>
-      <style>{`
-        .plan-card-img-container {
-          height: 300px;
-          background-color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          border-bottom: 1px solid #f1f5f9;
-          overflow: hidden;
-        }
-        .plan-card-img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .plan-card:hover .plan-card-img {
-          transform: scale(1.80);
-        }
-      `}</style>
+    <div className="catalog-body">
       {/* Navbar Público */}
       <nav className="catalog-nav" style={{ 
-        backgroundColor: 'white', 
+        backgroundColor: 'rgba(10, 10, 12, 0.75)', 
+        backdropFilter: 'blur(12px)',
         padding: '15px 50px', 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+        boxShadow: '0 4px 30px rgba(0,0,0,0.2)',
+        borderBottom: '1px solid var(--panel-border)',
         position: 'sticky',
         top: 0,
         zIndex: 100
@@ -483,7 +464,7 @@ const CatalogoVirtual = () => {
           {logoUrl && (
             <img src={logoUrl} alt="Logo" style={{ height: '50px', objectFit: 'contain' }} />
           )}
-          <h2 style={{ margin: 0, color: 'var(--accent-primary)', fontWeight: 'bold' }}>THE JUNGLE</h2>
+          <h2 style={{ margin: 0, color: 'var(--accent-primary)', fontWeight: 'bold', letterSpacing: '1px' }}>THE JUNGLE</h2>
         </div>
 
         {/* Navigation links */}
@@ -492,9 +473,11 @@ const CatalogoVirtual = () => {
             onClick={() => setActiveTab('productos')}
             style={{ 
               background: 'none', border: 'none', cursor: 'pointer',
-              color: activeTab === 'productos' ? 'var(--accent-primary)' : '#1e293b', 
+              color: activeTab === 'productos' ? 'var(--accent-primary)' : 'var(--text-main)', 
               fontWeight: 'bold', fontSize: '1.1rem',
-              borderBottom: activeTab === 'productos' ? '2px solid var(--accent-primary)' : 'none'
+              borderBottom: activeTab === 'productos' ? '2px solid var(--accent-primary)' : 'none',
+              paddingBottom: '4px',
+              transition: 'var(--transition-smooth)'
             }}
           >
             Productos
@@ -503,9 +486,11 @@ const CatalogoVirtual = () => {
             onClick={() => setActiveTab('planes')}
             style={{ 
               background: 'none', border: 'none', cursor: 'pointer',
-              color: activeTab === 'planes' ? 'var(--accent-primary)' : '#1e293b', 
+              color: activeTab === 'planes' ? 'var(--accent-primary)' : 'var(--text-main)', 
               fontWeight: 'bold', fontSize: '1.1rem',
-              borderBottom: activeTab === 'planes' ? '2px solid var(--accent-primary)' : 'none'
+              borderBottom: activeTab === 'planes' ? '2px solid var(--accent-primary)' : 'none',
+              paddingBottom: '4px',
+              transition: 'var(--transition-smooth)'
             }}
           >
             Planes
@@ -697,49 +682,37 @@ const CatalogoVirtual = () => {
                   <div 
                     key={plan.id} 
                     className="plan-card"
-                    style={{
-                      backgroundColor: 'white',
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                      transition: 'transform 0.3s ease, boxShadow 0.3s ease',
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-5px)';
-                      e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-                    }}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => handleOpenSolicitud(plan)}
                   >
                     <div className="plan-card-img-container">
                       {plan.imagenUrl ? (
                         <img className="plan-card-img" src={plan.imagenUrl} alt={plan.nombre} />
                       ) : (
-                        <div style={{ color: '#cbd5e1', fontSize: '4rem', fontWeight: 'bold' }}>PLAN</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '3rem', fontWeight: 'bold', opacity: 0.3 }}>PLAN</div>
                       )}
                     </div>
                     <div style={{ padding: '20px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b' }}>{plan.nombre}</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>{plan.nombre}</h3>
                         <span style={{ 
-                          backgroundColor: 'rgba(255, 62, 62, 0.1)', 
+                          backgroundColor: 'rgba(255, 62, 62, 0.15)', 
                           color: 'var(--accent-primary)', 
                           padding: '4px 8px', 
                           borderRadius: '12px',
                           fontSize: '0.85rem',
-                          fontWeight: 'bold'
+                          fontWeight: 'bold',
+                          boxShadow: '0 0 10px rgba(255, 62, 62, 0.1)'
                         }}>
                           S/ {plan.precio.toFixed(2)}
                         </span>
                       </div>
-                      <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '15px' }}>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>
                         {plan.descripcion || `Plan de ${plan.duracionDias} días`}
                       </p>
-                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <button 
-                          onClick={() => handleOpenSolicitud(plan)}
+                          onClick={(e) => { e.stopPropagation(); handleOpenSolicitud(plan); }}
                           style={{
                             backgroundColor: 'var(--accent-primary)',
                             color: 'white',
@@ -753,7 +726,8 @@ const CatalogoVirtual = () => {
                             gap: '8px',
                             transition: 'transform 0.2s',
                             width: '100%',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 15px rgba(255, 62, 62, 0.2)'
                           }}
                           onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
                           onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -786,18 +760,30 @@ const CatalogoVirtual = () => {
                 width: '100%',
                 padding: '12px 20px 12px 40px',
                 borderRadius: '25px',
-                border: '1px solid #e2e8f0',
+                border: '2px solid var(--panel-border)',
                 outline: 'none',
                 fontSize: '1rem',
-                color: '#000'
+                color: 'var(--text-main)',
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                transition: 'var(--transition-smooth)'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--accent-primary)';
+                e.target.style.boxShadow = '0 0 15px rgba(255, 62, 62, 0.2)';
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--panel-border)';
+                e.target.style.boxShadow = 'none';
+                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
               }}
             />
-            <Search size={20} style={{ position: 'absolute', left: '15px', top: '12px', color: '#94a3b8' }} />
+            <Search size={20} style={{ position: 'absolute', left: '15px', top: '12px', color: 'var(--text-muted)' }} />
           </div>
         </div>
 
         {filteredProductos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '50px', color: '#64748b' }}>
+          <div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>
             <Info size={50} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
             <h3>No se encontraron productos disponibles.</h3>
           </div>
@@ -808,57 +794,46 @@ const CatalogoVirtual = () => {
             gap: '30px' 
           }}>
             {filteredProductos.map(producto => (
-              <div key={producto.id} style={{
-                backgroundColor: 'white',
-                borderRadius: '16px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                transition: 'transform 0.3s ease, boxShadow 0.3s ease',
-                cursor: 'pointer'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-              }}
+              <div 
+                key={producto.id} 
+                className="product-card"
+                onClick={() => addToCart(producto)}
               >
-                <div style={{ height: '200px', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
+                <div style={{ height: '200px', backgroundColor: 'rgba(255, 255, 255, 0.01)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px', borderBottom: '1px solid var(--panel-border)' }}>
                   {producto.imagenUrl ? (
                     <img src={producto.imagenUrl} alt={producto.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
-                    <ShoppingCart size={60} color="#cbd5e1" />
+                    <ShoppingCart size={60} color="var(--text-muted)" style={{ opacity: 0.3 }} />
                   )}
                 </div>
                 <div style={{ padding: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b' }}>{producto.nombre}</h3>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>{producto.nombre}</h3>
                     <span style={{ 
-                      backgroundColor: 'rgba(255, 62, 62, 0.1)', 
+                      backgroundColor: 'rgba(255, 62, 62, 0.15)', 
                       color: 'var(--accent-primary)', 
                       padding: '4px 8px', 
                       borderRadius: '12px',
                       fontSize: '0.85rem',
-                      fontWeight: 'bold'
+                      fontWeight: 'bold',
+                      boxShadow: '0 0 10px rgba(255, 62, 62, 0.1)'
                     }}>
                       S/ {producto.precio.toFixed(2)}
                     </span>
                   </div>
-                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '15px', height: '40px', overflow: 'hidden' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '15px', height: '40px', overflow: 'hidden' }}>
                     {producto.descripcion || 'Sin descripción'}
                   </p>
-                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                  <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       Stock: {producto.stock}
                     </span>
                     <button 
-                      onClick={() => addToCart(producto)}
+                      onClick={(e) => { e.stopPropagation(); addToCart(producto); }}
                       disabled={producto.stock === 0}
                       style={{
-                        backgroundColor: producto.stock === 0 ? '#cbd5e1' : 'var(--accent-primary)',
-                        color: 'white',
+                        backgroundColor: producto.stock === 0 ? 'rgba(255, 255, 255, 0.04)' : 'var(--accent-primary)',
+                        color: producto.stock === 0 ? 'var(--text-muted)' : 'white',
                         border: 'none',
                         padding: '8px 15px',
                         borderRadius: '20px',
@@ -867,18 +842,17 @@ const CatalogoVirtual = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '5px',
-                        transition: 'transform 0.2s, box-shadow 0.2s'
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        boxShadow: producto.stock === 0 ? 'none' : '0 4px 15px rgba(255, 62, 62, 0.2)'
                       }}
                       onMouseOver={(e) => {
                         if (producto.stock > 0) {
                           e.currentTarget.style.transform = 'scale(1.05)';
-                          e.currentTarget.style.boxShadow = '0 4px 10px rgba(255, 62, 62, 0.3)';
                         }
                       }}
                       onMouseOut={(e) => {
                         if (producto.stock > 0) {
                           e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.boxShadow = 'none';
                         }
                       }}
                     >
@@ -896,23 +870,23 @@ const CatalogoVirtual = () => {
 
 
       {/* Cart Sidebar (Drawer) */}
-      <div style={{
+      <div className="cart-drawer" style={{
         position: 'fixed',
         top: 0,
         right: isCartOpen ? 0 : '-400px',
         width: '100%',
         maxWidth: '400px',
         height: '100vh',
-        backgroundColor: 'white',
-        boxShadow: '-5px 0 25px rgba(0,0,0,0.1)',
+        boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
         transition: 'right 0.3s ease-in-out',
         zIndex: 1000,
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        color: 'var(--text-main)'
       }}>
         {/* Cart Header */}
         <div style={{ padding: '20px', borderBottom: '1px solid var(--panel-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)' }}>
             <ShoppingCart size={24} /> Mi Pedido
           </h2>
           <button 
@@ -933,23 +907,23 @@ const CatalogoVirtual = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {cart.map(item => (
-                <div key={item.producto.id} style={{ display: 'flex', gap: '15px', borderBottom: '1px solid #f1f5f9', paddingBottom: '15px' }}>
-                  <div style={{ width: '60px', height: '60px', backgroundColor: '#f8fafc', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div key={item.producto.id} style={{ display: 'flex', gap: '15px', borderBottom: '1px solid var(--panel-border)', paddingBottom: '15px' }}>
+                  <div style={{ width: '60px', height: '60px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--panel-border)', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {item.producto.imagenUrl ? (
                       <img src={item.producto.imagenUrl} alt={item.producto.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <ShoppingCart size={24} color="#cbd5e1" />
+                      <ShoppingCart size={24} color="var(--text-muted)" />
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: '0 0 5px 0', fontSize: '0.95rem' }}>{item.producto.nombre}</h4>
+                    <h4 style={{ margin: '0 0 5px 0', fontSize: '0.95rem', color: 'var(--text-main)' }}>{item.producto.nombre}</h4>
                     <p style={{ margin: 0, color: 'var(--accent-primary)', fontWeight: 'bold' }}>S/ {item.producto.precio.toFixed(2)}</p>
                     
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f1f5f9', borderRadius: '20px', padding: '2px 8px' }}>
-                        <button onClick={() => updateQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Minus size={14} /></button>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '20px', textAlign: 'center', color: '#000' }}>{item.cantidad}</span>
-                        <button onClick={() => updateQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}><Plus size={14} /></button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--panel-border)', borderRadius: '20px', padding: '2px 8px' }}>
+                        <button onClick={() => updateQuantity(item.producto.id, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--text-main)' }}><Minus size={14} /></button>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 'bold', width: '20px', textAlign: 'center', color: 'var(--text-main)' }}>{item.cantidad}</span>
+                        <button onClick={() => updateQuantity(item.producto.id, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--text-main)' }}><Plus size={14} /></button>
                       </div>
                       <button 
                         onClick={() => removeFromCart(item.producto.id)}
@@ -967,7 +941,7 @@ const CatalogoVirtual = () => {
 
         {/* Cart Footer */}
         {cart.length > 0 && (
-          <div style={{ padding: '20px', borderTop: '1px solid var(--panel-border)', backgroundColor: '#f8fafc' }}>
+          <div style={{ padding: '20px', borderTop: '1px solid var(--panel-border)', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '1.2rem', fontWeight: 'bold' }}>
               <span>Total:</span>
               <span style={{ color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
@@ -1015,13 +989,13 @@ const CatalogoVirtual = () => {
       {isSolicitudModalOpen && selectedPlan && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto',
-          transition: 'background-color 0.3s ease'
+          backgroundColor: 'var(--bg-color)', background: 'var(--body-bg-gradient)', zIndex: 1000, overflowY: 'auto',
+          transition: 'background-color 0.3s ease', color: 'var(--text-main)'
         }}>
           {/* Header para Paso 2 */}
           {checkoutStep === 2 && (
             <div className="checkout-modal-header" style={{ width: '100%', padding: '40px 20px 40px', textAlign: 'center' }}>
-              <h1 className="checkout-modal-title" style={{ color: '#000000', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
+              <h1 className="checkout-modal-title" style={{ color: 'var(--text-main)', fontSize: '2.5rem', margin: '0' }}>Detalles de la compra</h1>
             </div>
           )}
 
@@ -1032,17 +1006,17 @@ const CatalogoVirtual = () => {
               if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
               setSolicitudPreview('');
               setSolicitudFile(null);
-            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-              <X size={24} color="#64748b" />
+            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--panel-border)', borderRadius: '50%', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+              <X size={24} color="var(--text-muted)" />
             </button>
 
             {checkoutStep === 3 && (
-               <h1 className="checkout-modal-title" style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de pago</h1>
+               <h1 className="checkout-modal-title" style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: 'var(--text-main)' }}>Detalles de pago</h1>
             )}
 
             {/* Stepper Visual */}
             <div className="checkout-stepper-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '50px', position: 'relative' }}>
-              <div style={{ position: 'absolute', height: '2px', backgroundColor: checkoutStep === 2 ? '#cbd5e1' : '#e2e8f0', width: '60%', zIndex: 1, top: '20px' }}></div>
+              <div style={{ position: 'absolute', height: '2px', backgroundColor: 'var(--panel-border)', width: '60%', zIndex: 1, top: '20px' }}></div>
               <div style={{ position: 'absolute', height: '2px', backgroundColor: 'var(--accent-primary)', width: checkoutStep === 2 ? '30%' : '60%', zIndex: 2, top: '20px', left: '20%', transition: 'width 0.3s ease' }}></div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', width: '70%', zIndex: 3 }}>
@@ -1050,30 +1024,30 @@ const CatalogoVirtual = () => {
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: '#000000', fontWeight: '500' }}>Planes</span>
+                  <span style={{ marginTop: '10px', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '500' }}>Planes</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }} onClick={() => setCheckoutStep(2)}>
-                  <div style={{ width: checkoutStep === 2 ? '50px' : '40px', height: checkoutStep === 2 ? '50px' : '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 2 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 2 ? '-5px' : '0', boxShadow: checkoutStep === 2 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
+                  <div style={{ width: checkoutStep === 2 ? '50px' : '40px', height: checkoutStep === 2 ? '50px' : '40px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 2 ? '4px solid var(--bg-color)' : 'none', marginTop: checkoutStep === 2 ? '-5px' : '0', boxShadow: checkoutStep === 2 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: '#000000', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>Revisar Plan</span>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 2 ? '1rem' : '0.9rem', color: 'var(--text-main)', fontWeight: checkoutStep === 2 ? 'bold' : '500' }}>Revisar Plan</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: checkoutStep === 3 ? 'pointer' : 'not-allowed' }} onClick={() => { if(checkoutStep === 3) setCheckoutStep(3) }}>
-                  <div style={{ width: checkoutStep === 3 ? '50px' : '40px', height: checkoutStep === 3 ? '50px' : '40px', borderRadius: '50%', backgroundColor: checkoutStep === 3 ? 'var(--accent-primary)' : '#334155', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 3 ? '4px solid #f8fafc' : 'none', marginTop: checkoutStep === 3 ? '-5px' : '0', boxShadow: checkoutStep === 3 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
+                  <div style={{ width: checkoutStep === 3 ? '50px' : '40px', height: checkoutStep === 3 ? '50px' : '40px', borderRadius: '50%', backgroundColor: checkoutStep === 3 ? 'var(--accent-primary)' : '#334155', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', fontWeight: 'bold', border: checkoutStep === 3 ? '4px solid var(--bg-color)' : 'none', marginTop: checkoutStep === 3 ? '-5px' : '0', boxShadow: checkoutStep === 3 ? '0 0 0 2px var(--accent-primary)' : 'none', transition: 'all 0.2s' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                   </div>
-                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 3 ? '1rem' : '0.9rem', color: checkoutStep === 2 ? '#94a3b8' : '#000000', fontWeight: checkoutStep === 3 ? 'bold' : '500' }}>Pago</span>
+                  <span style={{ marginTop: '10px', fontSize: checkoutStep === 3 ? '1rem' : '0.9rem', color: checkoutStep === 2 ? 'var(--text-muted)' : 'var(--text-main)', fontWeight: checkoutStep === 3 ? 'bold' : '500' }}>Pago</span>
                 </div>
               </div>
             </div>
 
             {solicitudSuccess ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-                <div style={{ width: '80px', height: '80px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'var(--panel-bg)', border: '1px solid var(--panel-border)', backdropFilter: 'var(--glass-blur)', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.3)', color: 'var(--text-main)' }}>
+                <div style={{ width: '80px', height: '80px', backgroundColor: 'rgba(34, 197, 94, 0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 0 20px rgba(34, 197, 94, 0.1)' }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <h2 style={{ color: '#166534', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
-                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su activación como socio.</p>
+                <h2 style={{ color: '#22c55e', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su activación como socio.</p>
                 <button onClick={() => setIsSolicitudModalOpen(false)} className="btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem' }}>
                   Volver al Catálogo
                 </button>
@@ -1085,59 +1059,59 @@ const CatalogoVirtual = () => {
                   <div className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
                     
                     {/* Tabla de Productos */}
-                    <div className="checkout-table-container" style={{ backgroundColor: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                    <div className="checkout-table-container" style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
                       <table className="checkout-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0' }}>
+                        <thead style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--panel-border)' }}>
                           <tr>
-                            <th style={{ padding: '20px', textAlign: 'left', color: '#64748b', fontSize: '0.9rem', width: '50px' }}></th>
-                            <th style={{ padding: '20px', textAlign: 'left', color: '#64748b', fontSize: '0.9rem' }}>Producto</th>
-                            <th style={{ padding: '20px', textAlign: 'left', color: '#64748b', fontSize: '0.9rem' }}>Precio</th>
-                            <th style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>Cantidad</th>
-                            <th style={{ padding: '20px', textAlign: 'right', color: '#64748b', fontSize: '0.9rem' }}>Subtotal</th>
+                            <th style={{ padding: '20px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.9rem', width: '50px' }}></th>
+                            <th style={{ padding: '20px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Producto</th>
+                            <th style={{ padding: '20px', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Precio</th>
+                            <th style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Cantidad</th>
+                            <th style={{ padding: '20px', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Subtotal</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr>
+                          <tr style={{ borderBottom: '1px solid var(--panel-border)' }}>
                             <td style={{ padding: '20px', textAlign: 'center' }}>
-                              <button onClick={() => setIsSolicitudModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold' }}>×</button>
+                              <button onClick={() => setIsSolicitudModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 'bold', fontSize: '1.2rem' }}>×</button>
                             </td>
                             <td style={{ padding: '20px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ width: '50px', height: '50px', backgroundColor: '#1e293b', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', padding: '5px' }}>
+                                <div style={{ width: '50px', height: '50px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--accent-primary)', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center', padding: '5px' }}>
                                   PLAN<br/>GYM
                                 </div>
                                 <div>
-                                  <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedPlan.nombre}</p>
-                                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>MESES: {selectedPlan.duracionMeses}</p>
+                                  <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-main)' }}>{selectedPlan.nombre}</p>
+                                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>MESES: {selectedPlan.duracionMeses}</p>
                                 </div>
                               </div>
                             </td>
-                            <td style={{ padding: '20px', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
-                            <td style={{ padding: '20px', textAlign: 'center', color: '#475569' }}>1</td>
-                            <td style={{ padding: '20px', textAlign: 'right', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                            <td style={{ padding: '20px', color: 'var(--text-main)' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
+                            <td style={{ padding: '20px', textAlign: 'center', color: 'var(--text-main)' }}>1</td>
+                            <td style={{ padding: '20px', textAlign: 'right', color: 'var(--text-main)' }}>S/ {selectedPlan.precio.toFixed(2)}</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
 
                     {/* Totales del Carrito */}
-                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Totales del carrito</h3>
+                    <div style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--panel-border)', padding: '30px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-main)' }}>Totales del carrito</h3>
                       
-                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>SUBTOTAL</span>
-                        <span style={{ fontWeight: '500', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                      <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>SUBTOTAL</span>
+                        <span style={{ fontWeight: '500', color: 'var(--text-main)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                       </div>
 
                       <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: '600', color: '#64748b', fontSize: '0.9rem' }}>TOTAL</span>
-                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '1.2rem' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        <span style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>TOTAL</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)', fontSize: '1.2rem' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                       </div>
 
                       <button onClick={() => setCheckoutStep(3)} style={{
                         width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
                         padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem',
-                        cursor: 'pointer', transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                        cursor: 'pointer', transition: 'background-color 0.2s', boxShadow: '0 4px 15px rgba(255, 62, 62, 0.3)'
                       }}>
                         FINALIZAR COMPRA
                       </button>
@@ -1152,18 +1126,18 @@ const CatalogoVirtual = () => {
                     
                     {/* Lado Izquierdo: Detalles de facturación */}
                     <div>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#000000' }}>Detalles de facturación</h3>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-main)' }}>Detalles de facturación</h3>
                       
                       <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
                         <div style={{ position: 'relative' }}>
                           <input type="text" required maxLength="8" style={{ 
                             width: '100%', 
                             padding: '14px 16px', 
                             borderRadius: '10px', 
-                            border: validationErrors.dni ? '2px solid #dc2626' : solicitudForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                            backgroundColor: '#ffffff', 
-                            color: '#000000',
+                            border: validationErrors.dni ? '2px solid #dc2626' : solicitudForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                            backgroundColor: 'rgba(255,255,255,0.02)', 
+                            color: 'var(--text-main)',
                             fontSize: '0.95rem',
                             transition: 'all 0.2s ease',
                             boxShadow: validationErrors.dni ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1179,13 +1153,13 @@ const CatalogoVirtual = () => {
                             display: 'flex', 
                             alignItems: 'center', 
                             gap: '8px',
-                            color: '#dc2626', 
+                            color: '#ef4444', 
                             fontSize: '0.85rem', 
                             fontWeight: '500', 
-                            backgroundColor: '#fef2f2', 
+                            backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                             padding: '10px 14px', 
                             borderRadius: '8px', 
-                            border: '1px solid #fecaca'
+                            border: '1px solid rgba(239, 68, 68, 0.15)'
                           }}>
                             <AlertCircle size={16} />
                             <span>{validationErrors.dni}</span>
@@ -1194,15 +1168,15 @@ const CatalogoVirtual = () => {
                       </div>
 
                       <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
                         <div style={{ position: 'relative' }}>
                           <input type="text" required disabled style={{ 
                             width: '100%', 
                             padding: '14px 16px', 
                             borderRadius: '10px', 
-                            border: validationErrors.nombreCompleto ? '2px solid #dc2626' : (solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                            backgroundColor: '#f1f5f9', 
-                            color: '#000000',
+                            border: validationErrors.nombreCompleto ? '2px solid #dc2626' : (solicitudForm.nombreCompleto.length > 0 && !validationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                            backgroundColor: 'rgba(255,255,255,0.05)', 
+                            color: 'var(--text-muted)',
                             fontSize: '0.95rem',
                             transition: 'all 0.2s ease',
                             boxShadow: validationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none',
@@ -1219,13 +1193,13 @@ const CatalogoVirtual = () => {
                             display: 'flex', 
                             alignItems: 'center', 
                             gap: '8px',
-                            color: '#dc2626', 
+                            color: '#ef4444', 
                             fontSize: '0.85rem', 
                             fontWeight: '500', 
-                            backgroundColor: '#fef2f2', 
+                            backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                             padding: '10px 14px', 
                             borderRadius: '8px', 
-                            border: '1px solid #fecaca'
+                            border: '1px solid rgba(239, 68, 68, 0.15)'
                           }}>
                             <AlertCircle size={16} />
                             <span>{validationErrors.nombreCompleto}</span>
@@ -1234,15 +1208,15 @@ const CatalogoVirtual = () => {
                       </div>
 
                       <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
                         <div style={{ position: 'relative' }}>
                           <input type="text" required maxLength="9" style={{ 
                             width: '100%', 
                             padding: '14px 16px', 
                             borderRadius: '10px', 
-                            border: validationErrors.telefono ? '2px solid #dc2626' : solicitudForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                            backgroundColor: '#ffffff', 
-                            color: '#000000',
+                            border: validationErrors.telefono ? '2px solid #dc2626' : solicitudForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                            backgroundColor: 'rgba(255,255,255,0.02)', 
+                            color: 'var(--text-main)',
                             fontSize: '0.95rem',
                             transition: 'all 0.2s ease',
                             boxShadow: validationErrors.telefono ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1258,13 +1232,13 @@ const CatalogoVirtual = () => {
                             display: 'flex', 
                             alignItems: 'center', 
                             gap: '8px',
-                            color: '#dc2626', 
+                            color: '#ef4444', 
                             fontSize: '0.85rem', 
                             fontWeight: '500', 
-                            backgroundColor: '#fef2f2', 
+                            backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                             padding: '10px 14px', 
                             borderRadius: '8px', 
-                            border: '1px solid #fecaca'
+                            border: '1px solid rgba(239, 68, 68, 0.15)'
                           }}>
                             <AlertCircle size={16} />
                             <span>{validationErrors.telefono}</span>
@@ -1273,14 +1247,14 @@ const CatalogoVirtual = () => {
                       </div>
 
                       <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
                         <input type="email" style={{ 
                           width: '100%', 
                           padding: '14px 16px', 
                           borderRadius: '10px', 
-                          border: '2px solid #e2e8f0', 
-                          backgroundColor: '#ffffff', 
-                          color: '#000000',
+                          border: '2px solid var(--panel-border)', 
+                          backgroundColor: 'rgba(255,255,255,0.02)', 
+                          color: 'var(--text-main)',
                           fontSize: '0.95rem',
                           transition: 'all 0.2s ease'
                         }}
@@ -1290,62 +1264,62 @@ const CatalogoVirtual = () => {
 
                     {/* Lado Derecho: Tu Pedido */}
                     <div>
-                      <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
-                        <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Tu pedido</h3>
+                      <div style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--panel-border)', padding: '30px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                        <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-main)' }}>Tu pedido</h3>
                         
                         {/* Summary Table */}
-                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 'bold' }}>
                           <span>PRODUCTO</span>
                           <span>SUBTOTAL</span>
                         </div>
                         
-                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#000000' }}>{selectedPlan.nombre} × 1</p>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-main)' }}>{selectedPlan.nombre} × 1</p>
                           </div>
-                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                         </div>
 
-                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
-                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
+                        <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Subtotal</span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                         </div>
 
                         <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
-                          <span style={{ fontWeight: 'bold', color: '#000000' }}>Total</span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>Total</span>
                           <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {selectedPlan.precio.toFixed(2)}</span>
                         </div>
 
                         {/* Metodos de pago (Yape/Transferencia) */}
-                        <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                          <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
+                        <div style={{ backgroundColor: 'rgba(255,255,255,0.01)', border: '1px solid var(--panel-border)', padding: '20px', borderRadius: '12px' }}>
+                          <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: 'var(--text-muted)' }}>
                             Realiza el pago a nuestras cuentas y adjunta el comprobante para habilitar tu suscripción.
                           </p>
                           
-                          <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
+                          <div style={{ marginBottom: '15px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--panel-border)', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
-                              {yapeNumber || '---'} {yapeTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({yapeTitular})</span> : null}
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                              {yapeNumber || '---'} {yapeTitular ? <span style={{fontSize:'0.9rem', color:'var(--text-muted)', fontWeight:'normal'}}>({yapeTitular})</span> : null}
                             </p>
                           </div>
 
-                          <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                          <div style={{ marginBottom: '20px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--panel-border)', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
                             <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>Cuenta Bancaria</p>
-                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
-                              {numeroCuenta || '---'} {cuentaTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({cuentaTitular})</span> : null}
+                            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                              {numeroCuenta || '---'} {cuentaTitular ? <span style={{fontSize:'0.9rem', color:'var(--text-muted)', fontWeight:'normal'}}>({cuentaTitular})</span> : null}
                             </p>
                           </div>
 
                           <div style={{ marginBottom: '24px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
+                            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
                             <div style={{ position: 'relative' }}>
                               <input type="text" required maxLength="15" style={{ 
                                 width: '100%', 
                                 padding: '14px 16px', 
                                 borderRadius: '10px', 
-                                border: validationErrors.numeroOperacion ? '2px solid #dc2626' : (solicitudForm.numeroOperacion.length >= 6 && solicitudForm.numeroOperacion.length <= 15) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                                backgroundColor: '#ffffff', 
-                                color: '#000000',
+                                border: validationErrors.numeroOperacion ? '2px solid #dc2626' : (solicitudForm.numeroOperacion.length >= 6 && solicitudForm.numeroOperacion.length <= 15) ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                                backgroundColor: 'rgba(255,255,255,0.02)', 
+                                color: 'var(--text-main)',
                                 fontSize: '0.95rem',
                                 transition: 'all 0.2s ease',
                                 boxShadow: validationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1361,13 +1335,13 @@ const CatalogoVirtual = () => {
                                 display: 'flex', 
                                 alignItems: 'center', 
                                 gap: '8px',
-                                color: '#dc2626', 
+                                color: '#ef4444', 
                                 fontSize: '0.85rem', 
                                 fontWeight: '500', 
-                                backgroundColor: '#fef2f2', 
+                                backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                                 padding: '10px 14px', 
                                 borderRadius: '8px', 
-                                border: '1px solid #fecaca'
+                                border: '1px solid rgba(239, 68, 68, 0.15)'
                               }}>
                                 <AlertCircle size={16} />
                                 <span>{validationErrors.numeroOperacion}</span>
@@ -1376,26 +1350,32 @@ const CatalogoVirtual = () => {
                           </div>
                           
                           <div style={{ marginBottom: '30px' }}>
-                            <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
+                            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
                             <div style={{ position: 'relative' }}>
                               <input 
                                 key={solicitudFile ? 'has-file' : 'no-file'}
                                 type="file" 
-                                accept="image/*,.pdf" 
+                                accept="image/*" 
                                 required={!solicitudFile}
                                 style={{ 
                                   width: '100%', 
                                   padding: '14px 16px', 
                                   borderRadius: '10px', 
-                                  border: validationErrors.comprobante ? '2px solid #dc2626' : solicitudFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
-                                  backgroundColor: '#ffffff', 
+                                  border: validationErrors.comprobante ? '2px solid #dc2626' : solicitudFile ? '2px solid #16a34a' : '2px dashed var(--panel-border)', 
+                                  backgroundColor: 'rgba(255,255,255,0.02)', 
                                   cursor: 'pointer',
+                                  color: 'var(--text-main)',
                                   fontSize: '0.9rem',
                                   transition: 'all 0.2s ease',
                                   boxShadow: validationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
                                 }}
                                 onChange={e => {
                                   const file = e.target.files[0];
+                                  if (file && !file.type.startsWith('image/')) {
+                                    alert('Solo se permiten archivos de imagen (PNG, JPG, JPEG, WEBP, GIF, BMP).');
+                                    e.target.value = '';
+                                    return;
+                                  }
                                   setSolicitudFile(file);
                                   setValidationErrors({...validationErrors, comprobante: null});
                                   if (solicitudPreview) URL.revokeObjectURL(solicitudPreview);
@@ -1416,15 +1396,15 @@ const CatalogoVirtual = () => {
                               <div style={{ 
                                 marginTop: '15px', 
                                 borderRadius: '12px', 
-                                border: '2px solid #e2e8f0', 
+                                border: '2px solid var(--panel-border)', 
                                 padding: '12px', 
-                                backgroundColor: '#f8fafc',
+                                backgroundColor: 'rgba(255,255,255,0.02)',
                                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 alignItems: 'center'
                               }}>
-                                <p style={{ alignSelf: 'flex-start', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vista previa del comprobante:</p>
+                                <p style={{ alignSelf: 'flex-start', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vista previa del comprobante:</p>
                                 <img 
                                   src={solicitudPreview} 
                                   alt="Vista previa del comprobante" 
@@ -1433,7 +1413,7 @@ const CatalogoVirtual = () => {
                                     maxHeight: '220px', 
                                     borderRadius: '8px', 
                                     objectFit: 'contain',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)' 
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)' 
                                   }} 
                                 />
                                 <button 
@@ -1471,9 +1451,9 @@ const CatalogoVirtual = () => {
                               <div style={{ 
                                 marginTop: '15px', 
                                 borderRadius: '12px', 
-                                border: '2px solid #e2e8f0', 
+                                border: '2px solid var(--panel-border)', 
                                 padding: '12px', 
-                                backgroundColor: '#f8fafc',
+                                backgroundColor: 'rgba(255,255,255,0.02)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between'
@@ -1483,8 +1463,8 @@ const CatalogoVirtual = () => {
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                                   </div>
                                   <div>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', color: '#1e293b' }}>Comprobante PDF</p>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{solicitudFile.name}</p>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)' }}>Comprobante PDF</p>
+                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{solicitudFile.name}</p>
                                   </div>
                                 </div>
                                 <button 
@@ -1518,13 +1498,13 @@ const CatalogoVirtual = () => {
                                 display: 'flex', 
                                 alignItems: 'center', 
                                 gap: '8px',
-                                color: '#dc2626', 
+                                color: '#ef4444', 
                                 fontSize: '0.85rem', 
                                 fontWeight: '500', 
-                                backgroundColor: '#fef2f2', 
+                                backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                                 padding: '10px 14px', 
                                 borderRadius: '8px', 
-                                border: '1px solid #fecaca'
+                                border: '1px solid rgba(239, 68, 68, 0.15)'
                               }}>
                                 <AlertCircle size={16} />
                                 <span>{validationErrors.comprobante}</span>
@@ -1538,13 +1518,12 @@ const CatalogoVirtual = () => {
                               display: 'flex', 
                               alignItems: 'flex-start', 
                               gap: '12px',
-                              color: '#991b1b', 
+                              color: '#ef4444', 
                               fontSize: '0.95rem', 
-                              backgroundColor: '#fef2f2', 
+                              backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                               padding: '16px', 
                               borderRadius: '12px', 
-                              border: '1px solid #fecaca',
-                              boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)'
+                              border: '1px solid rgba(239, 68, 68, 0.15)'
                             }}>
                               <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1558,7 +1537,7 @@ const CatalogoVirtual = () => {
                             width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
                             padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
                             cursor: isSubmittingSolicitud ? 'not-allowed' : 'pointer', opacity: isSubmittingSolicitud ? 0.7 : 1,
-                            transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                            transition: 'background-color 0.2s', boxShadow: '0 4px 15px rgba(255, 62, 62, 0.3)'
                           }}>
                             {isSubmittingSolicitud ? 'Procesando...' : 'Finalizar Pedido'}
                           </button>
@@ -1579,7 +1558,7 @@ const CatalogoVirtual = () => {
       {isProductCheckoutOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          backgroundColor: '#f8fafc', zIndex: 1000, overflowY: 'auto',
+          backgroundColor: 'var(--bg-color)', zIndex: 1000, overflowY: 'auto',
           transition: 'background-color 0.3s ease'
         }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px', position: 'relative' }}>
@@ -1589,41 +1568,41 @@ const CatalogoVirtual = () => {
               if (productPreview) URL.revokeObjectURL(productPreview);
               setProductPreview('');
               setProductFile(null);
-            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: 'none', cursor: 'pointer', padding: '10px', backgroundColor: 'white', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-              <X size={24} color="#64748b" />
+            }} style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 50, background: 'none', border: '1px solid var(--panel-border)', cursor: 'pointer', padding: '10px', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '50%', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+              <X size={24} color="var(--text-main)" />
             </button>
 
             {productSuccess ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', marginTop: '40px' }}>
-                <div style={{ width: '80px', height: '80px', backgroundColor: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', marginTop: '40px' }}>
+                <div style={{ width: '80px', height: '80px', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <h2 style={{ color: '#166534', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
-                <p style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su pedido.</p>
+                <h2 style={{ color: '#22c55e', marginBottom: '15px', fontSize: '2rem' }}>¡Pedido procesado con éxito!</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '30px' }}>Su comprobante está en verificación. Pronto se le confirmará su pedido.</p>
                 <button onClick={() => setIsProductCheckoutOpen(false)} className="btn-primary" style={{ padding: '15px 40px', fontSize: '1.1rem' }}>
                   Volver al Catálogo
                 </button>
               </div>
             ) : (
               <>
-                <h1 className="checkout-modal-title" style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: '#000000' }}>Detalles de la compra</h1>
+                <h1 className="checkout-modal-title" style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px', marginTop: '40px', color: 'var(--text-main)' }}>Detalles de la compra</h1>
                 
                 <form onSubmit={handleProductSubmit} className="checkout-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px' }}>
                   
                   {/* Lado Izquierdo: Detalles de facturación */}
                   <div>
-                    <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#000000' }}>Detalles de facturación</h3>
+                    <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: 'var(--text-main)' }}>Detalles de facturación</h3>
                     
                     <div style={{ marginBottom: '24px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>DNI *</label>
                       <div style={{ position: 'relative' }}>
                         <input type="text" required maxLength="8" style={{ 
                           width: '100%', 
                           padding: '14px 16px', 
                           borderRadius: '10px', 
-                          border: productValidationErrors.dni ? '2px solid #dc2626' : productForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                          backgroundColor: '#ffffff', 
-                          color: '#000000',
+                          border: productValidationErrors.dni ? '2px solid #dc2626' : productForm.dni.length === 8 ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                          backgroundColor: 'rgba(255,255,255,0.02)', 
+                          color: 'var(--text-main)',
                           fontSize: '0.95rem',
                           transition: 'all 0.2s ease',
                           boxShadow: productValidationErrors.dni ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1639,13 +1618,13 @@ const CatalogoVirtual = () => {
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: '8px',
-                          color: '#dc2626', 
+                          color: '#ef4444', 
                           fontSize: '0.85rem', 
                           fontWeight: '500', 
-                          backgroundColor: '#fef2f2', 
+                          backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                           padding: '10px 14px', 
                           borderRadius: '8px', 
-                          border: '1px solid #fecaca'
+                          border: '1px solid rgba(239, 68, 68, 0.15)'
                         }}>
                           <AlertCircle size={16} />
                           <span>{productValidationErrors.dni}</span>
@@ -1654,15 +1633,15 @@ const CatalogoVirtual = () => {
                     </div>
 
                     <div style={{ marginBottom: '24px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Nombre Completo *</label>
                       <div style={{ position: 'relative' }}>
                         <input type="text" required disabled style={{ 
                           width: '100%', 
                           padding: '14px 16px', 
                           borderRadius: '10px', 
-                          border: productValidationErrors.nombreCompleto ? '2px solid #dc2626' : (productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                          backgroundColor: '#f1f5f9', 
-                          color: '#000000',
+                          border: productValidationErrors.nombreCompleto ? '2px solid #dc2626' : (productForm.nombreCompleto.length > 0 && !productValidationErrors.nombreCompleto) ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                          backgroundColor: 'rgba(255,255,255,0.05)', 
+                          color: 'var(--text-muted)',
                           fontSize: '0.95rem',
                           transition: 'all 0.2s ease',
                           boxShadow: productValidationErrors.nombreCompleto ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none',
@@ -1679,13 +1658,13 @@ const CatalogoVirtual = () => {
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: '8px',
-                          color: '#dc2626', 
+                          color: '#ef4444', 
                           fontSize: '0.85rem', 
                           fontWeight: '500', 
-                          backgroundColor: '#fef2f2', 
+                          backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                           padding: '10px 14px', 
                           borderRadius: '8px', 
-                          border: '1px solid #fecaca'
+                          border: '1px solid rgba(239, 68, 68, 0.15)'
                         }}>
                           <AlertCircle size={16} />
                           <span>{productValidationErrors.nombreCompleto}</span>
@@ -1694,15 +1673,15 @@ const CatalogoVirtual = () => {
                     </div>
 
                     <div style={{ marginBottom: '24px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Teléfono *</label>
                       <div style={{ position: 'relative' }}>
                         <input type="text" required maxLength="9" style={{ 
                           width: '100%', 
                           padding: '14px 16px', 
                           borderRadius: '10px', 
-                          border: productValidationErrors.telefono ? '2px solid #dc2626' : productForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                          backgroundColor: '#ffffff', 
-                          color: '#000000',
+                          border: productValidationErrors.telefono ? '2px solid #dc2626' : productForm.telefono.length === 9 ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                          backgroundColor: 'rgba(255,255,255,0.02)', 
+                          color: 'var(--text-main)',
                           fontSize: '0.95rem',
                           transition: 'all 0.2s ease',
                           boxShadow: productValidationErrors.telefono ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1718,13 +1697,13 @@ const CatalogoVirtual = () => {
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: '8px',
-                          color: '#dc2626', 
+                          color: '#ef4444', 
                           fontSize: '0.85rem', 
                           fontWeight: '500', 
-                          backgroundColor: '#fef2f2', 
+                          backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                           padding: '10px 14px', 
                           borderRadius: '8px', 
-                          border: '1px solid #fecaca'
+                          border: '1px solid rgba(239, 68, 68, 0.15)'
                         }}>
                           <AlertCircle size={16} />
                           <span>{productValidationErrors.telefono}</span>
@@ -1733,14 +1712,14 @@ const CatalogoVirtual = () => {
                     </div>
 
                     <div style={{ marginBottom: '24px' }}>
-                      <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
+                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Dirección de correo electrónico</label>
                       <input type="email" style={{ 
                         width: '100%', 
                         padding: '14px 16px', 
                         borderRadius: '10px', 
-                        border: '2px solid #e2e8f0', 
-                        backgroundColor: '#ffffff', 
-                        color: '#000000',
+                        border: '2px solid var(--panel-border)', 
+                        backgroundColor: 'rgba(255,255,255,0.02)', 
+                        color: 'var(--text-main)',
                         fontSize: '0.95rem',
                         transition: 'all 0.2s ease'
                       }}
@@ -1750,64 +1729,64 @@ const CatalogoVirtual = () => {
 
                   {/* Lado Derecho: Tu Pedido */}
                   <div>
-                    <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }}>
-                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: '#000000' }}>Tu pedido</h3>
+                    <div style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--panel-border)', padding: '30px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                      <h3 style={{ fontSize: '1.5rem', marginBottom: '25px', color: 'var(--text-main)' }}>Tu pedido</h3>
                       
                       {/* Summary Table */}
-                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '15px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 'bold' }}>
                         <span>PRODUCTO</span>
                         <span>SUBTOTAL</span>
                       </div>
                       
                       {cart.map(item => (
-                        <div key={item.producto.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={item.producto.id} style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#000000' }}>{item.producto.nombre} × {item.cantidad}</p>
+                            <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: 'var(--text-main)' }}>{item.producto.nombre} × {item.cantidad}</p>
                           </div>
-                          <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</span>
+                          <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>S/ {(item.producto.precio * item.cantidad).toFixed(2)}</span>
                         </div>
                       ))}
 
-                      <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 'bold', color: '#475569' }}>Subtotal</span>
-                        <span style={{ fontWeight: 'bold', color: '#475569' }}>S/ {cartTotal.toFixed(2)}</span>
+                      <div style={{ borderBottom: '1px solid var(--panel-border)', paddingBottom: '20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>Subtotal</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>S/ {cartTotal.toFixed(2)}</span>
                       </div>
 
                       <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem' }}>
-                        <span style={{ fontWeight: 'bold', color: '#000000' }}>Total</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>Total</span>
                         <span style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>S/ {cartTotal.toFixed(2)}</span>
                       </div>
 
                       {/* Metodos de pago (Yape/Transferencia) */}
-                      <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                        <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: '#475569' }}>
+                      <div style={{ backgroundColor: 'rgba(255,255,255,0.01)', border: '1px solid var(--panel-border)', padding: '20px', borderRadius: '12px' }}>
+                        <p style={{ margin: '0 0 15px 0', fontSize: '0.95rem', color: 'var(--text-muted)' }}>
                           Realiza el pago a nuestras cuentas y adjunta el comprobante para procesar tu pedido.
                         </p>
                         
-                        <div style={{ marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
+                        <div style={{ marginBottom: '15px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--panel-border)', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6f42c1' }}>
                           <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#6f42c1' }}>Yape / Plin</p>
-                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
-                            {yapeNumber || '---'} {yapeTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({yapeTitular})</span> : null}
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                            {yapeNumber || '---'} {yapeTitular ? <span style={{fontSize:'0.9rem', color:'var(--text-muted)', fontWeight:'normal'}}>({yapeTitular})</span> : null}
                           </p>
                         </div>
 
-                        <div style={{ marginBottom: '20px', backgroundColor: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                        <div style={{ marginBottom: '20px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--panel-border)', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
                           <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#f59e0b' }}>Cuenta Bancaria</p>
-                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: '#000000' }}>
-                            {numeroCuenta || '---'} {cuentaTitular ? <span style={{fontSize:'0.9rem', color:'#475569', fontWeight:'normal'}}>({cuentaTitular})</span> : null}
+                          <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                            {numeroCuenta || '---'} {cuentaTitular ? <span style={{fontSize:'0.9rem', color:'var(--text-muted)', fontWeight:'normal'}}>({cuentaTitular})</span> : null}
                           </p>
                         </div>
 
                         <div style={{ marginBottom: '24px' }}>
-                          <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
+                          <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Número de Operación *</label>
                           <div style={{ position: 'relative' }}>
                             <input type="text" required maxLength="15" style={{ 
                               width: '100%', 
                               padding: '14px 16px', 
                               borderRadius: '10px', 
-                              border: productValidationErrors.numeroOperacion ? '2px solid #dc2626' : (productForm.numeroOperacion.length >= 6 && productForm.numeroOperacion.length <= 15) ? '2px solid #16a34a' : '2px solid #e2e8f0', 
-                              backgroundColor: '#ffffff', 
-                              color: '#000000',
+                              border: productValidationErrors.numeroOperacion ? '2px solid #dc2626' : (productForm.numeroOperacion.length >= 6 && productForm.numeroOperacion.length <= 15) ? '2px solid #16a34a' : '2px solid var(--panel-border)', 
+                              backgroundColor: 'rgba(255,255,255,0.02)', 
+                              color: 'var(--text-main)',
                               fontSize: '0.95rem',
                               transition: 'all 0.2s ease',
                               boxShadow: productValidationErrors.numeroOperacion ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
@@ -1823,41 +1802,47 @@ const CatalogoVirtual = () => {
                               display: 'flex', 
                               alignItems: 'center', 
                               gap: '8px',
-                              color: '#dc2626', 
+                              color: '#ef4444', 
                               fontSize: '0.85rem', 
                               fontWeight: '500', 
-                              backgroundColor: '#fef2f2', 
+                              backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                               padding: '10px 14px', 
                               borderRadius: '8px', 
-                              border: '1px solid #fecaca'
+                              border: '1px solid rgba(239, 68, 68, 0.15)'
                             }}>
                               <AlertCircle size={16} />
                               <span>{productValidationErrors.numeroOperacion}</span>
                             </div>
                           )}
                         </div>
-                        
+
                         <div style={{ marginBottom: '30px' }}>
-                          <label style={{ display: 'block', marginBottom: '8px', color: '#1e293b', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
+                          <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '0.5px' }}>Comprobante de Pago *</label>
                           <div style={{ position: 'relative' }}>
                             <input 
                               key={productFile ? 'has-file' : 'no-file'}
                               type="file" 
-                              accept="image/*,.pdf" 
+                              accept="image/*" 
                               required={!productFile}
                               style={{ 
                                 width: '100%', 
                                 padding: '14px 16px', 
                                 borderRadius: '10px', 
-                                border: productValidationErrors.comprobante ? '2px solid #dc2626' : productFile ? '2px solid #16a34a' : '2px dashed #e2e8f0', 
-                                backgroundColor: '#ffffff', 
+                                border: productValidationErrors.comprobante ? '2px solid #dc2626' : productFile ? '2px solid #16a34a' : '2px dashed var(--panel-border)', 
+                                backgroundColor: 'rgba(255,255,255,0.02)', 
                                 cursor: 'pointer',
+                                color: 'var(--text-main)',
                                 fontSize: '0.9rem',
                                 transition: 'all 0.2s ease',
                                 boxShadow: productValidationErrors.comprobante ? '0 0 0 3px rgba(220, 38, 38, 0.1)' : 'none'
                               }}
                               onChange={e => {
                                 const file = e.target.files[0];
+                                if (file && !file.type.startsWith('image/')) {
+                                  alert('Solo se permiten archivos de imagen (PNG, JPG, JPEG, WEBP, GIF, BMP).');
+                                  e.target.value = '';
+                                  return;
+                                }
                                 setProductFile(file);
                                 setProductValidationErrors({...productValidationErrors, comprobante: null});
                                 if (productPreview) URL.revokeObjectURL(productPreview);
@@ -1878,15 +1863,15 @@ const CatalogoVirtual = () => {
                             <div style={{ 
                               marginTop: '15px', 
                               borderRadius: '12px', 
-                              border: '2px solid #e2e8f0', 
+                              border: '2px solid var(--panel-border)', 
                               padding: '12px', 
-                              backgroundColor: '#f8fafc',
+                              backgroundColor: 'rgba(255,255,255,0.02)',
                               boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)',
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center'
                             }}>
-                              <p style={{ alignSelf: 'flex-start', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vista previa del comprobante:</p>
+                              <p style={{ alignSelf: 'flex-start', margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Vista previa del comprobante:</p>
                               <img 
                                 src={productPreview} 
                                 alt="Vista previa del comprobante" 
@@ -1895,7 +1880,7 @@ const CatalogoVirtual = () => {
                                   maxHeight: '220px', 
                                   borderRadius: '8px', 
                                   objectFit: 'contain',
-                                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)' 
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)' 
                                 }} 
                               />
                               <button 
@@ -1910,7 +1895,7 @@ const CatalogoVirtual = () => {
                                   padding: '6px 12px',
                                   borderRadius: '6px',
                                   border: '1px solid #fee2e2',
-                                  backgroundColor: '#fef2e2',
+                                  backgroundColor: '#fef2f2',
                                   color: '#ef4444',
                                   fontSize: '0.8rem',
                                   fontWeight: '600',
@@ -1933,9 +1918,9 @@ const CatalogoVirtual = () => {
                             <div style={{ 
                               marginTop: '15px', 
                               borderRadius: '12px', 
-                              border: '2px solid #e2e8f0', 
+                              border: '2px solid var(--panel-border)', 
                               padding: '12px', 
-                              backgroundColor: '#f8fafc',
+                              backgroundColor: 'rgba(255,255,255,0.02)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between'
@@ -1945,8 +1930,8 @@ const CatalogoVirtual = () => {
                                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                                 </div>
                                 <div>
-                                  <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', color: '#1e293b' }}>Comprobante PDF</p>
-                                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{productFile.name}</p>
+                                  <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)' }}>Comprobante PDF</p>
+                                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{productFile.name}</p>
                                 </div>
                               </div>
                               <button 
@@ -1980,13 +1965,13 @@ const CatalogoVirtual = () => {
                               display: 'flex', 
                               alignItems: 'center', 
                               gap: '8px',
-                              color: '#dc2626', 
+                              color: '#ef4444', 
                               fontSize: '0.85rem', 
                               fontWeight: '500', 
-                              backgroundColor: '#fef2f2', 
+                              backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                               padding: '10px 14px', 
                               borderRadius: '8px', 
-                              border: '1px solid #fecaca'
+                              border: '1px solid rgba(239, 68, 68, 0.15)'
                             }}>
                               <AlertCircle size={16} />
                               <span>{productValidationErrors.comprobante}</span>
@@ -2000,13 +1985,12 @@ const CatalogoVirtual = () => {
                             display: 'flex', 
                             alignItems: 'flex-start', 
                             gap: '12px',
-                            color: '#991b1b', 
+                            color: '#ef4444', 
                             fontSize: '0.95rem', 
-                            backgroundColor: '#fef2f2', 
+                            backgroundColor: 'rgba(239, 68, 68, 0.05)', 
                             padding: '16px', 
                             borderRadius: '12px', 
-                            border: '1px solid #fecaca',
-                            boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)'
+                            border: '1px solid rgba(239, 68, 68, 0.15)'
                           }}>
                             <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -2020,12 +2004,11 @@ const CatalogoVirtual = () => {
                           width: '100%', backgroundColor: 'var(--accent-primary)', color: 'white', border: 'none',
                           padding: '16px', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem',
                           cursor: isSubmittingProduct ? 'not-allowed' : 'pointer', opacity: isSubmittingProduct ? 0.7 : 1,
-                          transition: 'background-color 0.2s', boxShadow: '0 4px 6px rgba(255, 62, 62, 0.2)'
+                          transition: 'background-color 0.2s', boxShadow: '0 4px 15px rgba(255, 62, 62, 0.3)'
                         }}>
                           {isSubmittingProduct ? 'Procesando...' : 'Finalizar compra'}
                         </button>
                       </div>
-
                     </div>
                   </div>
 

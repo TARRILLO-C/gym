@@ -1,8 +1,19 @@
 /* CatalogoVirtual.css */
 
+.catalog-body {
+  background-color: var(--bg-color);
+  background: var(--body-bg-gradient);
+  min-height: 100vh;
+  padding-bottom: 50px;
+  color: var(--text-main);
+  font-family: 'Outfit', sans-serif;
+  transition: var(--transition-smooth);
+}
+
 /* Navbar */
 .catalog-nav {
   padding: 15px 50px !important;
+  transition: var(--transition-smooth);
 }
 
 @media (max-width: 768px) {
@@ -22,10 +33,13 @@
 /* Hero Slider */
 .catalog-hero-title {
   font-size: 4rem !important;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(255, 62, 62, 0.4);
 }
 
 .catalog-hero-desc {
   font-size: 1.5rem !important;
+  color: #e4e4e7;
 }
 
 @media (max-width: 768px) {
@@ -86,24 +100,66 @@
   }
 }
 
-/* Grids */
-.catalog-grid {
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+/* Cards Premium */
+.plan-card, .product-card {
+  background: var(--panel-bg) !important;
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-@media (max-width: 480px) {
-  .catalog-grid {
-    grid-template-columns: 1fr !important;
-  }
+.plan-card:hover, .product-card:hover {
+  transform: translateY(-8px) scale(1.02) !important;
+  box-shadow: 0 20px 40px rgba(255, 62, 62, 0.18) !important;
+  border-color: rgba(255, 62, 62, 0.3) !important;
 }
 
-/* Modals / Checkout */
+/* Plan Card Image Container */
+.plan-card-img-container {
+  height: 300px;
+  background-color: rgba(255, 255, 255, 0.01) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-bottom: 1px solid var(--panel-border) !important;
+  overflow: hidden;
+}
+
+.plan-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover !important;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.plan-card:hover .plan-card-img {
+  transform: scale(1.08);
+}
+
+/* Cart Drawer */
+.cart-drawer {
+  background-color: var(--bg-color) !important;
+  background: var(--body-bg-gradient) !important;
+  border-left: 1px solid var(--panel-border) !important;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Stepper & Checkout */
 .checkout-modal-header {
   padding: 40px 20px 40px !important;
 }
 
 .checkout-modal-title {
   font-size: 2.5rem !important;
+  color: var(--text-main) !important;
+  text-shadow: 0 0 15px rgba(255, 62, 62, 0.1);
 }
 
 @media (max-width: 768px) {
@@ -144,4 +200,23 @@
     grid-template-columns: 1fr !important;
     gap: 20px !important;
   }
+}
+
+/* Glass Input Styles */
+.glass-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--panel-border) !important;
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  color: var(--text-main) !important;
+  font-size: 0.95rem;
+  transition: var(--transition-smooth) !important;
+  outline: none;
+}
+
+.glass-input:focus {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 15px rgba(255, 62, 62, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
