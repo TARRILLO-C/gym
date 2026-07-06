@@ -27,6 +27,9 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const [logoUrl, setLogoUrl] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const role = sessionStorage.getItem('role');
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/web-config`)
@@ -42,7 +45,35 @@ const Sidebar = () => {
       .catch(err => console.error('Error fetching logo:', err));
   }, []);
 
-  const role = sessionStorage.getItem('role');
+  useEffect(() => {
+    if (role !== 'ADMINISTRADOR' && role !== 'RECEPCIONISTA') return;
+
+    const fetchPendingCounts = async () => {
+      try {
+        const [prodRes, membRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/solicitudes-producto/pendientes`),
+          fetch(`${API_BASE_URL}/solicitudes-membresia/pendientes`)
+        ]);
+        
+        let count = 0;
+        if (prodRes.ok) {
+          const prodData = await prodRes.json();
+          count += prodData.length;
+        }
+        if (membRes.ok) {
+          const membData = await membRes.json();
+          count += membData.length;
+        }
+        setPendingCount(count);
+      } catch (err) {
+        console.error('Error fetching pending counts:', err);
+      }
+    };
+
+    fetchPendingCounts();
+    const interval = setInterval(fetchPendingCounts, 15000);
+    return () => clearInterval(interval);
+  }, [role]);
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR'] },
@@ -115,9 +146,53 @@ const Sidebar = () => {
             className={({ isActive }) => 
               `nav-link ${isActive ? 'active' : ''}`
             }
+            style={{ position: 'relative' }}
           >
-            <item.icon size={20} className="nav-icon" />
-            <span className="sidebar-text">{item.name}</span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <item.icon size={20} className="nav-icon" />
+              {item.name === 'Solicitudes' && pendingCount > 0 && (
+                <span className="pending-badge-dot" style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: 'var(--accent-primary)',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 6px var(--accent-primary)',
+                  display: 'none'
+                }} />
+              )}
+            </div>
+            <span className="sidebar-text" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              flex: 1,
+              width: '100%'
+            }}>
+              <span>{item.name}</span>
+              {item.name === 'Solicitudes' && pendingCount > 0 && (
+                <span className="pending-badge" style={{
+                  backgroundColor: 'var(--accent-primary)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  padding: '2px 8px',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  minWidth: '18px',
+                  height: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 10px var(--accent-primary)',
+                  animation: 'pulse-badge 2s infinite',
+                  marginLeft: '8px'
+                }}>
+                  {pendingCount}
+                </span>
+              )}
+            </span>
           </NavLink>
         ))}
       </nav>
@@ -180,6 +255,22 @@ const Sidebar = () => {
         }
         .nav-link:not(.active) .nav-icon {
           color: var(--text-muted);
+        }
+        @keyframes pulse-badge {
+          0% {
+            box-shadow: 0 0 0 0 var(--accent-primary);
+          }
+          70% {
+            box-shadow: 0 0 0 6px transparent;
+          }
+          100% {
+            box-shadow: 0 0 0 0 transparent;
+          }
+        }
+        @media (max-width: 1024px) {
+          .pending-badge-dot {
+            display: block !important;
+          }
         }
       `}} />
     </aside>
