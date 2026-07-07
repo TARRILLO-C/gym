@@ -78,6 +78,15 @@ const Asistencia = () => {
     }
   };
 
+  const speak = (text) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'es-ES';
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const registerAttendanceByDni = async (dniVal) => {
     setLoading(true);
     setResult(null);
@@ -88,6 +97,7 @@ const Asistencia = () => {
         message: '¡Acceso Concedido!',
         data: resp.data
       });
+      speak('Acceso Concedido');
       return true;
     } catch (err) {
       const errorMsg = err.response?.data?.mensaje || 'Error desconocido';
@@ -95,6 +105,7 @@ const Asistencia = () => {
         success: false,
         message: errorMsg
       });
+      speak('Acceso Denegado');
       return false;
     } finally {
       setLoading(false);
@@ -108,6 +119,7 @@ const Asistencia = () => {
         success: false,
         message: 'El DNI debe tener exactamente 8 dígitos.'
       });
+      speak('Acceso Denegado');
       return;
     }
     const success = await registerAttendanceByDni(dni);
