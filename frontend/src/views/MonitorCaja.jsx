@@ -14,7 +14,8 @@ import {
   X,
   Ban,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  ShoppingBag
 } from 'lucide-react';
 import api from '../services/api';
 import PageLayout from '../components/layout/PageLayout';
@@ -41,6 +42,18 @@ const MonitorCaja = () => {
   const [selectedCierre, setSelectedCierre] = useState(null);
   const [selectedCierreMovimientos, setSelectedCierreMovimientos] = useState([]);
   const [loadingMovimientos, setLoadingMovimientos] = useState(false);
+
+  // Nuevos filtros
+  const [filterMetodoPago, setFilterMetodoPago] = useState('ALL');
+  const [filterCajero, setFilterCajero] = useState('');
+  const [filterSocio, setFilterSocio] = useState('');
+  const [filterComprobante, setFilterComprobante] = useState('');
+
+  const [cierreStartDate, setCierreStartDate] = useState('');
+  const [cierreEndDate, setCierreEndDate] = useState('');
+  const [cierreStatus, setCierreStatus] = useState('ALL');
+  const [cierreUser, setCierreUser] = useState('');
+
 
   // Estado del modal de anulación
   const [anulacionModal, setAnulacionModal] = useState({ show: false, ventaId: null, cliente: '' });
@@ -107,8 +120,8 @@ const MonitorCaja = () => {
     .filter(r => new Date(r.fecha || r.fechaPago) >= monthStart)
     .reduce((s, r) => s + parseFloat(r.total || r.monto || 0), 0);
 
-  const totalVentas = ventas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
-  const stockBajo = productos.filter(p => p.stock <= p.stockMinimo && p.activo !== false).length;
+  const totalVentas = [...ventas, ...pagos].reduce((s, r) => s + parseFloat(r.total || r.monto || 0), 0);
+  const ingresosCatalogo = ventas.reduce((s, v) => s + parseFloat(v.total || 0), 0);
 
   const allRecords = [
     ...ventas.map(v => ({
@@ -119,7 +132,9 @@ const MonitorCaja = () => {
       metodo: v.metodoPago,
       monto: parseFloat(v.total || 0),
       estado: v.activo === false ? 'Anulada' : 'Válida',
-      activo: v.activo !== false
+      activo: v.activo !== false,
+      cajero: v.usuario?.username || v.creadoPor || '',
+      comprobante: v.comprobante || v.nroComprobante || ''
     })),
     ...pagos.map(p => ({
       id: 'P' + p.id,
@@ -129,7 +144,9 @@ const MonitorCaja = () => {
       metodo: p.metodoPago,
       monto: parseFloat(p.monto || 0),
       estado: (p.venta && p.venta.activo === false) ? 'Anulada' : 'Válida',
-      activo: !(p.venta && p.venta.activo === false)
+      activo: !(p.venta && p.venta.activo === false),
+      cajero: p.usuario?.username || p.creadoPor || '',
+      comprobante: p.comprobante || p.nroComprobante || ''
     }))
   ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
@@ -145,8 +162,31 @@ const MonitorCaja = () => {
     const matchesFecha = (!from || fecha >= from) && (!to || fecha <= to);
 
     const matchesType = filterType === 'ALL' || r.tipo === filterType;
+    const matchesMetodo = filterMetodoPago === 'ALL' || r.metodo === filterMetodoPago;
+    const matchesCajero = !filterCajero || (r.cajero && r.cajero.toLowerCase().includes(filterCajero.toLowerCase()));
+    const matchesSocio = !filterSocio || nombre.includes(filterSocio.toLowerCase());
+    const matchesComprobante = !filterComprobante || (r.comprobante && r.comprobante.toLowerCase().includes(filterComprobante.toLowerCase()));
 
-    return matchesSearch && matchesFecha && matchesType;
+    return matchesSearch && matchesFecha && matchesType && matchesMetodo && matchesCajero && matchesSocio && matchesComprobante;
+  });
+
+  const filteredCierres = historialCierres.filter(c => {
+    if (cierreStatus !== 'ALL') {
+      if (c.estado !== cierreStatus) return false;
+    }
+    if (cierreUser && !c.username?.toLowerCase().includes(cierreUser.toLowerCase())) return false;
+    
+    if (cierreStartDate) {
+      const d = new Date(c.aperturaAt);
+      const start = new Date(cierreStartDate + 'T00:00:00');
+      if (d < start) return false;
+    }
+    if (cierreEndDate) {
+      const d = new Date(c.aperturaAt);
+      const end = new Date(cierreEndDate + 'T23:59:59');
+      if (d > end) return false;
+    }
+    return true;
   });
 
   const totalFiltrado = filtered.reduce((s, r) => s + r.monto, 0);
@@ -191,8 +231,6 @@ const MonitorCaja = () => {
     });
     doc.save(`MonitorCaja_${todayStr()}.pdf`);
   };
-
-
 
   const handleAnularComprobante = async () => {
     if (!motivoAnulacion.trim()) {
@@ -290,12 +328,14 @@ const MonitorCaja = () => {
           <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ingresos del Mes</div><div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{formatMoney(ingresoMes)}</div></div>
         </div>
         <div className="mc-stat">
-          <div className="mc-stat-icon" style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}><DollarSign size={24} /></div>
+          <div className="mc-stat-icon" style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>
+            <span style={{ fontSize: '20px', fontWeight: '800' }}>S/</span>
+          </div>
           <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ventas Totales</div><div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{formatMoney(totalVentas)}</div></div>
         </div>
         <div className="mc-stat">
-          <div className="mc-stat-icon" style={{ background: stockBajo > 0 ? 'rgba(255,62,62,0.12)' : 'rgba(34,197,94,0.12)', color: stockBajo > 0 ? '#ff3e3e' : '#22c55e' }}><Package size={24} /></div>
-          <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stock Bajo</div><div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stockBajo}</div></div>
+          <div className="mc-stat-icon" style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}><ShoppingBag size={24} /></div>
+          <div><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ingresos del Catálogo</div><div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{formatMoney(ingresosCatalogo)}</div></div>
         </div>
       </div>
 
@@ -335,12 +375,46 @@ const MonitorCaja = () => {
           </button>
         </div>
 
+
         {monitorSubTab === 'cierres' ? (
           loading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando cierres...</div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="mc-table">
+            <>
+              {/* FILTROS CIERRES */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                <div style={{ flex: '1 1 120px' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>FECHA DESDE</label>
+                  <input type="date" value={cierreStartDate} onChange={e => setCierreStartDate(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.85rem' }} />
+                </div>
+                <div style={{ flex: '1 1 120px' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>FECHA HASTA</label>
+                  <input type="date" value={cierreEndDate} onChange={e => setCierreEndDate(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.85rem' }} />
+                </div>
+                <div style={{ flex: '1 1 150px' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>ESTADO</label>
+                  <select value={cierreStatus} onChange={e => setCierreStatus(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    <option value="ALL">Todos</option>
+                    <option value="ABIERTA">Abierta</option>
+                    <option value="CUADRADA">Cuadrada</option>
+                    <option value="DESCUADRE">Descuadre</option>
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 150px' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>USUARIO</label>
+                  <input type="text" placeholder="Ej: admin" value={cierreUser} onChange={e => setCierreUser(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.85rem' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button onClick={() => {
+                    setCierreStartDate(''); setCierreEndDate(''); setCierreStatus('ALL'); setCierreUser('');
+                  }} style={{ padding: '6px 12px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, height: '36px' }}>
+                    <X size={14} /> Limpiar
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table className="mc-table">
                 <thead>
                   <tr>
                     <th>Fecha</th>
@@ -354,8 +428,8 @@ const MonitorCaja = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {historialCierres.length > 0 ? (
-                    [...historialCierres].sort((a,b) => new Date(b.aperturaAt) - new Date(a.aperturaAt)).map((c) => {
+                  {filteredCierres.length > 0 ? (
+                    [...filteredCierres].sort((a,b) => new Date(b.aperturaAt) - new Date(a.aperturaAt)).map((c) => {
                       const diff = parseFloat(c.diferencia || 0);
                       let diffColor = 'var(--text-main)';
                       if (diff > 0) diffColor = '#22c55e'; // Sobrante
@@ -401,42 +475,87 @@ const MonitorCaja = () => {
                   ) : (
                     <tr>
                       <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                        No hay cierres de caja registrados en el historial.
+                        No hay cierres de caja registrados que coincidan con los filtros.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+            </>
           )
         ) : (
           <>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
-                <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                <input type="text" placeholder="Buscar por cliente o método de pago..." value={search} onChange={(e) => setSearch(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s_]/g, ''))} style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+              
+              {/* Controles de Fechas Rápidos */}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, marginRight: '8px' }}>Atajos de Fecha:</span>
+                <button onClick={() => { const d = todayStr(); setStartDate(d); setEndDate(d); }} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem' }}>Hoy</button>
+                <button onClick={() => { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const from = new Date(d.setDate(diff)); setStartDate(from.toISOString().split('T')[0]); setEndDate(todayStr()); }} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem' }}>Esta Semana</button>
+                <button onClick={() => { const d = new Date(); const from = new Date(d); from.setDate(d.getDate() - 30); setStartDate(from.toISOString().split('T')[0]); setEndDate(todayStr()); }} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem' }}>Últimos 30 Días</button>
+                <button onClick={() => { setStartDate(new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]); setEndDate(todayStr()); }} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem' }}>Este Año</button>
               </div>
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '10px', padding: '3px', gap: '3px' }}>
-                  <button onClick={() => setFilterType('ALL')} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, background: filterType === 'ALL' ? 'var(--panel-border)' : 'transparent', color: filterType === 'ALL' ? 'var(--text-main)' : 'var(--text-muted)', transition: 'all .2s' }}>Todos</button>
-                  <button onClick={() => setFilterType('Venta Producto')} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, background: filterType === 'Venta Producto' ? 'rgba(59,130,246,0.2)' : 'transparent', color: filterType === 'Venta Producto' ? '#3b82f6' : 'var(--text-muted)', transition: 'all .2s' }}>Venta Producto</button>
-                  <button onClick={() => setFilterType('Plan / Suscripción')} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, background: filterType === 'Plan / Suscripción' ? 'rgba(249,115,22,0.2)' : 'transparent', color: filterType === 'Plan / Suscripción' ? '#f97316' : 'var(--text-muted)', transition: 'all .2s' }}>Plan / Suscripción</button>
+
+              {/* Grid de Filtros Avanzados */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>FECHA DESDE</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }} />
                 </div>
-                <button onClick={() => { const d = todayStr(); setStartDate(d); setEndDate(d); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Hoy</button>
-                <button onClick={() => { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const from = new Date(d.setDate(diff)); setStartDate(from.toISOString().split('T')[0]); setEndDate(todayStr()); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Semana</button>
-                <button onClick={() => { const d = new Date(); const from = new Date(d); from.setDate(d.getDate() - 30); setStartDate(from.toISOString().split('T')[0]); setEndDate(todayStr()); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>30 Días</button>
-                <button onClick={() => { setStartDate(new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]); setEndDate(todayStr()); }} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Año</button>
-                <div style={{ width: '1px', height: '28px', background: 'var(--panel-border)', margin: '0 4px' }} />
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '140px' }} />
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>→</span>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '140px' }} />
-                {(search || startDate || endDate) && (
-                  <button onClick={() => { setSearch(''); setStartDate(''); setEndDate(''); }} style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'rgba(255,62,62,0.1)', color: '#ff3e3e', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center' }} title="Limpiar filtros">
-                    <X size={16} />
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>FECHA HASTA</label>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>CONCEPTO</label>
+                  <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}>
+                    <option value="ALL">Todos los conceptos</option>
+                    <option value="Venta Producto">Venta Producto</option>
+                    <option value="Plan / Suscripción">Plan / Suscripción</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>MÉTODO DE PAGO</label>
+                  <select value={filterMetodoPago} onChange={(e) => setFilterMetodoPago(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}>
+                    <option value="ALL">Todos</option>
+                    <option value="EFECTIVO">Efectivo</option>
+                    <option value="TARJETA">Tarjeta</option>
+                    <option value="YAPE">Yape</option>
+                    <option value="PLIN">Plin</option>
+                    <option value="TRANSFERENCIA">Transferencia</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>CAJERO</label>
+                  <input type="text" placeholder="Ej: admin" value={filterCajero} onChange={(e) => setFilterCajero(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>DNI / SOCIO</label>
+                  <input type="text" placeholder="Ej: 71234567" value={filterSocio} onChange={(e) => setFilterSocio(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>COMPROBANTE</label>
+                  <input type="text" placeholder="Nro." value={filterComprobante} onChange={(e) => setFilterComprobante(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }} />
+                </div>
+                
+                <div style={{ position: 'relative' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 600 }}>FILTRO RÁPIDO</label>
+                  <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', bottom: '10px', pointerEvents: 'none' }} />
+                  <input type="text" placeholder="Buscar en resultados..." value={search} onChange={(e) => setSearch(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s_]/g, ''))} style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '8px', border: '1px solid var(--panel-border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button onClick={() => {
+                    setSearch(''); setStartDate(''); setEndDate(''); setFilterType('ALL'); setFilterMetodoPago('ALL'); setFilterCajero(''); setFilterSocio(''); setFilterComprobante('');
+                  }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--panel-border)', background: 'rgba(255,62,62,0.1)', color: '#ff3e3e', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, height: '32px' }}>
+                    <X size={14} /> Limpiar Filtros
                   </button>
-                )}
+                </div>
               </div>
             </div>
+
+
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando reportes...</div>
