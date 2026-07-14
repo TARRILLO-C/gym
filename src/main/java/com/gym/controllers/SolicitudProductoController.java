@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,24 +35,28 @@ public class SolicitudProductoController {
     private final EmailService emailService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('solicitudes:ver')")
     @Transactional(readOnly = true)
     public ResponseEntity<List<SolicitudProducto>> listarTodas() {
         return ResponseEntity.ok(solicitudProductoRepository.findAllWithDetalles());
     }
 
     @GetMapping("/pendientes")
+    @PreAuthorize("hasAuthority('solicitudes:ver')")
     @Transactional(readOnly = true)
     public ResponseEntity<List<SolicitudProducto>> listarPendientes() {
         return ResponseEntity.ok(solicitudProductoRepository.findByEstadoWithDetalles(EstadoSolicitud.PENDIENTE));
     }
 
     @GetMapping("/por-estado/{estado}")
+    @PreAuthorize("hasAuthority('solicitudes:ver')")
     @Transactional(readOnly = true)
     public ResponseEntity<List<SolicitudProducto>> listarPorEstado(@PathVariable EstadoSolicitud estado) {
         return ResponseEntity.ok(solicitudProductoRepository.findByEstadoWithDetalles(estado));
     }
 
     @GetMapping("/venta/{ventaId}")
+    @PreAuthorize("hasAuthority('solicitudes:ver')")
     public ResponseEntity<SolicitudProducto> obtenerPorVentaId(@PathVariable Long ventaId) {
         return solicitudProductoRepository.findAll().stream()
                 .filter(s -> s.getVenta() != null && s.getVenta().getId().equals(ventaId))
@@ -71,10 +76,27 @@ public class SolicitudProductoController {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("La solicitud debe incluir al menos un producto.");
         }
+
+        // 1. Validar disponibilidad de stock para TODOS los productos antes de realizar cualquier cambio
+        for (var item : request.getItems()) {
+            Producto producto = productoRepository.findById(item.getProductoId())
+                    .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + item.getProductoId()));
+            if (producto.getStock() < item.getCantidad()) {
+                return ResponseEntity.badRequest().body(java.util.Map.of(
+                        "mensaje", "Stock insuficiente para el producto: " + producto.getNombre() + " (Disponible: " + producto.getStock() + ")"
+                ));
+            }
+        }
+
+        // 2. Descontar/Reservar el stock y armar los detalles
         List<DetalleSolicitudProducto> detalles = request.getItems().stream()
                 .map(item -> {
-                    Producto producto = productoRepository.findById(item.getProductoId())
-                            .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + item.getProductoId()));
+                    Producto producto = productoRepository.findById(item.getProductoId()).orElseThrow();
+                    
+                    // Reservar stock inmediatamente
+                    producto.setStock(producto.getStock() - item.getCantidad());
+                    productoRepository.save(producto);
+
                     return DetalleSolicitudProducto.builder()
                             .producto(producto)
                             .cantidad(item.getCantidad())
@@ -98,11 +120,12 @@ public class SolicitudProductoController {
         detalles.forEach(detalle -> detalle.setSolicitudProducto(solicitud));
 
         SolicitudProducto guardada = solicitudProductoRepository.save(solicitud);
-        log.info("Nueva solicitud de producto creada para DNI: {}", request.getDni());
+        log.info("Nueva solicitud de producto creada con stock reservado para DNI: {}", request.getDni());
         return new ResponseEntity<>(guardada, HttpStatus.CREATED);
     }
 
     @PostMapping("/{id}/aprobar")
+    @PreAuthorize("hasAuthority('solicitudes:aprobar')")
     @Transactional
     public ResponseEntity<SolicitudProducto> aprobar(@PathVariable Long id) {
         SolicitudProducto solicitud = solicitudProductoRepository.findByIdWithDetalles(id)
@@ -130,13 +153,8 @@ public class SolicitudProductoController {
             return ResponseEntity.ok(guardada);
         }
 
-        solicitud.getItems().forEach(detalle -> {
-            Producto producto = detalle.getProducto();
-            if (producto.getStock() < detalle.getCantidad()) {
-                throw new IllegalStateException("Stock insuficiente para producto: " + producto.getNombre());
-            }
-        });
-
+        // El stock ya fue reservado (restado) en la creación de la solicitud, por lo que no es necesario
+        // volver a restarlo ni validarlo aquí.
         Venta venta = ventaService.registrarVentaDesdeSolicitudCatalogo(solicitud);
         solicitud.setVenta(venta);
         solicitud.setEstado(EstadoSolicitud.APROBADA);
@@ -151,6 +169,7 @@ public class SolicitudProductoController {
     }
 
     @PostMapping("/{id}/rechazar")
+    @PreAuthorize("hasAuthority('solicitudes:aprobar')")
     @Transactional
     public ResponseEntity<SolicitudProducto> rechazar(@PathVariable Long id) {
         SolicitudProducto solicitud = solicitudProductoRepository.findByIdWithDetalles(id)
@@ -160,6 +179,16 @@ public class SolicitudProductoController {
             throw new IllegalStateException("La solicitud ya no se encuentra PENDIENTE.");
         }
 
+        // Reponer stock reservado
+        if (solicitud.getItems() != null) {
+            solicitud.getItems().forEach(detalle -> {
+                Producto producto = detalle.getProducto();
+                producto.setStock(producto.getStock() + detalle.getCantidad());
+                productoRepository.save(producto);
+                log.info("Stock liberado/repuesto para producto: {} (+{})", producto.getNombre(), detalle.getCantidad());
+            });
+        }
+
         solicitud.setEstado(EstadoSolicitud.RECHAZADA);
         SolicitudProducto guardada = solicitudProductoRepository.save(solicitud);
         log.info("Solicitud de producto ID {} rechazada.", id);
@@ -167,6 +196,7 @@ public class SolicitudProductoController {
     }
 
     @PostMapping("/{id}/entregar")
+    @PreAuthorize("hasAuthority('solicitudes:aprobar')")
     @Transactional
     public ResponseEntity<SolicitudProducto> entregar(@PathVariable Long id) {
         SolicitudProducto solicitud = solicitudProductoRepository.findByIdWithDetalles(id)

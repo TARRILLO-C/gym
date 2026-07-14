@@ -4,6 +4,7 @@ import com.gym.models.Asistencia;
 import com.gym.services.AsistenciaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -33,6 +34,7 @@ public class AsistenciaController {
      * @param request Mapa que contiene el "dni" del socio.
      */
     @PostMapping("/registrar-ingreso")
+    @PreAuthorize("hasAuthority('asistencia:registrar')")
     public ResponseEntity<?> registrarIngreso(@Valid @RequestBody Map<String, String> request) {
         String dni = request.get("dni");
         if (dni == null || dni.trim().isEmpty()) {
@@ -45,16 +47,19 @@ public class AsistenciaController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('asistencia:ver')")
     public ResponseEntity<List<Asistencia>> listarTodas() {
         return ResponseEntity.ok(asistenciaService.listarTodas());
     }
 
     @GetMapping("/hoy")
+    @PreAuthorize("hasAuthority('asistencia:ver')")
     public ResponseEntity<List<Asistencia>> listarDeHoy() {
         return ResponseEntity.ok(asistenciaService.listarDeHoy());
     }
 
     @GetMapping("/buscar")
+    @PreAuthorize("hasAuthority('asistencia:ver')")
     public ResponseEntity<List<Asistencia>> buscar(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
@@ -62,5 +67,12 @@ public class AsistenciaController {
         LocalDateTime desde = fechaDesde != null ? fechaDesde.atStartOfDay() : null;
         LocalDateTime hasta = fechaHasta != null ? fechaHasta.atTime(LocalTime.MAX) : null;
         return ResponseEntity.ok(asistenciaService.buscar(search, desde, hasta));
+    }
+
+    @GetMapping("/analitica/horas-pico")
+    @PreAuthorize("hasAuthority('asistencia:ver')")
+    public ResponseEntity<Map<Integer, Long>> obtenerHorasPico(
+            @RequestParam(defaultValue = "30") int dias) {
+        return ResponseEntity.ok(asistenciaService.obtenerAfluenciaPorHora(dias));
     }
 }

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -31,17 +32,22 @@ public class VentaController {
     private final VentaService ventaService;
 
     @GetMapping
-    public ResponseEntity<List<Venta>> listarTodas() {
-        return ResponseEntity.ok(ventaService.listarTodas());
+    @PreAuthorize("hasAuthority('ventas:ver')")
+    public ResponseEntity<org.springframework.data.domain.Page<Venta>> listarTodas(
+            @org.springframework.data.web.PageableDefault(size = 10, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(ventaService.listarTodas(pageable));
     }
 
     @GetMapping("/productos")
-    public ResponseEntity<List<Venta>> listarVentasProductos() {
-        return ResponseEntity.ok(ventaService.listarVentasProductos());
+    @PreAuthorize("hasAuthority('ventas:ver')")
+    public ResponseEntity<org.springframework.data.domain.Page<Venta>> listarVentasProductos(
+            @org.springframework.data.web.PageableDefault(size = 10, sort = "id", direction = org.springframework.data.domain.Sort.Direction.DESC) org.springframework.data.domain.Pageable pageable) {
+        return ResponseEntity.ok(ventaService.listarVentasProductos(pageable));
     }
 
     /** Registra una nueva venta con soporte de pagos mixtos */
     @PostMapping
+    @PreAuthorize("hasAuthority('ventas:crear')")
     public ResponseEntity<?> registrarVenta(@Valid @RequestBody VentaRequest request) {
         try {
             Venta nueva = ventaService.registrarVenta(
@@ -64,6 +70,7 @@ public class VentaController {
      * Requiere PIN de administrador obligatoriamente.
      */
     @PostMapping("/{id}/anular")
+    @PreAuthorize("hasAuthority('ventas:anular')")
     public ResponseEntity<?> anularComprobante(@PathVariable Long id,
                                                 @RequestBody AnularRequest request) {
         try {
@@ -81,12 +88,14 @@ public class VentaController {
 
     /** Método legado: cambia estado (mantener por compatibilidad) */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ventas:anular')")
     public ResponseEntity<Venta> actualizar(@PathVariable Long id, @RequestBody Venta datos) {
         Venta modificada = ventaService.cambiarEstadoVenta(id, datos.isActivo(), datos.getMotivoAnulacion());
         return ResponseEntity.ok(modificada);
     }
 
     @PostMapping("/{id}/emitir")
+    @PreAuthorize("hasAuthority('ventas:crear')")
     public ResponseEntity<Venta> emitirComprobante(@PathVariable Long id,
                                                     @RequestBody EmitirRequest request) {
         Venta emitida = ventaService.emitirComprobante(

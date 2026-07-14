@@ -10,11 +10,12 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "membresias")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class Membresia {
+public class Membresia extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

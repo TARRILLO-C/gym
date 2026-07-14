@@ -17,11 +17,12 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "productos")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class Producto {
+public class Producto extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

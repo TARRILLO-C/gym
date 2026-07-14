@@ -1,11 +1,21 @@
 package com.gym.models;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import lombok.*;
 
+/**
+ * Entidad JPA que representa a los usuarios (personal) del gimnasio. Mapea la tabla 'usuarios'.
+ */
 @Entity
 @Table(name = "usuarios")
-public class Usuario {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString(exclude = "password")
+public class Usuario extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,83 +29,23 @@ public class Usuario {
     @Column(nullable = false)
     private String password; 
 
-    @NotBlank(message = "El rol es obligatorio")
-    @Column(nullable = false)
-    private String rol; 
+    /**
+     * Relación Many-to-One con la entidad Rol.
+     * Carga tipo EAGER para tener la información del rol disponible inmediatamente en la sesión de autenticación.
+     */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "rol_id", nullable = false)
+    private Rol rol;
     
+    @Builder.Default
     @Column(nullable = false)
     private boolean activo = true;
 
+    @Builder.Default
     @Column(name = "intentos_fallidos", columnDefinition = "int default 0", nullable = false)
     private int intentosFallidos = 0;
 
     /** PIN hasheado para operaciones sensibles (anulaciones, retiros de fondos) */
     @Column(name = "pin_admin", length = 64)
     private String pinAdmin;
-
-
-    public Usuario() {}
-
-    public Usuario(String username, String password, String rol) {
-        this.username = username;
-        this.password = password;
-        this.rol = rol;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getRol() {
-        return rol;
-    }
-
-    public void setRol(String rol) {
-        this.rol = rol;
-    }
-
-    public boolean isActivo() {
-        return activo;
-    }
-
-    public void setActivo(boolean activo) {
-        this.activo = activo;
-    }
-
-    public int getIntentosFallidos() {
-        return intentosFallidos;
-    }
-
-    public void setIntentosFallidos(int intentosFallidos) {
-        this.intentosFallidos = intentosFallidos;
-    }
-
-    public String getPinAdmin() {
-        return pinAdmin;
-    }
-
-    public void setPinAdmin(String pinAdmin) {
-        this.pinAdmin = pinAdmin;
-    }
 }
-

@@ -34,4 +34,6 @@ public interface SocioRepository extends JpaRepository<Socio, Long> {
      * @return lista de socios que coinciden
      */
     List<Socio> findByNombreCompletoContainingIgnoreCase(String nombre);
+
+    List<Socio> findByNombreCompletoContainingIgnoreCaseOrDniContaining(String nombre, String dni);
 }

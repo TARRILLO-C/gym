@@ -23,8 +23,10 @@ import PageLayout from '../components/layout/PageLayout';
 import Modal from '../components/ui/Modal';
 import PrintTicket from '../components/ui/PrintTicket';
 import CierreCaja from './CierreCaja';
+import { usePermissions } from '../context/PermissionsContext';
 
 const Membresias = () => {
+  const { can } = usePermissions();
   const [activeTab, setActiveTab] = useState('suscripciones');
   const [suscripciones, setSuscripciones] = useState([]);
   const [membresias, setMembresias] = useState([]);
@@ -135,13 +137,16 @@ const Membresias = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // /suscripciones ahora devuelve Page<Suscripcion>; size=500 para cargar todas las vigentes
       const [suscResp, membResp, socioResp, cajaResp] = await Promise.all([
-        api.get('/suscripciones'),
+        api.get('/suscripciones?page=0&size=500&sort=id,desc'),
         api.get('/membresias'),
         api.get('/socios'),
         api.get('/sesiones-caja/activa').catch(() => null)
       ]);
-      setSuscripciones(suscResp.data);
+      // Extraer el array content del objeto Page
+      const suscData = suscResp.data?.content ?? suscResp.data;
+      setSuscripciones(Array.isArray(suscData) ? suscData : []);
       setMembresias(membResp.data);
       setSocios(socioResp.data);
       setCajaAbierta(cajaResp && cajaResp.status === 200 && cajaResp.data && (cajaResp.data.estado === 'ABIERTO' || cajaResp.data.estado === 'ABIERTA'));
@@ -824,7 +829,7 @@ const Membresias = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '8px' }}>
             <h3 style={{ color: 'var(--text-muted)', fontWeight: '400', flex: '1 1 250px', margin: 0, fontSize: '1.05rem' }}>Configura los planes y precios que ofreces al público.</h3>
-            {role === 'ADMINISTRADOR' && (
+            {can('membresias:crear') && (
               <button className="btn-primary" onClick={() => { setEditingPlanId(null); setPlanFormData({ nombre: '', precio: '', precioCuota: '', frecuenciaCobroDias: 0, duracionDias: '', descripcion: '', estado: 'DISPONIBLE', permiteCongelamiento: true }); setShowPlanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', whiteSpace: 'nowrap', borderRadius: '12px', fontSize: '0.95rem' }}>
                 <Plus size={18} /> NUEVO PLAN
               </button>
@@ -839,7 +844,7 @@ const Membresias = () => {
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--accent-primary)' }}>S/ {m.precio}</span>
                     {m.precioCuota > 0 && (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>(S/ {m.precioCuota} cada {m.frecuenciaCobroDias || 30} días)</span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>(S/ {m.precioCuota} cada {m.frecuenciaCobroDias || 30} days)</span>
                     )}
                   </div>
                   <span className="badge" style={{ 
@@ -862,7 +867,7 @@ const Membresias = () => {
                 
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', minHeight: '40px' }}>{m.descripcion || "Sin descripción detallada."}</p>
 
-                {role === 'ADMINISTRADOR' && (
+                {can('membresias:editar') && (
                   <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--panel-border)', display: 'flex', gap: '12px' }}>
                     <button onClick={() => { setEditingPlanId(m.id); setPlanFormData(m); setShowPlanModal(true); }} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--panel-border)', borderRadius: '10px', color: 'var(--text-main)' }}>Editar</button>
                     <button onClick={() => handleTogglePlanStatus(m)} style={{ flex: 1, padding: '10px', background: m.estado === 'OCULTO' ? 'rgba(0, 255, 127, 0.1)' : 'rgba(255, 62, 62, 0.1)', border: 'none', borderRadius: '10px', color: m.estado === 'OCULTO' ? '#00ff7f' : 'var(--accent-primary)' }}>

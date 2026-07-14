@@ -2,45 +2,107 @@ package com.gym.controllers;
 
 import com.gym.dtos.auth.LoginRequest;
 import com.gym.dtos.auth.LoginResponse;
+import com.gym.dtos.auth.UsuarioDTO;
+import com.gym.models.Rol;
 import com.gym.models.Usuario;
+import com.gym.repositories.RolRepository;
+import com.gym.security.JwtService;
 import com.gym.services.UsuarioService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+/**
+ * Controlador REST para gestionar la autenticación y el CRUD de usuarios (personal).
+ * Integra Spring Security AuthenticationManager para el login y emite tokens JWT.
+ */
 @RestController
 @RequestMapping("/usuarios")
 @CrossOrigin("*")
 public class UsuarioController {
 
     @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
     private UsuarioService usuarioService;
 
+    @Autowired
+    private RolRepository rolRepository;
+
+    // ── Autenticación ─────────────────────────────────────────────────────────
+
+    /**
+     * Endpoint para iniciar sesión. Valida las credenciales mediante el gestor de autenticación
+     * de Spring Security y genera el respectivo JWT.
+     * @param loginRequest Objeto DTO conteniendo el usuario y la clave.
+     * @return ResponseEntity con el token JWT, datos del usuario, su rol y su lista de permisos.
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
-        Optional<Usuario> usuarioOpt = usuarioService.validarCredenciales(loginRequest.getUsername(), loginRequest.getPassword());
-        
-        if (usuarioOpt.isPresent()) {
-            Usuario usuario = usuarioOpt.get();
-            LoginResponse response = new LoginResponse(usuario.getUsername(), usuario.getRol(), "Login exitoso");
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Credenciales incorrectas");
+        try {
+            // 1. Delegar la autenticación de credenciales a Spring Security
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password())
+            );
+
+            // 2. Cargar los detalles del usuario desde la base de datos
+            Usuario usuario = usuarioService.validarCredenciales(loginRequest.username(), loginRequest.password())
+                    .orElseThrow(() -> new RuntimeException("Error de consistencia al recuperar el usuario autenticado."));
+
+            String rolNombre = usuario.getRol() != null ? usuario.getRol().getNombre() : "SIN_ROL";
+            List<String> permisos = usuarioService.obtenerCodigosPermisos(usuario);
+
+            // 3. Generar el JWT firmado
+            String token = jwtService.generateToken(authentication.getName(), rolNombre, permisos);
+
+            // 4. Construir respuesta estructurada basada en records
+            UsuarioDTO usuarioDTO = new UsuarioDTO(usuario.getId(), usuario.getUsername(), rolNombre);
+            LoginResponse loginResponse = new LoginResponse(token, usuarioDTO, rolNombre, permisos);
+
+            return ResponseEntity.ok(loginResponse);
+
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Credenciales incorrectas o cuenta inactiva."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error interno al procesar el inicio de sesión: " + e.getMessage()));
         }
     }
 
+    // ── CRUD de Usuarios ──────────────────────────────────────────────────────
+
     @GetMapping
+    @PreAuthorize("hasAuthority('personal:ver')")
     public ResponseEntity<?> listarUsuarios() {
         return ResponseEntity.ok(usuarioService.findAll());
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('personal:crear')")
     public ResponseEntity<?> crearUsuario(@Valid @RequestBody Usuario usuario) {
         try {
+            // Asegurar que el rol provisto desde el cliente exista y esté persistido
+            if (usuario.getRol() != null && usuario.getRol().getId() != null) {
+                Rol rolDb = rolRepository.findById(usuario.getRol().getId())
+                        .orElseThrow(() -> new RuntimeException("El rol especificado no existe en la BD"));
+                usuario.setRol(rolDb);
+            }
             Usuario nuevoUsuario = usuarioService.guardarUsuario(usuario);
             return ResponseEntity.ok(nuevoUsuario);
         } catch (RuntimeException e) {
@@ -49,21 +111,29 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('personal:desactivar')")
     public ResponseEntity<?> eliminarUsuario(@PathVariable Long id) {
         try {
             Optional<Usuario> userOpt = usuarioService.findById(id);
-            if (userOpt.isPresent() && "ADMINISTRADOR".equals(userOpt.get().getRol())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No se puede eliminar a un administrador del sistema.");
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuario no encontrado");
+            }
+            Rol rol = userOpt.get().getRol();
+            if (rol != null && "ADMINISTRADOR".equalsIgnoreCase(rol.getNombre())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("No se permite eliminar o desactivar a usuarios con rol ADMINISTRADOR.");
             }
             usuarioService.eliminarUsuario(id);
-            return ResponseEntity.ok("Usuario eliminado correctamente");
+            return ResponseEntity.ok("Usuario desactivado correctamente");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarUsuario(@PathVariable Long id, @Valid @RequestBody Usuario usuarioDetails) {
+    @PreAuthorize("hasAuthority('personal:editar')")
+    public ResponseEntity<?> actualizarUsuario(@PathVariable Long id,
+                                               @Valid @RequestBody Usuario usuarioDetails) {
         try {
             Optional<Usuario> usuarioOpt = usuarioService.findById(id);
             if (usuarioOpt.isEmpty()) {
@@ -71,15 +141,28 @@ public class UsuarioController {
             }
             Usuario usuario = usuarioOpt.get();
             usuario.setUsername(usuarioDetails.getUsername());
-            if (usuarioDetails.getPassword() != null && !usuarioDetails.getPassword().isEmpty() && !usuarioDetails.getPassword().equals("********")) {
+
+            // Actualizar contraseña si no coincide con la máscara del frontend
+            if (usuarioDetails.getPassword() != null
+                    && !usuarioDetails.getPassword().isEmpty()
+                    && !usuarioDetails.getPassword().equals("********")) {
                 usuario.setPassword(usuarioDetails.getPassword());
             }
-            usuario.setRol(usuarioDetails.getRol());
-            
-            if ("ADMINISTRADOR".equals(usuario.getRol()) && !usuarioDetails.isActivo()) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Seguridad: No se permite desactivar a usuarios con rol ADMINISTRADOR.");
+
+            // Validar y reasignar el Rol especificado
+            if (usuarioDetails.getRol() != null && usuarioDetails.getRol().getId() != null) {
+                Rol rolDb = rolRepository.findById(usuarioDetails.getRol().getId())
+                        .orElseThrow(() -> new RuntimeException("El rol especificado no existe en la BD"));
+                usuario.setRol(rolDb);
+            }
+
+            // Impedir desactivación del Administrador
+            if (usuario.getRol() != null && "ADMINISTRADOR".equalsIgnoreCase(usuario.getRol().getNombre()) && !usuarioDetails.isActivo()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Seguridad: No se permite desactivar a usuarios con rol ADMINISTRADOR.");
             }
             usuario.setActivo(usuarioDetails.isActivo());
+
             Usuario actualizado = usuarioService.guardarUsuario(usuario);
             return ResponseEntity.ok(actualizado);
         } catch (RuntimeException e) {

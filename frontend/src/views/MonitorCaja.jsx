@@ -58,12 +58,12 @@ const MonitorCaja = () => {
     setLoading(true);
     try {
       const [vResp, pResp, prResp, cResp] = await Promise.all([
-        api.get('/ventas/productos'),
+        api.get('/ventas/productos?page=0&size=500&sort=id,desc'),
         api.get('/pagos'),
         api.get('/productos'),
         api.get('/sesiones-caja/historial').catch(() => ({ data: [] }))
       ]);
-      setVentas(Array.isArray(vResp.data) ? vResp.data : []);
+      setVentas(Array.isArray(vResp.data?.content) ? vResp.data.content : (Array.isArray(vResp.data) ? vResp.data : []));
       setPagos(Array.isArray(pResp.data) ? pResp.data : []);
       setProductos(Array.isArray(prResp.data) ? prResp.data : []);
       setHistorialCierres(Array.isArray(cResp.data) ? cResp.data : []);

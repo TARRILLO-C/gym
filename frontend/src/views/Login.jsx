@@ -4,6 +4,7 @@ import { Dumbbell, LogIn, ShieldCheck, User, Lock, Eye, EyeOff } from 'lucide-re
 import '../App.css';
 import './Login.css';
 import { API_BASE_URL } from '../services/api';
+import { usePermissions } from '../context/PermissionsContext';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -13,6 +14,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
   const navigate = useNavigate();
+  const { refreshPermisos } = usePermissions();
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/web-config`)
@@ -42,25 +44,31 @@ const Login = () => {
 
       if (response.ok) {
         const data = await response.json();
+        sessionStorage.setItem('token', data.token);
         sessionStorage.setItem('isAuthenticated', 'true');
-        sessionStorage.setItem('username', data.username);
+        sessionStorage.setItem('username', data.usuario.username);
         sessionStorage.setItem('role', data.rol);
+        
+        // Guardar permisos RBAC
+        const permisos = data.permisos;
+        if (Array.isArray(permisos)) {
+          sessionStorage.setItem('permisos', JSON.stringify(permisos));
+        } else {
+          sessionStorage.setItem('permisos', '[]');
+        }
+        
+        // Refrescar reactivamente los permisos en el contexto
+        refreshPermisos();
         
         if (data.rol === 'RECEPCIONISTA') {
           navigate('/asistencia');
         } else {
           navigate('/');
         }
-      } else if (response.status === 400) {
-        const errorData = await response.json();
-        if (errorData.errores) {
-          const mensajes = Object.values(errorData.errores).join(' | ');
-          setError(mensajes);
-        } else {
-          setError(errorData.mensaje || 'Error de validación en la solicitud.');
-        }
+      } else if (response.status === 401) {
+        setError('Usuario o contraseña incorrectos.');
       } else {
-        setError('Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.');
+        setError('Ocurrió un error inesperado al conectar con el servidor.');
       }
     } catch (err) {
       setError('No se pudo conectar con el servidor. Verifica tu conexión.');

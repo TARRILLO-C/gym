@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ public class CierreCajaController {
     private final CierreCajaService cierreCajaService;
 
     @PostMapping("/abrir")
+    @PreAuthorize("hasAuthority('caja:operar')")
     public ResponseEntity<?> abrirCaja(@RequestBody AbrirRequest request) {
         try {
             CierreCaja cierre = cierreCajaService.abrirCaja(
@@ -34,6 +36,7 @@ public class CierreCajaController {
     }
 
     @GetMapping("/hoy")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<CierreCaja> obtenerCierreDelDia() {
         CierreCaja cierre = cierreCajaService.obtenerCierreDelDia();
         if (cierre == null) {
@@ -43,6 +46,7 @@ public class CierreCajaController {
     }
 
     @GetMapping("/resumen")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<Map<String, Object>> obtenerResumen(
         @RequestParam(required = false) String fecha) {
         LocalDate fechaConsulta = (fecha != null) ? LocalDate.parse(fecha) : LocalDate.now();
@@ -50,6 +54,7 @@ public class CierreCajaController {
     }
 
     @PostMapping("/cerrar")
+    @PreAuthorize("hasAuthority('caja:operar')")
     public ResponseEntity<?> cerrarCaja(@RequestBody CerrarRequest request) {
         try {
             CierreCaja cierre = cierreCajaService.cerrarCaja(
@@ -63,6 +68,7 @@ public class CierreCajaController {
     }
 
     @GetMapping("/historial")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<List<CierreCaja>> listarHistorial() {
         return ResponseEntity.ok(cierreCajaService.listarHistorial());
     }

@@ -1,37 +1,13 @@
 package com.gym.dtos.auth;
 
-public class LoginResponse {
-    private String username;
-    private String rol;
-    private String message;
+import java.util.List;
 
-    public LoginResponse(String username, String rol, String message) {
-        this.username = username;
-        this.rol = rol;
-        this.message = message;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getRol() {
-        return rol;
-    }
-
-    public void setRol(String rol) {
-        this.rol = rol;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-}
+/**
+ * DTO para la respuesta de inicio de sesión utilizando Java 21 records.
+ */
+public record LoginResponse(
+    String token,
+    UsuarioDTO usuario,
+    String rol,
+    List<String> permisos
+) {}

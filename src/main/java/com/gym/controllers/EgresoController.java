@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -20,6 +21,7 @@ public class EgresoController {
     private final EgresoService egresoService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('caja:operar')")
     public ResponseEntity<?> registrarEgreso(@RequestBody EgresoRequest request) {
         try {
             Egreso egreso = egresoService.registrarEgreso(
@@ -38,11 +40,13 @@ public class EgresoController {
     }
 
     @GetMapping("/hoy")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<List<Egreso>> obtenerEgresosDeHoy() {
         return ResponseEntity.ok(egresoService.obtenerEgresosDeHoy());
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<List<Egreso>> obtenerEgresosPorFecha(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         return ResponseEntity.ok(egresoService.obtenerEgresosPorFecha(fecha));

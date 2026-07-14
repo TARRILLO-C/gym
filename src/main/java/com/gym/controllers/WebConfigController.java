@@ -6,6 +6,7 @@ import com.gym.repositories.ConfiguracionWebRepository;
 import com.gym.repositories.SliderWebRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class WebConfigController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAuthority('catalogo:editar')")
     public ResponseEntity<ConfiguracionWeb> updateConfiguracion(@RequestBody ConfiguracionWeb configData) {
         List<ConfiguracionWeb> configs = configuracionWebRepository.findAll();
         ConfiguracionWeb configToUpdate;
@@ -60,11 +62,13 @@ public class WebConfigController {
     }
 
     @PostMapping("/slider")
+    @PreAuthorize("hasAuthority('catalogo:editar')")
     public ResponseEntity<SliderWeb> addSlider(@RequestBody SliderWeb sliderWeb) {
         return ResponseEntity.ok(sliderWebRepository.save(sliderWeb));
     }
 
     @DeleteMapping("/slider/{id}")
+    @PreAuthorize("hasAuthority('catalogo:editar')")
     public ResponseEntity<?> deleteSlider(@PathVariable Long id) {
         if (!sliderWebRepository.existsById(id)) {
             return ResponseEntity.notFound().build();

@@ -24,7 +24,13 @@ const Ventas = () => {
   const [ventaToPrint, setVentaToPrint] = useState(null);
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const [dialogInput, setDialogInput] = useState('');
-  
+
+  // ── Paginación Ventas Productos ──
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const PAGE_SIZE = 10;
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
@@ -65,12 +71,15 @@ const Ventas = () => {
 
   const showAlert = (title, message) => setDialogConfig({ isOpen: true, type: 'alert', title, message });
 
-  const fetchVentas = async () => {
+  const fetchVentas = async (pageNum = page) => {
     setLoading(true);
     try {
-      const resp = await api.get('/ventas/productos');
-      // Asegurarse de que sea un arreglo.
-      setVentas(Array.isArray(resp.data) ? resp.data : []);
+      const resp = await api.get(`/ventas/productos?page=${pageNum}&size=${PAGE_SIZE}&sort=id,desc`);
+      // El backend ahora devuelve un objeto Page<Venta>
+      const pageData = resp.data;
+      setVentas(Array.isArray(pageData.content) ? pageData.content : []);
+      setTotalPages(pageData.totalPages ?? 1);
+      setTotalElements(pageData.totalElements ?? 0);
     } catch (err) {
       console.error("Error al cargar /ventas:", err);
       setVentas([]);
@@ -92,8 +101,12 @@ const Ventas = () => {
     }
   };
 
+  // Recarga cuando cambia la página
   useEffect(() => {
-    fetchVentas();
+    fetchVentas(page);
+  }, [page]);
+
+  useEffect(() => {
     fetchPagos();
   }, []);
 
@@ -338,108 +351,105 @@ const Ventas = () => {
           loading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Cargando historial...</div>
           ) : (
-            <table className="responsive-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>FECHA</th>
-                  <th>CLIENTE</th>
-                  <th>MÉTODO PAGO</th>
-                  <th>TOTAL</th>
-                  <th style={{ textAlign: 'right' }}>ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredVentas.map(venta => (
-                  <tr key={venta.id} style={{ opacity: venta.activo === false ? 0.55 : 1 }}>
-                    <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', marginBottom: '2px' }}>{venta.tipoComprobante}</div>
-                      <div>{venta.serie && venta.correlativo ? `${venta.serie}-${venta.correlativo}` : `#${venta.id}`}</div>
-                    </td>
-                    <td data-label="FECHA">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Calendar size={14} color="var(--text-muted)" />
-                        {new Date(venta.fecha).toLocaleString()}
-                      </div>
-                    </td>
-                    <td data-label="CLIENTE">
-                      <div style={{ fontWeight: '600' }}>{venta.socio?.nombreCompleto || venta.clienteNombre || 'Cliente General'}</div>
-                    </td>
-                    <td data-label="MÉTODO PAGO">
-                      <span className="badge" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
-                        {venta.metodoPago}
-                      </span>
-                    </td>
-                    <td data-label="TOTAL" style={{ fontWeight: '800', color: 'var(--accent-primary)' }}>
-                      S/ {parseFloat(venta.total).toFixed(2)}
-                    </td>
-                    <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        {venta.activo !== false ? (
-                          <>
-                            {venta.enlacePdfTicket ? (
-                              <>
-                                <button
-                                  onClick={() => window.open(venta.enlacePdfTicket, '_blank')}
-                                  title="Ver Ticket de Venta (80mm)"
-                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
-                                >
-                                  <Printer size={18} />
-                                </button>
-                                <button
-                                  onClick={() => window.open(venta.enlacePdfA4, '_blank')}
-                                  title="Ver PDF (A4)"
-                                  style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-main)', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
-                                >
-                                  <FileText size={18} />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => handleImprimir(venta)}
-                                  title="Reimprimir Comprobante Interno"
-                                  style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
-                                >
-                                  <Printer size={18} />
-                                </button>
-                                {venta.tipoComprobante === 'NOTA_VENTA' && (
-                                  <button
-                                    onClick={() => handleOpenEmitModal(venta.id)}
-                                    title="Emitir Comprobante"
-                                    style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
-                                  >
-                                    <FilePlus size={18} />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                            <button 
-                              onClick={() => handleAnularVenta(venta)}
-                              title="Anular Comprobante"
-                              style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}
-                            >
-                              <Ban size={18} />
-                            </button>
-                          </>
-                        ) : (
-                          <span className="badge badge-inactive" style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e' }}>
-                            ANULADA
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredVentas.length === 0 && (
+            <>
+              <table className="responsive-table">
+                <thead>
                   <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                      No se encontraron ventas con este criterio.
-                    </td>
+                    <th>ID</th>
+                    <th>FECHA</th>
+                    <th>CLIENTE</th>
+                    <th>MÉTODO PAGO</th>
+                    <th>TOTAL</th>
+                    <th style={{ textAlign: 'right' }}>ACCIONES</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredVentas.map(venta => (
+                    <tr key={venta.id} style={{ opacity: venta.activo === false ? 0.55 : 1 }}>
+                      <td data-label="ID" style={{ fontWeight: '600', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-primary)', marginBottom: '2px' }}>{venta.tipoComprobante}</div>
+                        <div>{venta.serie && venta.correlativo ? `${venta.serie}-${venta.correlativo}` : `#${venta.id}`}</div>
+                      </td>
+                      <td data-label="FECHA">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Calendar size={14} color="var(--text-muted)" />
+                          {new Date(venta.fecha).toLocaleString()}
+                        </div>
+                      </td>
+                      <td data-label="CLIENTE">
+                        <div style={{ fontWeight: '600' }}>{venta.socio?.nombreCompleto || venta.clienteNombre || 'Cliente General'}</div>
+                      </td>
+                      <td data-label="MÉTODO PAGO">
+                        <span className="badge" style={{ background: 'var(--panel-bg)', border: '1px solid var(--panel-border)' }}>
+                          {venta.metodoPago}
+                        </span>
+                      </td>
+                      <td data-label="TOTAL" style={{ fontWeight: '800', color: 'var(--accent-primary)' }}>
+                        S/ {parseFloat(venta.total).toFixed(2)}
+                      </td>
+                      <td data-label="ACCIONES" style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {venta.activo !== false ? (
+                            <>
+                              {venta.enlacePdfTicket ? (
+                                <>
+                                  <button onClick={() => window.open(venta.enlacePdfTicket, '_blank')} title="Ver Ticket de Venta (80mm)" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                                    <Printer size={18} />
+                                  </button>
+                                  <button onClick={() => window.open(venta.enlacePdfA4, '_blank')} title="Ver PDF (A4)" style={{ background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-main)', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                                    <FileText size={18} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={() => handleImprimir(venta)} title="Reimprimir Comprobante Interno" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                                    <Printer size={18} />
+                                  </button>
+                                  {venta.tipoComprobante === 'NOTA_VENTA' && (
+                                    <button onClick={() => handleOpenEmitModal(venta.id)} title="Emitir Comprobante" style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+                                      <FilePlus size={18} />
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              <button onClick={() => handleAnularVenta(venta)} title="Anular Comprobante" style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '8px' }}>
+                                <Ban size={18} />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="badge badge-inactive" style={{ background: 'rgba(255, 62, 62, 0.1)', color: '#ff3e3e' }}>ANULADA</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredVentas.length === 0 && (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                        No se encontraron ventas con este criterio.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Controles de paginación */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 4px 4px', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    Página <strong style={{ color: 'var(--text-main)' }}>{page + 1}</strong> de <strong style={{ color: 'var(--text-main)' }}>{totalPages}</strong> — {totalElements} registros
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                      style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: page === 0 ? 'transparent' : 'var(--panel-bg)', color: page === 0 ? 'var(--text-muted)' : 'var(--text-main)', cursor: page === 0 ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                    >← Anterior</button>
+                    <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                      style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid var(--panel-border)', background: page >= totalPages - 1 ? 'transparent' : 'var(--accent-primary)', color: page >= totalPages - 1 ? 'var(--text-muted)' : 'white', cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                    >Siguiente →</button>
+                  </div>
+                </div>
+              )}
+            </>
           )
         ) : (
           loadingPagos ? (

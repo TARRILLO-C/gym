@@ -32,6 +32,8 @@ public class VentaService {
     private final SolicitudProductoRepository solicitudProductoRepository;
     private final SesionCajaService sesionCajaService;
     private final LogAnulacionRepository logAnulacionRepository;
+    private final PagoRepository pagoRepository;
+    private final SuscripcionRepository suscripcionRepository;
 
     // ─────────────────────────────────────────────
     //  REGISTRAR VENTA CON PAGOS MIXTOS (Feature 4)
@@ -51,13 +53,21 @@ public class VentaService {
                                 List<DetalleVenta> detalles, TipoComprobante tipoComprobante,
                                 String clienteNombre, String clienteDocumento) {
         return registrarVenta(socioId, pagos, detalles, tipoComprobante,
-                              clienteNombre, clienteDocumento, false);
+                              clienteNombre, clienteDocumento, false, true);
     }
 
     public Venta registrarVenta(Long socioId, List<PagoVenta> pagos,
                                 List<DetalleVenta> detalles, TipoComprobante tipoComprobante,
                                 String clienteNombre, String clienteDocumento,
                                 boolean crearSolicitudAutomatica) {
+        return registrarVenta(socioId, pagos, detalles, tipoComprobante,
+                              clienteNombre, clienteDocumento, crearSolicitudAutomatica, true);
+    }
+
+    public Venta registrarVenta(Long socioId, List<PagoVenta> pagos,
+                                List<DetalleVenta> detalles, TipoComprobante tipoComprobante,
+                                String clienteNombre, String clienteDocumento,
+                                boolean crearSolicitudAutomatica, boolean descontarStock) {
 
         // Verificar sesión activa (Feature 1)
         SesionCaja sesion = sesionCajaService.obtenerSesionActivaOFallar();
@@ -122,7 +132,9 @@ public class VentaService {
         // Recalcular totalEfectivo proporcional si fuera necesario
         // (ya calculado arriba desde los pagos enviados por el cliente)
 
-        descontarStockDeDetalles(venta.getDetalles());
+        if (descontarStock) {
+            descontarStockDeDetalles(venta.getDetalles());
+        }
 
         try {
             facturacionService.procesarComprobante(venta);
@@ -185,6 +197,17 @@ public class VentaService {
         venta.setAnuladoAt(LocalDateTime.now());
         ventaRepository.save(venta);
 
+        // Desactivar automáticamente cualquier suscripción asociada a esta venta
+        List<Pago> pagosAsociados = pagoRepository.findByVentaId(ventaId);
+        for (Pago pago : pagosAsociados) {
+            Suscripcion sus = pago.getSuscripcion();
+            if (sus != null) {
+                sus.setActivo(false); // Soft Delete
+                suscripcionRepository.save(sus);
+                log.info("Suscripción ID {} desactivada automáticamente debido a la anulación de la venta ID {}", sus.getId(), ventaId);
+            }
+        }
+
         // 7. Registrar en el log de auditoría inmutable
         LogAnulacion log = LogAnulacion.builder()
                 .venta(venta)
@@ -236,8 +259,18 @@ public class VentaService {
     }
 
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Venta> listarTodas(org.springframework.data.domain.Pageable pageable) {
+        return ventaRepository.findAll(pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<Venta> listarVentasProductos() {
         return ventaRepository.findVentasDeProductos();
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Venta> listarVentasProductos(org.springframework.data.domain.Pageable pageable) {
+        return ventaRepository.findVentasDeProductos(pageable);
     }
 
     @Transactional(readOnly = true)
@@ -268,7 +301,7 @@ public class VentaService {
                 .build();
 
         return registrarVenta(socioId, List.of(pagoUnico), detalles,
-                TipoComprobante.NOTA_VENTA, solicitud.getNombreCompleto(), solicitud.getDni(), false);
+                TipoComprobante.NOTA_VENTA, solicitud.getNombreCompleto(), solicitud.getDni(), false, false);
     }
 
     public Venta emitirComprobante(Long id, Venta.TipoComprobante nuevoTipo, String documento, String nombre) {

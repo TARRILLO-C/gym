@@ -15,6 +15,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import com.gym.exceptions.DuplicateResourceException;
 
@@ -130,5 +132,30 @@ public class AsistenciaService {
     @Transactional(readOnly = true)
     public List<Asistencia> buscar(String search, LocalDateTime fechaDesde, LocalDateTime fechaHasta) {
         return asistenciaRepository.buscar(search, fechaDesde, fechaHasta);
+    }
+
+    /**
+     * Retorna un mapa ordenado con las horas y la cantidad de asistencias registradas
+     * en los últimos 'diasAtras' días.
+     */
+    @Transactional(readOnly = true)
+    public Map<Integer, Long> obtenerAfluenciaPorHora(int diasAtras) {
+        LocalDateTime desde = LocalDateTime.now().minusDays(diasAtras);
+        List<Object[]> raw = asistenciaRepository.countByHourOfDayAfter(desde);
+        Map<Integer, Long> afluencia = new TreeMap<>();
+        // Inicializar de 6 AM a 10 PM (horas laborables típicas del gym)
+        for (int h = 6; h <= 22; h++) {
+            afluencia.put(h, 0L);
+        }
+        for (Object[] row : raw) {
+            if (row[0] != null) {
+                Integer hora = ((Number) row[0]).intValue();
+                Long total = ((Number) row[1]).longValue();
+                if (hora >= 6 && hora <= 22) {
+                    afluencia.put(hora, total);
+                }
+            }
+        }
+        return afluencia;
     }
 }

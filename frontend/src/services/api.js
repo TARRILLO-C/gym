@@ -9,19 +9,33 @@ const api = axios.create({
   },
 });
 
+// Interceptor de Peticiones: inyectar el Bearer Token JWT
 api.interceptors.request.use((config) => {
-  const role = sessionStorage.getItem('role');
-  if (role) {
-    config.headers['X-User-Role'] = role;
+  const token = sessionStorage.getItem('token');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
-// Response interceptor for error handling
+// Interceptor de Respuestas: interceptar expiración de sesión (401/403)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const status = error.response ? error.response.status : null;
+    
+    // Si el servidor retorna 401 (No autorizado/Sesión expirada)
+    if (status === 401) {
+      console.warn("Sesión expirada o token inválido. Redirigiendo a Login...");
+      sessionStorage.clear();
+      // Redirigir a login de forma no intrusiva si no estamos ya en la ruta de login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );

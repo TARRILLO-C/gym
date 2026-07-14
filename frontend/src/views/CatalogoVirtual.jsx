@@ -17,8 +17,23 @@ const CatalogoVirtual = () => {
   const [activeTab, setActiveTab] = useState('productos');
   
   // Cart state
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('gym_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('gym_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.error("Error saving cart to sessionStorage:", e);
+    }
+  }, [cart]);
 
   // Solicitud state
   const [isSolicitudModalOpen, setIsSolicitudModalOpen] = useState(false);
@@ -197,6 +212,22 @@ const CatalogoVirtual = () => {
 
     if (dni.length === 8) {
       try {
+        // 1. Intentar buscar en la base de datos local de socios del gimnasio
+        const localRes = await fetch(`${API_BASE_URL}/socios/public/dni/${dni}`);
+        if (localRes.ok) {
+          const socio = await localRes.json();
+          if (socio && socio.nombreCompleto) {
+            setProductForm(prev => ({
+              ...prev,
+              nombreCompleto: socio.nombreCompleto,
+              telefono: socio.telefono || '',
+              email: socio.email || ''
+            }));
+            return;
+          }
+        }
+
+        // 2. Si no existe, buscar en la API de DNI externa (Reniec)
         const res = await fetch(`${API_BASE_URL}/consultas/dni/${dni}`);
         if (res.ok) {
           const data = await res.json();
@@ -221,7 +252,7 @@ const CatalogoVirtual = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching DNI:", error);
+        console.error("Error al buscar información del cliente por DNI:", error);
       }
     }
   };
@@ -336,6 +367,22 @@ const CatalogoVirtual = () => {
 
     if (dni.length === 8) {
       try {
+        // 1. Intentar buscar en la base de datos local de socios del gimnasio
+        const localRes = await fetch(`${API_BASE_URL}/socios/public/dni/${dni}`);
+        if (localRes.ok) {
+          const socio = await localRes.json();
+          if (socio && socio.nombreCompleto) {
+            setSolicitudForm(prev => ({
+              ...prev,
+              nombreCompleto: socio.nombreCompleto,
+              telefono: socio.telefono || '',
+              email: socio.email || ''
+            }));
+            return;
+          }
+        }
+
+        // 2. Si no existe, buscar en la API de DNI externa (Reniec)
         const res = await fetch(`${API_BASE_URL}/consultas/dni/${dni}`);
         if (res.ok) {
           const data = await res.json();
@@ -360,7 +407,7 @@ const CatalogoVirtual = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching DNI:", error);
+        console.error("Error al buscar información del cliente por DNI:", error);
       }
     }
   };
@@ -447,102 +494,42 @@ const CatalogoVirtual = () => {
   return (
     <div className="catalog-body">
       {/* Navbar Público */}
-      <nav className="catalog-nav" style={{ 
-        backgroundColor: 'rgba(10, 10, 12, 0.75)', 
-        backdropFilter: 'blur(12px)',
-        padding: '15px 50px', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        boxShadow: '0 4px 30px rgba(0,0,0,0.2)',
-        borderBottom: '1px solid var(--panel-border)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+      <nav className="catalog-nav" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           {logoUrl && (
-            <img src={logoUrl} alt="Logo" style={{ height: '50px', objectFit: 'contain' }} />
+            <img src={logoUrl} alt="Logo" style={{ height: '44px', objectFit: 'contain' }} />
           )}
-          <h2 style={{ margin: 0, color: 'var(--accent-primary)', fontWeight: 'bold', letterSpacing: '1px' }}>THE JUNGLE</h2>
+          <h2 style={{ margin: 0 }}>THE JUNGLE</h2>
         </div>
 
-        {/* Navigation links */}
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <button 
+        {/* Navigation Tabs */}
+        <div className="catalog-tab-bar">
+          <button
+            className={`catalog-tab ${activeTab === 'productos' ? 'active' : 'inactive'}`}
             onClick={() => setActiveTab('productos')}
-            style={{ 
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: activeTab === 'productos' ? 'var(--accent-primary)' : 'var(--text-main)', 
-              fontWeight: 'bold', fontSize: '1.1rem',
-              borderBottom: activeTab === 'productos' ? '2px solid var(--accent-primary)' : 'none',
-              paddingBottom: '4px',
-              transition: 'var(--transition-smooth)'
-            }}
           >
-            Productos
+            🛒 Productos
           </button>
-          <button 
+          <button
+            className={`catalog-tab ${activeTab === 'planes' ? 'active' : 'inactive'}`}
             onClick={() => setActiveTab('planes')}
-            style={{ 
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: activeTab === 'planes' ? 'var(--accent-primary)' : 'var(--text-main)', 
-              fontWeight: 'bold', fontSize: '1.1rem',
-              borderBottom: activeTab === 'planes' ? '2px solid var(--accent-primary)' : 'none',
-              paddingBottom: '4px',
-              transition: 'var(--transition-smooth)'
-            }}
           >
-            Planes
+            🏋️ Planes
           </button>
         </div>
-        
+
         {/* Cart Icon */}
-        <div 
+        <button
+          className="cart-float-btn"
           onClick={() => setIsCartOpen(true)}
-          style={{ 
-            position: 'relative', 
-            cursor: 'pointer',
-            padding: '12px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--accent-primary)',
-            boxShadow: '0 4px 10px rgba(255, 62, 62, 0.3)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'scale(1.1)';
-            e.currentTarget.style.boxShadow = '0 6px 15px rgba(255, 62, 62, 0.4)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 4px 10px rgba(255, 62, 62, 0.3)';
-          }}
+          style={{ position: 'relative', bottom: 'auto', right: 'auto', width: '48px', height: '48px' }}
+          title="Ver carrito"
         >
-          <ShoppingCart size={26} color="white" />
+          <ShoppingCart size={22} color="white" />
           {cartItemCount > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '-5px',
-              right: '-5px',
-              backgroundColor: '#1e293b',
-              color: 'white',
-              fontSize: '0.8rem',
-              fontWeight: 'bold',
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '2px solid white'
-            }}>
-              {cartItemCount}
-            </span>
+            <span className="badge">{cartItemCount}</span>
           )}
-        </div>
+        </button>
       </nav>
 
       {/* Contenido condicional según activeTab */}
@@ -644,97 +631,64 @@ const CatalogoVirtual = () => {
       {/* Grid de Planes / Membresías */}
       {activeTab === 'planes' && (
         <>
-          {/* Banner de Planes */}
-          <div style={{ 
-            width: '100%', 
-            background: 'linear-gradient(135deg, #ff3e3e 0%, #ff8a00 100%)', 
-            padding: '40px 0', 
-            textAlign: 'center',
-            marginBottom: '40px',
-            boxShadow: '0 4px 20px rgba(255, 62, 62, 0.15)'
-          }}>
-            <h1 className="catalog-title" style={{ 
-              color: 'white', 
-              fontSize: '3rem', 
-              fontStyle: 'italic', 
-              fontWeight: '900', 
-              margin: 0,
-              letterSpacing: '2px',
-              textTransform: 'uppercase'
-            }}>
-              NUESTROS PLANES
-            </h1>
+          <div className="catalog-section-banner">
+            <h1 className="catalog-title">ELIGE TU PLAN</h1>
+            <p className="catalog-subtitle">Transforma tu cuerpo · Supera tus límites · Únete a THE JUNGLE</p>
           </div>
 
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px 40px 20px' }}>
+          <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px 80px' }}>
             {membresias.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '50px', color: '#64748b' }}>
-                <Info size={50} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
-                <h3>No hay planes disponibles en el catálogo en este momento.</h3>
+              <div className="catalog-empty">
+                <Info size={64} />
+                <h3>NO HAY PLANES DISPONIBLES</h3>
               </div>
             ) : (
-              <div className="catalog-grid" style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-                gap: '30px' 
-              }}>
-                {membresias.map(plan => (
-                  <div 
-                    key={plan.id} 
-                    className="plan-card"
-                    style={{ cursor: 'pointer' }}
+              <div className="catalog-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+                {membresias.map((plan, idx) => (
+                  <div
+                    key={plan.id}
+                    className={`plan-card ${idx === 1 ? 'featured' : ''}`}
+                    style={{ animationDelay: `${idx * 0.08}s` }}
                     onClick={() => handleOpenSolicitud(plan)}
                   >
                     <div className="plan-card-img-container">
                       {plan.imagenUrl ? (
                         <img className="plan-card-img" src={plan.imagenUrl} alt={plan.nombre} />
                       ) : (
-                        <div style={{ color: 'var(--text-muted)', fontSize: '3rem', fontWeight: 'bold', opacity: 0.3 }}>PLAN</div>
+                        <div style={{ color: 'rgba(255,255,255,0.06)', fontFamily: 'Bebas Neue, sans-serif', fontSize: '5rem', letterSpacing: '4px' }}>GYM</div>
+                      )}
+                      {idx === 1 && (
+                        <div style={{
+                          position: 'absolute', top: 14, right: 14,
+                          background: 'linear-gradient(135deg,#ff2d2d,#ff7a00)',
+                          color: 'white', fontWeight: 900, fontSize: '0.72rem',
+                          padding: '4px 14px', borderRadius: '4px', letterSpacing: '2px',
+                          textTransform: 'uppercase',
+                          clipPath: 'polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%)'
+                        }}>★ MÁS POPULAR</div>
                       )}
                     </div>
-                    <div style={{ padding: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>{plan.nombre}</h3>
-                        <span style={{ 
-                          backgroundColor: 'rgba(255, 62, 62, 0.15)', 
-                          color: 'var(--accent-primary)', 
-                          padding: '4px 8px', 
-                          borderRadius: '12px',
-                          fontSize: '0.85rem',
-                          fontWeight: 'bold',
-                          boxShadow: '0 0 10px rgba(255, 62, 62, 0.1)'
-                        }}>
-                          S/ {plan.precio.toFixed(2)}
-                        </span>
+
+                    <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', zIndex: 2 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#fff', letterSpacing: '0.5px' }}>{plan.nombre}</h3>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: '1.9rem', lineHeight: 1, color: '#ff2d2d', letterSpacing: '1px' }}>S/ {plan.precio.toFixed(2)}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.38)', letterSpacing: '1px', textTransform: 'uppercase' }}>{plan.duracionDias} días</div>
+                        </div>
                       </div>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '15px' }}>
-                        {plan.descripcion || `Plan de ${plan.duracionDias} días`}
+
+                      <p style={{ color: 'rgba(255,255,255,0.48)', fontSize: '0.88rem', margin: 0, lineHeight: 1.6, flex: 1 }}>
+                        {plan.descripcion || `Acceso completo al gimnasio por ${plan.duracionDias} días.`}
                       </p>
-                      <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleOpenSolicitud(plan); }}
-                          style={{
-                            backgroundColor: 'var(--accent-primary)',
-                            color: 'white',
-                            border: 'none',
-                            padding: '10px 20px',
-                            borderRadius: '20px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            transition: 'transform 0.2s',
-                            width: '100%',
-                            justifyContent: 'center',
-                            boxShadow: '0 4px 15px rgba(255, 62, 62, 0.2)'
-                          }}
-                          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        >
-                          Adquirir Plan
-                        </button>
-                      </div>
+
+                      <button
+                        className="btn-add-cart"
+                        style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: '0.9rem', letterSpacing: '2px', clipPath: 'polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%)' }}
+                        onClick={(e) => { e.stopPropagation(); handleOpenSolicitud(plan); }}
+                      >
+                        🔥 INSCRIBIRME AHORA
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -746,128 +700,69 @@ const CatalogoVirtual = () => {
 
       {/* Grid de Productos */}
       {activeTab === 'productos' && (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        <div className="catalog-search-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
-          <h2 style={{ fontSize: '2rem', color: 'var(--text-primary)', margin: 0 }}>Nuestros Productos</h2>
-          
-          <div className="catalog-search-container" style={{ position: 'relative', width: '300px' }}>
-            <input 
-              type="text" 
-              placeholder="Buscar producto..." 
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px 80px' }}>
+          <div className="catalog-section-banner">
+            <h1 className="catalog-title">NUESTROS PRODUCTOS</h1>
+            <p className="catalog-subtitle">Suplementos · Equipamiento · Accesorios de Gym</p>
+          </div>
+
+          <div className="catalog-search-wrapper">
+            <input
+              className="catalog-search-input"
+              type="text"
+              placeholder="🔍  Buscar producto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, ''))}
-              style={{
-                width: '100%',
-                padding: '12px 20px 12px 40px',
-                borderRadius: '25px',
-                border: '2px solid var(--panel-border)',
-                outline: 'none',
-                fontSize: '1rem',
-                color: 'var(--text-main)',
-                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                transition: 'var(--transition-smooth)'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = 'var(--accent-primary)';
-                e.target.style.boxShadow = '0 0 15px rgba(255, 62, 62, 0.2)';
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'var(--panel-border)';
-                e.target.style.boxShadow = 'none';
-                e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
-              }}
             />
-            <Search size={20} style={{ position: 'absolute', left: '15px', top: '12px', color: 'var(--text-muted)' }} />
           </div>
+
+          {filteredProductos.length === 0 ? (
+            <div className="catalog-empty">
+              <ShoppingCart size={64} />
+              <h3>NO HAY PRODUCTOS DISPONIBLES</h3>
+            </div>
+          ) : (
+            <div className="catalog-grid">
+              {filteredProductos.map((producto, idx) => {
+                const stockStatus = producto.stock === 0 ? 'no-stock' : producto.stock <= 5 ? 'low-stock' : 'in-stock';
+                const stockLabel  = producto.stock === 0 ? 'Agotado' : producto.stock <= 5 ? `¡Solo ${producto.stock}!` : `${producto.stock} disponibles`;
+                const stockIcon   = producto.stock === 0 ? '✕' : producto.stock <= 5 ? '⚡' : '✓';
+                return (
+                  <div key={producto.id} className="product-card" style={{ animationDelay: `${idx * 0.06}s` }}>
+                    <div className="product-card-img-wrapper">
+                      {producto.imagenUrl ? (
+                        <img src={producto.imagenUrl} alt={producto.nombre} />
+                      ) : (
+                        <ShoppingCart size={56} color="rgba(255,255,255,0.06)" />
+                      )}
+                      {producto.stock <= 5 && producto.stock > 0 && (
+                        <span className="product-card-badge">⚡ Últimas unidades</span>
+                      )}
+                      <span className="product-card-price">S/ {producto.precio.toFixed(2)}</span>
+                    </div>
+                    <div className="product-card-body">
+                      <h3 className="product-card-name">{producto.nombre}</h3>
+                      <p className="product-card-desc">{producto.descripcion || 'Producto de alta calidad para tu entrenamiento.'}</p>
+                      <div className="product-card-footer">
+                        <span className={`product-card-stock ${stockStatus}`}>{stockIcon} {stockLabel}</span>
+                        <button
+                          className="btn-add-cart"
+                          onClick={(e) => { e.stopPropagation(); addToCart(producto); }}
+                          disabled={producto.stock === 0}
+                        >
+                          <ShoppingCart size={15} />
+                          {producto.stock === 0 ? 'Agotado' : 'Añadir'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-
-        {filteredProductos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>
-            <Info size={50} style={{ margin: '0 auto 20px', opacity: 0.5 }} />
-            <h3>No se encontraron productos disponibles.</h3>
-          </div>
-        ) : (
-          <div className="catalog-grid" style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-            gap: '30px' 
-          }}>
-            {filteredProductos.map(producto => (
-              <div 
-                key={producto.id} 
-                className="product-card"
-                onClick={() => addToCart(producto)}
-              >
-                <div style={{ height: '200px', backgroundColor: 'rgba(255, 255, 255, 0.01)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px', borderBottom: '1px solid var(--panel-border)' }}>
-                  {producto.imagenUrl ? (
-                    <img src={producto.imagenUrl} alt={producto.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  ) : (
-                    <ShoppingCart size={60} color="var(--text-muted)" style={{ opacity: 0.3 }} />
-                  )}
-                </div>
-                <div style={{ padding: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-main)' }}>{producto.nombre}</h3>
-                    <span style={{ 
-                      backgroundColor: 'rgba(255, 62, 62, 0.15)', 
-                      color: 'var(--accent-primary)', 
-                      padding: '4px 8px', 
-                      borderRadius: '12px',
-                      fontSize: '0.85rem',
-                      fontWeight: 'bold',
-                      boxShadow: '0 0 10px rgba(255, 62, 62, 0.1)'
-                    }}>
-                      S/ {producto.precio.toFixed(2)}
-                    </span>
-                  </div>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '15px', height: '40px', overflow: 'hidden' }}>
-                    {producto.descripcion || 'Sin descripción'}
-                  </p>
-                  <div style={{ borderTop: '1px solid var(--panel-border)', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Stock: {producto.stock}
-                    </span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); addToCart(producto); }}
-                      disabled={producto.stock === 0}
-                      style={{
-                        backgroundColor: producto.stock === 0 ? 'rgba(255, 255, 255, 0.04)' : 'var(--accent-primary)',
-                        color: producto.stock === 0 ? 'var(--text-muted)' : 'white',
-                        border: 'none',
-                        padding: '8px 15px',
-                        borderRadius: '20px',
-                        cursor: producto.stock === 0 ? 'not-allowed' : 'pointer',
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        boxShadow: producto.stock === 0 ? 'none' : '0 4px 15px rgba(255, 62, 62, 0.2)'
-                      }}
-                      onMouseOver={(e) => {
-                        if (producto.stock > 0) {
-                          e.currentTarget.style.transform = 'scale(1.05)';
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        if (producto.stock > 0) {
-                          e.currentTarget.style.transform = 'scale(1)';
-                        }
-                      }}
-                    >
-                      <ShoppingCart size={16} />
-                      {producto.stock === 0 ? 'Agotado' : 'Añadir'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
       )}
-
+          
 
       {/* Cart Sidebar (Drawer) */}
       <div className="cart-drawer" style={{

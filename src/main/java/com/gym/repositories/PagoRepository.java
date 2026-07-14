@@ -12,6 +12,7 @@ import java.util.List;
 public interface PagoRepository extends JpaRepository<Pago, Long> {
     List<Pago> findBySuscripcionId(Long suscripcionId);
     List<Pago> findBySuscripcionSocioId(Long socioId);
+    List<Pago> findByVentaId(Long ventaId);
 
     @Query("SELECT p FROM Pago p "
             + "JOIN FETCH p.suscripcion s "

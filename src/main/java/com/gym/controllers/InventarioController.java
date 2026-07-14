@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class InventarioController {
     private final InventarioService inventarioService;
 
     @PostMapping("/ajustes")
+    @PreAuthorize("hasAuthority('productos:editar')")
     public ResponseEntity<MovimientoInventarioResponse> ajustarStock(
             @Valid @RequestBody AjusteInventarioRequest request) {
         MovimientoInventarioResponse response = inventarioService.ajustarStock(request);
@@ -26,12 +28,14 @@ public class InventarioController {
     }
 
     @GetMapping("/movimientos")
+    @PreAuthorize("hasAuthority('productos:ver')")
     public ResponseEntity<List<MovimientoInventarioResponse>> listarMovimientos(
             @RequestParam(required = false) Long productoId) {
         return ResponseEntity.ok(inventarioService.listarMovimientos(productoId));
     }
 
     @GetMapping("/movimientos/{id}")
+    @PreAuthorize("hasAuthority('productos:ver')")
     public ResponseEntity<MovimientoInventarioResponse> buscarMovimiento(@PathVariable Long id) {
         return ResponseEntity.ok(inventarioService.buscarPorId(id));
     }

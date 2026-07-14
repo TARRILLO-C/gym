@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
@@ -35,16 +36,19 @@ public class SolicitudMembresiaController {
     private final SuscripcionService suscripcionService;
     private final EmailService emailService;
     @GetMapping
+    @PreAuthorize("hasAuthority('solicitudes:ver')")
     public ResponseEntity<List<SolicitudMembresia>> listarTodas() {
         return ResponseEntity.ok(solicitudMembresiaRepository.findAll());
     }
     @GetMapping("/pendientes")
+    @PreAuthorize("hasAuthority('solicitudes:ver')")
     @Transactional(readOnly = true)
     public ResponseEntity<List<SolicitudMembresia>> listarPendientes() {
         return ResponseEntity.ok(solicitudMembresiaRepository.findByEstado(EstadoSolicitud.PENDIENTE));
     }
 
     @GetMapping("/por-estado/{estado}")
+    @PreAuthorize("hasAuthority('solicitudes:ver')")
     @Transactional(readOnly = true)
     public ResponseEntity<List<SolicitudMembresia>> listarPorEstado(@PathVariable EstadoSolicitud estado) {
         return ResponseEntity.ok(solicitudMembresiaRepository.findByEstado(estado));
@@ -73,6 +77,7 @@ public class SolicitudMembresiaController {
         return new ResponseEntity<>(guardada, HttpStatus.CREATED);
     }
     @PostMapping("/{id}/aprobar")
+    @PreAuthorize("hasAuthority('solicitudes:aprobar')")
     public ResponseEntity<SolicitudMembresia> aprobar(@PathVariable Long id) {
         SolicitudMembresia solicitud = solicitudMembresiaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SolicitudMembresia", id));
@@ -122,6 +127,7 @@ public class SolicitudMembresiaController {
         return ResponseEntity.ok(guardada);
     }
     @PostMapping("/{id}/rechazar")
+    @PreAuthorize("hasAuthority('solicitudes:aprobar')")
     public ResponseEntity<SolicitudMembresia> rechazar(@PathVariable Long id) {
         SolicitudMembresia solicitud = solicitudMembresiaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("SolicitudMembresia", id));

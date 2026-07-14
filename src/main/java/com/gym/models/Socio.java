@@ -11,10 +11,11 @@ import java.util.List;
 @Entity
 @Table(name = "socios")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Socio {
+public class Socio extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -31,4 +31,6 @@ public interface SolicitudProductoRepository extends JpaRepository<SolicitudProd
             + "LEFT JOIN FETCH i.producto "
             + "ORDER BY s.fechaSolicitud DESC")
     List<SolicitudProducto> findAllWithDetalles();
+
+    List<SolicitudProducto> findByEstadoAndFechaSolicitudBefore(EstadoSolicitud estado, java.time.LocalDateTime fecha);
 }

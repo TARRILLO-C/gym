@@ -56,14 +56,18 @@ public class SuscripcionService {
 
     // ── Consultas ─────────────────────────────────────────────────────────────
 
-    /**
-     * Lista todas las suscripciones del sistema.
-     */
     @Transactional
     public List<Suscripcion> listarTodas() {
         List<Suscripcion> list = suscripcionRepository.findAll();
         list.forEach(this::verificarYDescongelarSiVencio);
         return list;
+    }
+
+    @Transactional
+    public org.springframework.data.domain.Page<Suscripcion> listarTodas(org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Suscripcion> page = suscripcionRepository.findAll(pageable);
+        page.forEach(this::verificarYDescongelarSiVencio);
+        return page;
     }
 
     /**
@@ -353,7 +357,7 @@ public class SuscripcionService {
     }
 
     /**
-     * Congela una suscripción activa, pausándola y extendiendo su fecha de fin.
+     * Congela una suscripción activa, pausándola en la fecha indicada.
      */
     @Transactional
     public Congelamiento congelar(Long id, LocalDate inicio, LocalDate fin, String motivo) {
@@ -364,60 +368,77 @@ public class SuscripcionService {
             && !sus.getMembresia().getPermiteCongelamiento()) {
             throw new IllegalArgumentException("Las políticas de este plan de membresía no permiten congelamientos.");
         }
-        
-        long dias = ChronoUnit.DAYS.between(inicio, fin);
-        if (dias <= 0) {
-            throw new IllegalArgumentException("La fecha de fin debe ser posterior a la de inicio.");
+
+        if (sus.isEstaCongelada()) {
+            throw new IllegalStateException("La suscripción ya se encuentra congelada.");
         }
 
-        // Extender la fecha de fin de la suscripción
-        sus.setFechaFin(sus.getFechaFin().plusDays(dias));
+        LocalDate fechaInicioCong = (inicio != null) ? inicio : LocalDate.now();
+        LocalDate fechaFinTentativa = (fin != null) ? fin : fechaInicioCong.plusDays(7);
+
+        // Guardar el estado del congelamiento activo directamente en la suscripción
         sus.setEstaCongelada(true);
+        sus.setFechaCongelacion(fechaInicioCong);
+        sus.setMotivoCongelacion(motivo);
         suscripcionRepository.save(sus);
 
+        // Registrar en la tabla histórica para control de auditoría
         Congelamiento cong = Congelamiento.builder()
                 .suscripcion(sus)
-                .fechaInicio(inicio)
-                .fechaFin(fin)
+                .fechaInicio(fechaInicioCong)
+                .fechaFin(fechaFinTentativa)
                 .motivo(motivo)
                 .build();
 
-        log.info("Suscripción {} congelada por {} días.", id, dias);
+        log.info("Suscripción ID {} congelada a partir del {}. Motivo: {}", id, fechaInicioCong, motivo);
         return congelamientoRepository.save(cong);
     }
 
     /**
-     * Descongela una suscripción (opcional si se desea manejar manualmente).
+     * Descongela una suscripción calculando dinámicamente los días de pausa transcurridos y extendiendo la fecha fin.
      */
     @Transactional
     public void descongelar(Long id) {
         Suscripcion sus = buscarPorId(id);
         
-        // Buscar el último congelamiento registrado por ID (evita error de empates el mismo día)
-        java.util.Optional<com.gym.models.Congelamiento> ultimoOpt = congelamientoRepository.findFirstBySuscripcionIdOrderByIdDesc(id);
-        
-        if (ultimoOpt.isPresent()) {
-            com.gym.models.Congelamiento cong = ultimoOpt.get();
-            LocalDate hoy = LocalDate.now();
-            
-            // Si el socio regresa ANTES de la fecha planificada de fin
-            if (!hoy.isAfter(cong.getFechaFin()) && !hoy.isBefore(cong.getFechaInicio())) {
-                long diasNoUsados = java.time.temporal.ChronoUnit.DAYS.between(hoy, cong.getFechaFin());
-                
-                if (diasNoUsados > 0) {
-                    // Amputar los días que se le habían regalado de más
-                    sus.setFechaFin(sus.getFechaFin().minusDays(diasNoUsados));
-                    // Actualizar el historial para que acabe hoy
-                    cong.setFechaFin(hoy);
-                    congelamientoRepository.save(cong);
-                    
-                    log.info("Descongelamiento anticipado para {}. Días retirados: {}", id, diasNoUsados);
-                }
-            }
+        if (!sus.isEstaCongelada()) {
+            throw new IllegalStateException("La suscripción no está congelada.");
         }
+
+        if (sus.getFechaCongelacion() == null) {
+            throw new IllegalStateException("No hay una fecha de congelación registrada en la suscripción.");
+        }
+
+        LocalDate hoy = LocalDate.now();
+        LocalDate inicioCongelacion = sus.getFechaCongelacion();
         
+        // Calcular los días reales transcurridos de pausa
+        long diasTranscurridos = ChronoUnit.DAYS.between(inicioCongelacion, hoy);
+        if (diasTranscurridos < 0) {
+            diasTranscurridos = 0; // Evitar anomalías horarias
+        }
+
+        // Extender la fecha de fin sumándole los días de pausa transcurridos
+        sus.setFechaFin(sus.getFechaFin().plusDays(diasTranscurridos));
+
+        // Acumular la cantidad total de días pausados
+        int pausaAcumuladaAnterior = (sus.getDiasAcumuladosPausa() != null) ? sus.getDiasAcumuladosPausa() : 0;
+        sus.setDiasAcumuladosPausa(pausaAcumuladaAnterior + (int) diasTranscurridos);
+
+        // Limpiar el estado de congelación activo
+        sus.setFechaCongelacion(null);
+        sus.setMotivoCongelacion(null);
         sus.setEstaCongelada(false);
         suscripcionRepository.save(sus);
+
+        // Actualizar la fecha fin del registro histórico de congelamiento al día de hoy
+        congelamientoRepository.findFirstBySuscripcionIdOrderByIdDesc(id).ifPresent(cong -> {
+            cong.setFechaFin(hoy);
+            congelamientoRepository.save(cong);
+        });
+
+        log.info("Suscripción ID {} descongelada exitosamente. Días reales pausados: {}. Nueva fecha de vencimiento: {}",
+                id, diasTranscurridos, sus.getFechaFin());
     }
 
     /**

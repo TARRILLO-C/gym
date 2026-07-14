@@ -48,4 +48,10 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
     List<Asistencia> buscar(@Param("search") String search,
                             @Param("fechaDesde") LocalDateTime fechaDesde,
                             @Param("fechaHasta") LocalDateTime fechaHasta);
+
+    @Query("SELECT HOUR(a.fechaHoraIngreso) as hora, COUNT(a) as total FROM Asistencia a " +
+           "WHERE a.fechaHoraIngreso >= :desde " +
+           "GROUP BY HOUR(a.fechaHoraIngreso) " +
+           "ORDER BY hora")
+    List<Object[]> countByHourOfDayAfter(@Param("desde") LocalDateTime desde);
 }

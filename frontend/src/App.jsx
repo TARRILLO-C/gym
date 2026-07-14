@@ -15,6 +15,7 @@ import SolicitudesMembresia from './views/SolicitudesMembresia';
 import MonitorCaja from './views/MonitorCaja';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
+import { PermissionsProvider } from './context/PermissionsContext';
 import './App.css';
 
 
@@ -42,16 +43,16 @@ const AppLayout = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/catalogo" element={<CatalogoVirtual />} />
             
-            <Route path="/" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Dashboard /></ProtectedRoute>} />
-            <Route path="/asistencia" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Asistencia /></ProtectedRoute>} />
-            <Route path="/solicitudes" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><SolicitudesMembresia /></ProtectedRoute>} />
-            <Route path="/socios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Socios /></ProtectedRoute>} />
-            <Route path="/membresias" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Membresias /></ProtectedRoute>} />
-            <Route path="/productos" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Productos /></ProtectedRoute>} />
-            <Route path="/ventas" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'RECEPCIONISTA']}><Ventas /></ProtectedRoute>} />
-            <Route path="/monitor-caja" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><MonitorCaja /></ProtectedRoute>} />
-            <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Usuarios /></ProtectedRoute>} />
-            <Route path="/configuracion-catalogo" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><ConfiguracionCatalogo /></ProtectedRoute>} />
+            <Route path="/" element={<ProtectedRoute requiredPermission="dashboard:ver"><Dashboard /></ProtectedRoute>} />
+            <Route path="/asistencia" element={<ProtectedRoute requiredPermission="asistencia:ver"><Asistencia /></ProtectedRoute>} />
+            <Route path="/solicitudes" element={<ProtectedRoute requiredPermission="solicitudes:ver"><SolicitudesMembresia /></ProtectedRoute>} />
+            <Route path="/socios" element={<ProtectedRoute requiredPermission="socios:ver"><Socios /></ProtectedRoute>} />
+            <Route path="/membresias" element={<ProtectedRoute requiredPermission="membresias:ver"><Membresias /></ProtectedRoute>} />
+            <Route path="/productos" element={<ProtectedRoute requiredPermission="productos:ver"><Productos /></ProtectedRoute>} />
+            <Route path="/ventas" element={<ProtectedRoute requiredPermission="ventas:ver"><Ventas /></ProtectedRoute>} />
+            <Route path="/monitor-caja" element={<ProtectedRoute requiredPermission="caja:ver"><MonitorCaja /></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute requiredPermission="personal:ver"><Usuarios /></ProtectedRoute>} />
+            <Route path="/configuracion-catalogo" element={<ProtectedRoute requiredPermission="catalogo:editar"><ConfiguracionCatalogo /></ProtectedRoute>} />
           </Routes>
         </ErrorBoundary>
       </main>
@@ -62,9 +63,11 @@ const AppLayout = () => {
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <AppLayout />
-      </Router>
+      <PermissionsProvider>
+        <Router>
+          <AppLayout />
+        </Router>
+      </PermissionsProvider>
     </ThemeProvider>
   );
 }

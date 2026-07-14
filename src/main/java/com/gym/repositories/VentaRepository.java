@@ -33,6 +33,16 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     /**
      * Ventas de productos: excluye las generadas al registrar pagos de suscripción/membresía.
      */
+    @Query(value = "SELECT DISTINCT v FROM Venta v "
+            + "LEFT JOIN FETCH v.detalles d "
+            + "LEFT JOIN FETCH d.producto "
+            + "LEFT JOIN FETCH v.socio "
+            + "WHERE NOT EXISTS (SELECT 1 FROM Pago p WHERE p.venta = v) "
+            + "ORDER BY v.fecha DESC",
+            countQuery = "SELECT COUNT(DISTINCT v) FROM Venta v "
+            + "WHERE NOT EXISTS (SELECT 1 FROM Pago p WHERE p.venta = v)")
+    org.springframework.data.domain.Page<Venta> findVentasDeProductos(org.springframework.data.domain.Pageable pageable);
+
     @Query("SELECT DISTINCT v FROM Venta v "
             + "LEFT JOIN FETCH v.detalles d "
             + "LEFT JOIN FETCH d.producto "

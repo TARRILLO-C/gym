@@ -32,7 +32,8 @@ const Dashboard = () => {
     solicitudesMembresia: [],
     solicitudesVenta: [],
     actividadSemana: { data: [], max: 1 },
-    ingresosSemana: []
+    ingresosSemana: [],
+    horasPico: { data: [], max: 1 }
   });
   const [loading, setLoading] = useState(true);
   const [activeRequestTab, setActiveRequestTab] = useState('MEMBRESIA');
@@ -43,14 +44,15 @@ const Dashboard = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        const [socios, ingresos, productos, ventas, pagos, solMembresia, solVenta] = await Promise.all([
+        const [socios, ingresos, productos, ventas, pagos, solMembresia, solVenta, horasPicoRes] = await Promise.all([
           api.get('/socios').catch(err => { console.error("Error fetching socios:", err); return { data: [] }; }),
           api.get('/asistencias/hoy').catch(err => { console.error("Error fetching asistencias:", err); return { data: [] }; }),
           api.get('/productos').catch(err => { console.error("Error fetching productos:", err); return { data: [] }; }),
-          api.get('/ventas').catch(err => { console.error("Error fetching ventas:", err); return { data: [] }; }),
+          api.get('/ventas?page=0&size=200&sort=id,desc').catch(err => { console.error("Error fetching ventas:", err); return { data: { content: [] } }; }),
           api.get('/pagos').catch(err => { console.error("Error fetching pagos:", err); return { data: [] }; }),
           api.get('/solicitudes-membresia/pendientes').catch(err => { console.error("Error fetching solicitudes-membresia:", err); return { data: [] }; }),
-          api.get('/solicitudes-producto/pendientes').catch(err => { console.error("Error fetching solicitudes-producto:", err); return { data: [] }; })
+          api.get('/solicitudes-producto/pendientes').catch(err => { console.error("Error fetching solicitudes-producto:", err); return { data: [] }; }),
+          api.get('/asistencias/analitica/horas-pico?dias=30').catch(err => { console.error("Error fetching horas pico:", err); return { data: {} }; })
         ]);
         
         // Extraer asistencia de los ultimos 7 dias
@@ -84,7 +86,7 @@ const Dashboard = () => {
         
         const maxAsistencias = Math.max(...ultimos7Dias.map(d => d.count), 1);
 
-        const totalVentas = (ventas.data || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
+        const totalVentas = (ventas.data?.content || []).reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
         const totalPlanes = (pagos.data || []).reduce((acc, p) => acc + parseFloat(p.monto || 0), 0);
         const listaProductos = productos.data || [];
         const bajoStock = listaProductos.filter(p => p.stock > 0 && p.stock < (p.stockMinimo ?? 5)).length;
@@ -94,7 +96,7 @@ const Dashboard = () => {
           const pagosEnDia = (pagos.data || []).filter(p => p.fechaPago && p.fechaPago.split('T')[0] === dia.fechaStr);
           const montoPlanes = pagosEnDia.reduce((acc, p) => acc + parseFloat(p.monto || 0), 0);
 
-          const ventasEnDia = (ventas.data || []).filter(v => v.fecha && v.activo !== false && v.fecha.split('T')[0] === dia.fechaStr);
+          const ventasEnDia = (ventas.data?.content || []).filter(v => v.fecha && v.activo !== false && v.fecha.split('T')[0] === dia.fechaStr);
           const montoProductos = ventasEnDia.reduce((acc, v) => acc + parseFloat(v.total || 0), 0);
 
           return {
@@ -104,6 +106,14 @@ const Dashboard = () => {
             total: montoPlanes + montoProductos
           };
         });
+
+        const rawHoras = horasPicoRes.data || {};
+        const horasData = Object.entries(rawHoras).map(([horaStr, count]) => ({
+          hora: parseInt(horaStr),
+          count: parseInt(count),
+          label: parseInt(horaStr) > 12 ? `${parseInt(horaStr) - 12}pm` : parseInt(horaStr) === 12 ? '12pm' : `${horaStr}am`
+        }));
+        const maxHoraCount = Math.max(...horasData.map(h => h.count), 1);
 
         setStats({
           totalSocios: (socios.data || []).length,
@@ -120,7 +130,8 @@ const Dashboard = () => {
           solicitudesMembresia: solMembresia.data || [],
           solicitudesVenta: solVenta.data || [],
           actividadSemana: { data: ultimos7Dias, max: maxAsistencias },
-          ingresosSemana: ingresos7Dias
+          ingresosSemana: ingresos7Dias,
+          horasPico: { data: horasData, max: maxHoraCount }
         });
       } catch (err) {
         console.error("Error fetching dashboard stats:", err);
@@ -410,6 +421,91 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Afluencia por Horas (Horas Pico) */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: '340px' }}>
+          <div style={{ marginBottom: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>Afluencia por Horas</h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Distribución de ingresos durante el último mes para identificar horas pico.
+            </p>
+          </div>
+          {loading ? (
+            <div className="skeleton" style={{ flex: 1, width: '100%' }}></div>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', paddingBottom: '10px', marginTop: '20px' }}>
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '4px', height: '170px' }}>
+                {stats.horasPico.data && stats.horasPico.data.length > 0 ? (
+                  stats.horasPico.data.map((h, idx) => {
+                    const percentage = h.count / (stats.horasPico.max || 1);
+                    const isPeak = h.count === stats.horasPico.max && h.count > 0;
+                    return (
+                      <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
+                        {/* Bar Container */}
+                        <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
+                          {/* Tooltip on hover */}
+                          <div className="bar-tooltip" style={{
+                            position: 'absolute',
+                            bottom: `${percentage * 100 + 5}%`,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            backgroundColor: 'var(--bg-color, #0f172a)',
+                            border: '1px solid var(--panel-border, #334155)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            pointerEvents: 'none',
+                            opacity: 0,
+                            transition: 'opacity 0.2s ease',
+                            whiteSpace: 'nowrap',
+                            zIndex: 5,
+                            color: 'var(--text-main, #f8fafc)'
+                          }}>
+                            {h.count} checkins
+                          </div>
+                          {/* The Actual Bar */}
+                          <div 
+                            style={{
+                              width: '80%',
+                              height: `${Math.max(percentage * 100, 4)}%`,
+                              background: isPeak 
+                                ? 'linear-gradient(0deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)' 
+                                : 'var(--panel-border, #334155)',
+                              borderRadius: '4px 4px 0 0',
+                              margin: '0 auto',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              boxShadow: isPeak ? '0 0 12px var(--accent-primary)' : 'none'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.filter = 'brightness(1.2)';
+                              const tooltip = e.currentTarget.parentElement.querySelector('.bar-tooltip');
+                              if (tooltip) tooltip.style.opacity = 1;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.filter = 'none';
+                              const tooltip = e.currentTarget.parentElement.querySelector('.bar-tooltip');
+                              if (tooltip) tooltip.style.opacity = 0;
+                            }}
+                          />
+                        </div>
+                        {/* X Label */}
+                        <span style={{ fontSize: '0.65rem', color: isPeak ? 'var(--accent-primary)' : 'var(--text-muted)', marginTop: '8px', fontWeight: isPeak ? 'bold' : 'normal' }}>
+                          {h.label}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ width: '100%', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    No hay datos de afluencia suficientes.
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -28,6 +29,7 @@ public class SesionCajaController {
 
     /** Abre una nueva sesión de turno */
     @PostMapping("/abrir")
+    @PreAuthorize("hasAuthority('caja:operar')")
     public ResponseEntity<?> abrirSesion(@RequestBody AbrirRequest req) {
         try {
             SesionCaja sesion = sesionService.abrirSesion(
@@ -41,6 +43,7 @@ public class SesionCajaController {
 
     /** Devuelve la sesión actualmente abierta (null si no hay ninguna) */
     @GetMapping("/activa")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<?> obtenerSesionActiva() {
         return sesionService.obtenerSesionActiva()
                 .map(ResponseEntity::ok)
@@ -49,6 +52,7 @@ public class SesionCajaController {
 
     /** Resumen financiero de la sesión activa (sin revelar montoEsperado) */
     @GetMapping("/activa/resumen")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<?> resumenSesionActiva() {
         try {
             Map<String, Object> resumen = sesionService.obtenerResumenSesionActiva();
@@ -65,6 +69,7 @@ public class SesionCajaController {
      * El frontend solo envía montoFinalReal. El backend calcula la diferencia.
      */
     @PostMapping("/cerrar")
+    @PreAuthorize("hasAuthority('caja:operar')")
     public ResponseEntity<?> cerrarSesion(@RequestBody CerrarRequest req) {
         try {
             SesionCaja cerrada = sesionService.cerrarSesion(
@@ -78,12 +83,14 @@ public class SesionCajaController {
 
     /** Historial de todas las sesiones (para Monitor de Caja) */
     @GetMapping("/historial")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<List<SesionCaja>> listarHistorial() {
         return ResponseEntity.ok(sesionService.listarHistorial());
     }
 
     /** Datos de la última sesión cerrada (para sugerir fondo al siguiente turno) */
     @GetMapping("/ultima-cerrada")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<Map<String, Object>> ultimaCerrada() {
         return ResponseEntity.ok(sesionService.obtenerUltimaCerrada());
     }
@@ -92,6 +99,7 @@ public class SesionCajaController {
 
     /** Registra un EGRESO (cualquier cajero) */
     @PostMapping("/egresos")
+    @PreAuthorize("hasAuthority('caja:operar')")
     public ResponseEntity<?> registrarEgreso(@RequestBody EgresoRequest req) {
         try {
             MovimientoCaja mov = movimientoService.registrarEgreso(
@@ -104,6 +112,7 @@ public class SesionCajaController {
 
     /** Registra un RETIRO DE FONDOS (requiere PIN de admin) */
     @PostMapping("/retiros")
+    @PreAuthorize("hasAuthority('caja:operar')")
     public ResponseEntity<?> registrarRetiro(@RequestBody RetiroRequest req) {
         try {
             MovimientoCaja mov = movimientoService.registrarRetiro(
@@ -119,6 +128,7 @@ public class SesionCajaController {
 
     /** Lista movimientos de una sesión específica */
     @GetMapping("/{sesionId}/movimientos")
+    @PreAuthorize("hasAuthority('caja:ver')")
     public ResponseEntity<List<MovimientoCaja>> listarMovimientos(@PathVariable Long sesionId) {
         return ResponseEntity.ok(movimientoService.listarPorSesion(sesionId));
     }

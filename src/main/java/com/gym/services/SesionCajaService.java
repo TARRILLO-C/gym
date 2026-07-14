@@ -230,7 +230,8 @@ public class SesionCajaService {
             throw new SecurityException("Se requiere el PIN de administrador para esta operación.");
         }
         boolean pinValido = usuarioRepository.findAll().stream()
-                .anyMatch(u -> "ADMIN".equalsIgnoreCase(u.getRol())
+                .anyMatch(u -> u.getRol() != null 
+                            && "ADMINISTRADOR".equalsIgnoreCase(u.getRol().getNombre())
                             && u.isActivo()
                             && pinAdmin.equals(u.getPinAdmin()));
         if (!pinValido) {

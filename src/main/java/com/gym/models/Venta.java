@@ -15,10 +15,11 @@ import java.util.List;
 @Entity
 @Table(name = "ventas")
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Venta {
+public class Venta extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

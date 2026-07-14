@@ -19,6 +19,7 @@ import {
   DollarSign,
   Ban
 } from 'lucide-react';
+import { usePermissions } from '../context/PermissionsContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { API_BASE_URL } from '../services/api';
 
@@ -28,6 +29,7 @@ const Sidebar = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const { can } = usePermissions();
 
   const role = sessionStorage.getItem('role');
 
@@ -76,22 +78,23 @@ const Sidebar = () => {
   }, [role]);
 
   const menuItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['ADMINISTRADOR'] },
-    { name: 'Control de Acceso', path: '/asistencia', icon: ShieldCheck, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
-    { name: 'Solicitudes', path: '/solicitudes', icon: FileText, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
-    { name: 'Socios', path: '/socios', icon: Users, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
-    { name: 'Membresías', path: '/membresias', icon: CreditCard, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
-    { name: 'Productos', path: '/productos', icon: Package, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
-    { name: 'Ventas', path: '/ventas', icon: Receipt, roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
-    { name: 'Monitor de Caja', path: '/monitor-caja', icon: DollarSign, roles: ['ADMINISTRADOR'] },
-    { name: 'Personal', path: '/usuarios', icon: UserCog, roles: ['ADMINISTRADOR'] },
-    { name: 'Catálogo Web', path: '/configuracion-catalogo', icon: Store, roles: ['ADMINISTRADOR'] },
-  ].filter(item => item.roles.includes(role));
+    { name: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard:ver' },
+    { name: 'Control de Acceso', path: '/asistencia', icon: ShieldCheck, permission: 'asistencia:ver' },
+    { name: 'Solicitudes', path: '/solicitudes', icon: FileText, permission: 'solicitudes:ver' },
+    { name: 'Socios', path: '/socios', icon: Users, permission: 'socios:ver' },
+    { name: 'Membresías', path: '/membresias', icon: CreditCard, permission: 'membresias:ver' },
+    { name: 'Productos', path: '/productos', icon: Package, permission: 'productos:ver' },
+    { name: 'Ventas', path: '/ventas', icon: Receipt, permission: 'ventas:ver' },
+    { name: 'Monitor de Caja', path: '/monitor-caja', icon: DollarSign, permission: 'caja:ver' },
+    { name: 'Personal', path: '/usuarios', icon: UserCog, permission: 'personal:ver' },
+    { name: 'Catálogo Web', path: '/configuracion-catalogo', icon: Store, permission: 'catalogo:editar' },
+  ].filter(item => can(item.permission));
 
   const handleLogout = () => {
     sessionStorage.removeItem('isAuthenticated');
     sessionStorage.removeItem('username');
     sessionStorage.removeItem('role');
+    sessionStorage.removeItem('permisos');
     navigate('/login');
   };
 

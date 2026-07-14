@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Plus, Trash2, ExternalLink } from 'lucide-react';
-import { API_BASE_URL } from '../services/api';
+import api from '../services/api';
 
 const ConfiguracionCatalogo = () => {
   const [logoUrl, setLogoUrl] = useState('');
@@ -45,9 +45,9 @@ const ConfiguracionCatalogo = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/web-config`);
-      if (response.ok) {
-        const data = await response.json();
+      const response = await api.get('/web-config');
+      const data = response.data;
+      if (data) {
         if (data.logoUrl) setLogoUrl(data.logoUrl);
         if (data.yapeNumber) setYapeNumber(data.yapeNumber);
         if (data.yapeTitular) setYapeTitular(data.yapeTitular);
@@ -63,11 +63,8 @@ const ConfiguracionCatalogo = () => {
 
   const fetchSliders = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/web-config/slider`);
-      if (response.ok) {
-        const data = await response.json();
-        setSliders(data);
-      }
+      const response = await api.get('/web-config/slider');
+      setSliders(response.data || []);
     } catch (error) {
       console.error('Error fetching sliders:', error);
     }
@@ -75,11 +72,9 @@ const ConfiguracionCatalogo = () => {
 
   const fetchMembresias = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/membresias`);
-      if (response.ok) {
-        const data = await response.json();
-        setMembresias(data.filter(m => m.estado === 'DISPONIBLE'));
-      }
+      const response = await api.get('/membresias');
+      const data = response.data || [];
+      setMembresias(data.filter(m => m.estado === 'DISPONIBLE'));
     } catch (error) {
       console.error('Error fetching membresias:', error);
     }
@@ -90,14 +85,12 @@ const ConfiguracionCatalogo = () => {
     formData.append('file', file);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/upload`, {
-        method: 'POST',
-        body: formData,
+      const response = await api.post('/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
-      if (response.ok) {
-        const data = await response.json();
-        return data.url;
-      }
+      return response.data?.url;
     } catch (error) {
       console.error('Error uploading image:', error);
     }
@@ -116,24 +109,18 @@ const ConfiguracionCatalogo = () => {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/web-config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          logoUrl: currentLogoUrl,
-          yapeNumber: yapeNumber,
-          yapeTitular: yapeTitular,
-          numeroCuenta: numeroCuenta,
-          cuentaTitular: cuentaTitular,
-          yapeNombre: yapeTitular, // Sincroniza yapeNombre con yapeTitular
-          cciNumber: '' // Limpia el cciNumber
-        }),
+      await api.put('/web-config', { 
+        logoUrl: currentLogoUrl,
+        yapeNumber: yapeNumber,
+        yapeTitular: yapeTitular,
+        numeroCuenta: numeroCuenta,
+        cuentaTitular: cuentaTitular,
+        yapeNombre: yapeTitular, // Sincroniza yapeNombre con yapeTitular
+        cciNumber: '' // Limpia el cciNumber
       });
-      if (response.ok) {
-        setLogoUrl(currentLogoUrl);
-        setLogoFile(null);
-        showToast('Configuración general actualizada correctamente');
-      }
+      setLogoUrl(currentLogoUrl);
+      setLogoFile(null);
+      showToast('Configuración general actualizada correctamente');
     } catch (error) {
       console.error('Error saving config:', error);
       showToast('Error al actualizar configuración', 'error');
@@ -154,21 +141,14 @@ const ConfiguracionCatalogo = () => {
       const sliderData = { ...newSlider, imagenUrl: uploadedUrl };
       
       try {
-        const response = await fetch(`${API_BASE_URL}/web-config/slider`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(sliderData),
-        });
-        
-        if (response.ok) {
-          const addedSlider = await response.json();
-          setSliders([...sliders, addedSlider]);
-          setNewSlider({ titulo: '', descripcion: '', enlaceUrl: '', textoBoton: '' });
-          setSliderFile(null);
-          showToast('Imagen añadida al slider');
-        }
+        const response = await api.post('/web-config/slider', sliderData);
+        setSliders([...sliders, response.data]);
+        setNewSlider({ titulo: '', descripcion: '', enlaceUrl: '', textoBoton: '' });
+        setSliderFile(null);
+        showToast('Imagen añadida al slider');
       } catch (error) {
         console.error('Error adding slider:', error);
+        showToast('Error al añadir imagen al slider', 'error');
       }
     }
     setLoading(false);
@@ -184,13 +164,9 @@ const ConfiguracionCatalogo = () => {
     if (!id) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/web-config/slider/${id}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) {
-        setSliders(sliders.filter(s => s.id !== id));
-        showToast('Imagen eliminada correctamente');
-      }
+      await api.delete(`/web-config/slider/${id}`);
+      setSliders(sliders.filter(s => s.id !== id));
+      showToast('Imagen eliminada correctamente');
     } catch (error) {
       console.error('Error deleting slider:', error);
       showToast('Error al eliminar imagen', 'error');
@@ -211,20 +187,9 @@ const ConfiguracionCatalogo = () => {
     if (uploadedUrl) {
       try {
         // PATCH dedicado: solo actualiza imagenUrl, sin validación del objeto completo
-        const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}/imagen`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imagenUrl: uploadedUrl }),
-        });
-        if (response.ok) {
-          const updated = await response.json();
-          setMembresias(prev => prev.map(m => m.id === membresiaId ? updated : m));
-          showToast('Imagen del plan actualizada');
-        } else {
-          const errText = await response.text();
-          console.error('Error del servidor al actualizar imagen:', errText);
-          showToast('Error del servidor al guardar la imagen', 'error');
-        }
+        const response = await api.patch(`/membresias/${membresiaId}/imagen`, { imagenUrl: uploadedUrl });
+        setMembresias(prev => prev.map(m => m.id === membresiaId ? response.data : m));
+        showToast('Imagen del plan actualizada');
       } catch (error) {
         console.error('Error updating membresia image:', error);
         showToast('Error al actualizar imagen', 'error');
@@ -244,25 +209,14 @@ const ConfiguracionCatalogo = () => {
         m.id === membresiaId ? { ...m, mostrarEnCatalogo: nuevoEstado } : m
       ));
       // PATCH dedicado: solo actualiza mostrarEnCatalogo
-      const response = await fetch(`${API_BASE_URL}/membresias/${membresiaId}/catalogo`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mostrarEnCatalogo: nuevoEstado }),
-      });
-      if (response.ok) {
-        const updated = await response.json();
-        setMembresias(prev => prev.map(m => m.id === membresiaId ? updated : m));
-        showToast(updated.mostrarEnCatalogo ? 'Plan añadido al catálogo' : 'Plan ocultado del catálogo');
-      } else {
-        // Revertir si falla
-        setMembresias(prev => prev.map(m =>
-          m.id === membresiaId ? { ...m, mostrarEnCatalogo: currentState } : m
-        ));
-        const errText = await response.text();
-        console.error('Error del servidor al cambiar visibilidad:', errText);
-        showToast('Error al actualizar visibilidad', 'error');
-      }
+      const response = await api.patch(`/membresias/${membresiaId}/catalogo`, { mostrarEnCatalogo: nuevoEstado });
+      setMembresias(prev => prev.map(m => m.id === membresiaId ? response.data : m));
+      showToast(response.data.mostrarEnCatalogo ? 'Plan añadido al catálogo' : 'Plan ocultado del catálogo');
     } catch (error) {
+      // Revertir si falla
+      setMembresias(prev => prev.map(m =>
+        m.id === membresiaId ? { ...m, mostrarEnCatalogo: currentState } : m
+      ));
       console.error('Error toggling mostrarEnCatalogo:', error);
       showToast('Error al actualizar visibilidad', 'error');
     }

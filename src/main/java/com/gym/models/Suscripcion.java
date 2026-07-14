@@ -77,6 +77,16 @@ public class Suscripcion {
     @Column(name = "esta_congelada", nullable = false)
     private boolean estaCongelada = false;
 
+    @Column(name = "fecha_congelacion")
+    private LocalDate fechaCongelacion;
+
+    @Builder.Default
+    @Column(name = "dias_acumulados_pausa", nullable = false)
+    private Integer diasAcumuladosPausa = 0;
+
+    @Column(name = "motivo_congelacion", length = 255)
+    private String motivoCongelacion;
+
     @Builder.Default
     @Column(name = "activo", nullable = false)
     private boolean activo = true;

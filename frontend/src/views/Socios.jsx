@@ -35,6 +35,7 @@ const Socios = () => {
   const [socios, setSocios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [filterMode, setFilterMode] = useState('ALL'); // ALL, ACTIVO, INACTIVO
   
   const [showModal, setShowModal] = useState(false);
@@ -165,27 +166,62 @@ const Socios = () => {
 
   const API_CLOUD_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo2MDMsImV4cCI6MTc2NDY4NDM1N30.nH31PRzhb_PF61yLGccnjkkA1ajNZ8jJAKPVwpHL8tA';
 
+  // Efecto para manejar el debouncing del buscador (esperar 500 ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(search);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [search]);
+
+  // Método auxiliar para refrescar la lista (ej. tras guardar/editar)
   const fetchSocios = async () => {
     setLoading(true);
     try {
-      const resp = await api.get('/socios');
+      const resp = await api.get(`/socios${debouncedQuery ? `?search=${encodeURIComponent(debouncedQuery)}` : ''}`);
       setSocios(resp.data);
     } catch (err) {
-      // Mocking datos en caso de falla de Backend
-      setSocios([
-        { id: 1, nombreCompleto: 'Juan Pérez', dni: '72839401', telefono: '987 654 321', estado: 'ACTIVO' },
-        { id: 2, nombreCompleto: 'María García', dni: '71928374', telefono: '912 345 678', estado: 'ACTIVO' },
-        { id: 3, nombreCompleto: 'Carlos Ruiz', dni: '73948576', telefono: '923 456 789', estado: 'INACTIVO' },
-        { id: 4, nombreCompleto: 'Ana López', dni: '74958671', telefono: '934 567 890', estado: 'ACTIVO' },
-      ]);
+      console.error("Error al refrescar lista de socios:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Efecto que realiza la llamada HTTP con cancelación activa
   useEffect(() => {
-    fetchSocios();
-  }, []);
+    const controller = new AbortController();
+
+    const searchSocios = async () => {
+      setLoading(true);
+      try {
+        const resp = await api.get(`/socios${debouncedQuery ? `?search=${encodeURIComponent(debouncedQuery)}` : ''}`, {
+          signal: controller.signal
+        });
+        setSocios(resp.data);
+      } catch (err) {
+        if (!axios.isCancel(err)) {
+          // Si no es una cancelación intencional, mostramos el mock ante fallas
+          setSocios([
+            { id: 1, nombreCompleto: 'Juan Pérez', dni: '72839401', telefono: '987 654 321', estado: 'ACTIVO' },
+            { id: 2, nombreCompleto: 'María García', dni: '71928374', telefono: '912 345 678', estado: 'ACTIVO' },
+            { id: 3, nombreCompleto: 'Carlos Ruiz', dni: '73948576', telefono: '923 456 789', estado: 'INACTIVO' },
+            { id: 4, nombreCompleto: 'Ana López', dni: '74958671', telefono: '934 567 890', estado: 'ACTIVO' },
+          ]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    searchSocios();
+
+    return () => {
+      controller.abort(); // Cancelar petición HTTP previa
+    };
+  }, [debouncedQuery]);
 
   // Autocomplete DNI utilizando Backend Proxy
   useEffect(() => {
@@ -338,16 +374,11 @@ const Socios = () => {
     setShowModal(false);
   };
 
-  // Filtrado de Socios (Texto y Estado)
+  // Filtrado de Socios (por Estado, ya que la búsqueda de texto es en servidor)
   const filteredSocios = (Array.isArray(socios) ? socios : [])
     .filter(s => {
       if (filterMode === 'ALL') return true;
       return s.estado === filterMode;
-    })
-    .filter(s => {
-      const nombre = s?.nombreCompleto || '';
-      const dni = s?.dni || '';
-      return nombre.toLowerCase().includes(search.toLowerCase()) || dni.includes(search);
     });
 
   const duplicateSocio = !editingId ? (socios || []).find(s => s?.dni === formData.dni) : null;

@@ -5,6 +5,7 @@ import com.gym.services.CategoriaProductoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,50 +19,37 @@ public class CategoriaProductoController {
     private final CategoriaProductoService categoriaProductoService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('productos:ver')")
     public ResponseEntity<List<CategoriaProducto>> listarActivas() {
         return ResponseEntity.ok(categoriaProductoService.listarActivas());
     }
 
     @GetMapping("/todas")
-    public ResponseEntity<List<CategoriaProducto>> listarTodas(
-            @RequestHeader(value = "X-User-Role", required = false) String rol) {
-        if (!"ADMINISTRADOR".equals(rol)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+    @PreAuthorize("hasAuthority('productos:ver')")
+    public ResponseEntity<List<CategoriaProducto>> listarTodas() {
         return ResponseEntity.ok(categoriaProductoService.listarTodas());
     }
 
     @PostMapping
-    public ResponseEntity<CategoriaProducto> crear(
-            @RequestHeader(value = "X-User-Role", required = false) String rol,
-            @RequestBody Map<String, String> body) {
-        if (!"ADMINISTRADOR".equals(rol)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+    @PreAuthorize("hasAuthority('productos:crear')")
+    public ResponseEntity<CategoriaProducto> crear(@RequestBody Map<String, String> body) {
         String nombre = body.get("nombre");
         return new ResponseEntity<>(categoriaProductoService.crear(nombre), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('productos:editar')")
     public ResponseEntity<CategoriaProducto> actualizar(
-            @RequestHeader(value = "X-User-Role", required = false) String rol,
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
-        if (!"ADMINISTRADOR".equals(rol)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
         String nombre = (String) body.get("nombre");
         Boolean activo = body.containsKey("activo") ? Boolean.valueOf(body.get("activo").toString()) : null;
         return ResponseEntity.ok(categoriaProductoService.actualizar(id, nombre, activo));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(
-            @RequestHeader(value = "X-User-Role", required = false) String rol,
-            @PathVariable Long id) {
-        if (!"ADMINISTRADOR".equals(rol)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+    @PreAuthorize("hasAuthority('productos:eliminar')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         categoriaProductoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }

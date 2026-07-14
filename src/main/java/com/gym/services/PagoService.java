@@ -103,8 +103,19 @@ public class PagoService {
                     return productoRepository.save(dummy);
                 });
 
+        // Si el monto no viene pre-calculado (ej. invocación directa al endpoint de pagos),
+        // lo calculamos forzosamente a partir de los datos oficiales del plan en la base de datos.
+        if (pago.getMonto() == null) {
+            BigDecimal precioOficial = (sus.getMembresia().getPrecioCuota() != null 
+                    && sus.getMembresia().getFrecuenciaCobroDias() != null 
+                    && sus.getMembresia().getFrecuenciaCobroDias() > 0) ?
+                    sus.getMembresia().getPrecioCuota() : sus.getMembresia().getPrecio();
+            pago.setMonto(precioOficial);
+        }
+
+        BigDecimal monto = pago.getMonto();
+
         // Crear detalle de venta con el precio del plan pagado
-        BigDecimal monto = pago.getMonto() != null ? pago.getMonto() : BigDecimal.ONE;
         DetalleVenta detalle = DetalleVenta.builder()
                 .producto(membresiaProduct)
                 .precioUnitario(monto)

@@ -73,6 +73,15 @@ public class SocioService {
         return socioRepository.findByNombreCompletoContainingIgnoreCase(nombre);
     }
 
+    /**
+     * Busca socios cuyo nombre o DNI contenga el texto dado.
+     */
+    @Transactional(readOnly = true)
+    public List<Socio> buscarPorQuery(String query) {
+        log.debug("Buscando socios con query: {}", query);
+        return socioRepository.findByNombreCompletoContainingIgnoreCaseOrDniContaining(query, query);
+    }
+
     // ── Comandos ──────────────────────────────────────────────────────────────
 
     /**
