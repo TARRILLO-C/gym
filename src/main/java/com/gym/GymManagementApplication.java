@@ -58,6 +58,14 @@ public class GymManagementApplication {
             stmt.execute("UPDATE usuarios SET rol_id = (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1) " +
                     "WHERE rol_id IS NULL OR rol_id NOT IN (SELECT id FROM roles)");
 
+            // 5. Garantizar que el usuario predeterminado 'recepcion' tenga el rol RECEPCIONISTA
+            stmt.execute("UPDATE usuarios SET rol_id = (SELECT id FROM roles WHERE nombre = 'RECEPCIONISTA' LIMIT 1) " +
+                    "WHERE username = 'recepcion'");
+
+            // 6. Garantizar que el usuario predeterminado 'admin' tenga el rol ADMINISTRADOR
+            stmt.execute("UPDATE usuarios SET rol_id = (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1) " +
+                    "WHERE username = 'admin'");
+
             System.out.println("Esquema relacional roles/usuarios corregido preventivamente de forma exitosa.");
         } catch (Exception e) {
             System.err.println("Advertencia al corregir relación roles/usuarios en base de datos: " + e.getMessage());
@@ -139,21 +147,28 @@ public class GymManagementApplication {
                             "('personal:desactivar', 'Desactivar Personal', 'Permite quitar el acceso a empleados activos', 'PERSONAL'), " +
                             "('inventario:editar', 'Editar Inventario', 'Permite regular stocks y gestionar movimientos de inventario', 'PRODUCTOS')");
 
-                    // 2. Asociar todos los permisos al Administrador (ID: 1)
-                    jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
-                            "SELECT (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1), id FROM permisos");
-
-                    // 3. Asociar permisos acotados al Recepcionista (ID: 2)
-                    jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
-                            "SELECT (SELECT id FROM roles WHERE nombre = 'RECEPCIONISTA' LIMIT 1), id FROM permisos " +
-                            "WHERE codigo IN ('asistencia:ver', 'asistencia:registrar', 'socios:ver', 'socios:crear', " +
-                            "'socios:editar', 'membresias:ver', 'membresias:crear', 'productos:ver', 'ventas:ver', " +
-                            "'ventas:crear', 'solicitudes:ver', 'solicitudes:aprobar', 'catalogo:ver')");
-                    
                     System.out.println("Sembrado de permisos finalizado con éxito.");
                 }
+
+                // Sincronización forzada de permisos por rol para asegurar consistencia
+                System.out.println("Sincronizando permisos de roles (limpieza y reasignación preventiva)...");
+                jdbcTemplate.execute("DELETE FROM rol_permiso");
+                
+                // 2. Asociar todos los permisos al Administrador
+                jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
+                        "SELECT (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1), id FROM permisos");
+
+                // 3. Asociar permisos acotados al Recepcionista
+                jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
+                        "SELECT (SELECT id FROM roles WHERE nombre = 'RECEPCIONISTA' LIMIT 1), id FROM permisos " +
+                        "WHERE codigo IN ('asistencia:ver', 'asistencia:registrar', 'socios:ver', 'socios:crear', " +
+                        "'socios:editar', 'membresias:ver', 'productos:ver', 'ventas:ver', " +
+                        "'ventas:crear', 'solicitudes:ver', 'solicitudes:aprobar', 'catalogo:ver', " +
+                        "'caja:ver', 'caja:operar')");
+                
+                System.out.println("Sincronización de permisos de roles finalizada con éxito.");
             } catch (Exception e) {
-                System.err.println("Error al sembrar permisos: " + e.getMessage());
+                System.err.println("Error al sembrar o sincronizar permisos: " + e.getMessage());
             }
         };
     }

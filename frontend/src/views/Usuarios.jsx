@@ -342,8 +342,8 @@ const Usuarios = () => {
               Nombre de Usuario <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input required type="text" value={formData.username}
-              onChange={e => setFormData({ ...formData, username: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '') })}
-              placeholder="Ej: Maria Recepcion"
+              onChange={e => setFormData({ ...formData, username: e.target.value.replace(/[^a-zA-Z0-9._]/g, '') })}
+              placeholder="Ej: maria.recepcion"
               style={{ width: '100%' }} />
           </div>
 

@@ -886,7 +886,7 @@ const Membresias = () => {
         <form onSubmit={handleCreatePlan} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Nombre Identificador</label>
-            <input required type="text" value={planFormData.nombre} onChange={e => setPlanFormData({...planFormData, nombre: e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')})} placeholder="Ej: Trimestre Promocional" />
+            <input required type="text" value={planFormData.nombre} onChange={e => setPlanFormData({...planFormData, nombre: e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.\-+%()/]/g, '')})} placeholder="Ej: Trimestre Promocional" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -1179,7 +1179,7 @@ const Membresias = () => {
                 <input 
                   type="text" 
                   value={susFormData.clienteNombre || ''} 
-                  onChange={e => setSusFormData({...susFormData, clienteNombre: e.target.value})} 
+                  onChange={e => setSusFormData({...susFormData, clienteNombre: e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.\-&/,]/g, '')})} 
                   placeholder={susFormData.tipoComprobante === 'FACTURA' ? "Ej: Mi Empresa S.A.C." : "Ej: Juan Pérez"} 
                   style={{ width: '100%', marginTop: '4px', color: 'var(--text-main)', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', padding: '10px 12px' }}
                 />

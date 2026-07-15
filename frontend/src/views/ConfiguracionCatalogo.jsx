@@ -292,7 +292,7 @@ const ConfiguracionCatalogo = () => {
               type="text" 
               className="form-control"
               value={yapeTitular}
-              onChange={(e) => setYapeTitular(e.target.value)}
+              onChange={(e) => setYapeTitular(e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.\-]/g, ''))}
               placeholder="Ej: Carlos B."
             />
           </div>
@@ -303,7 +303,7 @@ const ConfiguracionCatalogo = () => {
               type="text" 
               className="form-control"
               value={numeroCuenta}
-              onChange={(e) => setNumeroCuenta(e.target.value)}
+              onChange={(e) => setNumeroCuenta(e.target.value.replace(/[^a-zA-Z0-9\s\-]/g, ''))}
               placeholder="Ej: BCP 191-XXXXXXXX-X-XX"
             />
           </div>
@@ -314,7 +314,7 @@ const ConfiguracionCatalogo = () => {
               type="text" 
               className="form-control"
               value={cuentaTitular}
-              onChange={(e) => setCuentaTitular(e.target.value)}
+              onChange={(e) => setCuentaTitular(e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.\-]/g, ''))}
               placeholder="Ej: Gimnasio The Jungle S.A.C."
             />
           </div>
@@ -455,7 +455,7 @@ const ConfiguracionCatalogo = () => {
                 className="form-control" 
                 placeholder="Ej: Gran Descuento"
                 value={newSlider.titulo}
-                onChange={(e) => setNewSlider({...newSlider, titulo: e.target.value})}
+                onChange={(e) => setNewSlider({...newSlider, titulo: e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.\-+%()/!¿?¡]/g, '')})}
               />
             </div>
 
@@ -466,7 +466,7 @@ const ConfiguracionCatalogo = () => {
                 placeholder="Ej: 48 horas de descuento en productos seleccionados."
                 rows="2"
                 value={newSlider.descripcion}
-                onChange={(e) => setNewSlider({...newSlider, descripcion: e.target.value})}
+                onChange={(e) => setNewSlider({...newSlider, descripcion: e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-+%/()!¿?¡]/g, '')})}
               />
             </div>
 
@@ -488,7 +488,7 @@ const ConfiguracionCatalogo = () => {
                 className="form-control" 
                 placeholder="Ej: Comprar ahora"
                 value={newSlider.textoBoton}
-                onChange={(e) => setNewSlider({...newSlider, textoBoton: e.target.value})}
+                onChange={(e) => setNewSlider({...newSlider, textoBoton: e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.\-+%()/]/g, '')})}
               />
             </div>
           </div>

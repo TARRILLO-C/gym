@@ -639,7 +639,7 @@ const Ventas = () => {
             <input 
               type="text" 
               value={dialogInput} 
-              onChange={(e) => setDialogInput(e.target.value)} 
+              onChange={(e) => setDialogInput(e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,\-()]/g, ''))} 
               placeholder={dialogConfig.inputPlaceholder} 
               style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--bg-color)', border: '1px solid var(--panel-border)', color: 'var(--text-main)' }} 
             />
@@ -740,7 +740,7 @@ const Ventas = () => {
             <input 
               type="text" 
               value={emitForm.nombre} 
-              onChange={(e) => setEmitForm({...emitForm, nombre: e.target.value})} 
+              onChange={(e) => setEmitForm({...emitForm, nombre: e.target.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.\-&/,]/g, '')})} 
               placeholder={emitForm.tipo === 'FACTURA' ? "Ej: Mi Empresa S.A.C." : "Ej: Juan Pérez"} 
               style={{ width: '100%', padding: '14px', borderRadius: '12px', background: 'var(--bg-color)', border: emitForm.tipo === 'FACTURA' ? '1px solid #f97316' : '1px solid var(--panel-border)', color: 'var(--text-main)', fontSize: '1rem' }} 
             />

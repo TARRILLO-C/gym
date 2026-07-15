@@ -729,30 +729,33 @@ const CatalogoVirtual = () => {
                 const stockIcon   = producto.stock === 0 ? '✕' : producto.stock <= 5 ? '⚡' : '✓';
                 return (
                   <div key={producto.id} className="product-card" style={{ animationDelay: `${idx * 0.06}s` }}>
-                    <div className="product-card-img-wrapper">
-                      {producto.imagenUrl ? (
-                        <img src={producto.imagenUrl} alt={producto.nombre} />
-                      ) : (
-                        <ShoppingCart size={56} color="rgba(255,255,255,0.06)" />
-                      )}
-                      {producto.stock <= 5 && producto.stock > 0 && (
-                        <span className="product-card-badge">⚡ Últimas unidades</span>
-                      )}
-                      <span className="product-card-price">S/ {producto.precio.toFixed(2)}</span>
-                    </div>
-                    <div className="product-card-body">
-                      <h3 className="product-card-name">{producto.nombre}</h3>
-                      <p className="product-card-desc">{producto.descripcion || 'Producto de alta calidad para tu entrenamiento.'}</p>
-                      <div className="product-card-footer">
-                        <span className={`product-card-stock ${stockStatus}`}>{stockIcon} {stockLabel}</span>
-                        <button
-                          className="btn-add-cart"
-                          onClick={(e) => { e.stopPropagation(); addToCart(producto); }}
-                          disabled={producto.stock === 0}
-                        >
-                          <ShoppingCart size={15} />
-                          {producto.stock === 0 ? 'Agotado' : 'Añadir'}
-                        </button>
+                    <div className="product-card-blob"></div>
+                    <div className="product-card-bg">
+                      <div className="product-card-img-wrapper">
+                        {producto.imagenUrl ? (
+                          <img src={producto.imagenUrl} alt={producto.nombre} />
+                        ) : (
+                          <ShoppingCart size={56} color="rgba(255,255,255,0.06)" />
+                        )}
+                        {producto.stock <= 5 && producto.stock > 0 && (
+                          <span className="product-card-badge">⚡ Últimas unidades</span>
+                        )}
+                        <span className="product-card-price">S/ {producto.precio.toFixed(2)}</span>
+                      </div>
+                      <div className="product-card-body">
+                        <h3 className="product-card-name">{producto.nombre}</h3>
+                        <p className="product-card-desc">{producto.descripcion || 'Producto de alta calidad para tu entrenamiento.'}</p>
+                        <div className="product-card-footer">
+                          <span className={`product-card-stock ${stockStatus}`}>{stockIcon} {stockLabel}</span>
+                          <button
+                            className="btn-add-cart"
+                            onClick={(e) => { e.stopPropagation(); addToCart(producto); }}
+                            disabled={producto.stock === 0}
+                          >
+                            <ShoppingCart size={15} />
+                            {producto.stock === 0 ? 'Agotado' : 'Añadir'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -39,6 +39,7 @@ const Asistencia = () => {
   const matcherRef = useRef(null);
   const modelsLoadedRef = useRef(false);
   const cameraContainerRef = useRef(null);
+  const humanRef = useRef(null);
 
   // When cameraActive changes, move the always-mounted <video> into the visible container
   useEffect(() => {
@@ -139,22 +140,41 @@ const Asistencia = () => {
     }
   };
 
-  const buildFaceMatcher = (members) => {
-    const labeled = members
-      .filter(m => m.faceDescriptor && m.faceDescriptor.trim() !== '')
-      .map(m => {
-        try {
-          const arr = JSON.parse(m.faceDescriptor);
-          return new window.faceapi.LabeledFaceDescriptors(m.dni, [new Float32Array(arr)]);
-        } catch (e) {
-          console.error('Error parsing descriptor for DNI ' + m.dni, e);
-          return null;
+  const findBestMatch = (embedding, members) => {
+    let bestMember = null;
+    let highestSimilarity = 0;
+    
+    for (const member of members) {
+      if (!member.faceDescriptor || member.faceDescriptor.trim() === '') continue;
+      try {
+        const parsed = JSON.parse(member.faceDescriptor);
+        if (!parsed || parsed.length === 0) continue;
+        
+        let floatArrays = [];
+        if (Array.isArray(parsed[0])) {
+          floatArrays = parsed.map(d => new Float32Array(d));
+        } else {
+          floatArrays = [new Float32Array(parsed)];
         }
-      })
-      .filter(Boolean);
-    if (labeled.length === 0) return null;
-    console.log(`[FaceAPI] Matcher built with ${labeled.length} registered face(s).`);
-    return new window.faceapi.FaceMatcher(labeled, 0.6);
+        
+        for (const floatArr of floatArrays) {
+          if (floatArr.length !== embedding.length) continue;
+          const similarity = window.Human.match.similarity(embedding, floatArr);
+          if (similarity > highestSimilarity) {
+            highestSimilarity = similarity;
+            bestMember = member;
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing faceDescriptor for DNI ' + member.dni, e);
+      }
+    }
+    
+    if (highestSimilarity >= 0.55) {
+      return { label: bestMember.dni, similarity: highestSimilarity, member: bestMember };
+    }
+    
+    return { label: 'unknown', similarity: 0 };
   };
 
   // Self-contained detection loop — no dependency on React state closures
@@ -162,7 +182,7 @@ const Asistencia = () => {
 
   const runDetectionLoop = async (members) => {
     faceDetectionActiveRef.current = true;
-    console.log('[FaceAPI] Detection loop started.');
+    console.log('[Human] Detection loop started.');
 
     while (faceDetectionActiveRef.current) {
       // Wait for video to be ready
@@ -178,16 +198,14 @@ const Asistencia = () => {
       }
 
       try {
-        const detection = await window.faceapi
-          .detectSingleFace(videoRef.current)
-          .withFaceLandmarks()
-          .withFaceDescriptor();
+        const result = await humanRef.current.detect(videoRef.current);
 
         if (!faceDetectionActiveRef.current) break;
 
-        if (detection && matcherRef.current) {
-          const bestMatch = matcherRef.current.findBestMatch(detection.descriptor);
-          console.log('[FaceAPI] Best match:', bestMatch.label, 'distance:', bestMatch.distance.toFixed(3));
+        if (result && result.face && result.face.length > 0) {
+          const detection = result.face[0];
+          const bestMatch = findBestMatch(detection.embedding, members);
+          console.log('[Human] Best match:', bestMatch.label, 'similarity:', bestMatch.similarity.toFixed(3));
 
           if (bestMatch.label !== 'unknown') {
             // Lock immediately to prevent any concurrent detection
@@ -196,7 +214,7 @@ const Asistencia = () => {
             cooldownRef.current = true;
             setCooldown(true);
 
-            const matchedSocio = members.find(m => m.dni === bestMatch.label);
+            const matchedSocio = bestMatch.member;
             setFaceDetectionStatus(`✅ Identificado: ${matchedSocio?.nombreCompleto || bestMatch.label}`);
 
             const ok = await registerAttendanceByDni(bestMatch.label);
@@ -225,13 +243,13 @@ const Asistencia = () => {
         }
       } catch (err) {
         if (faceDetectionActiveRef.current) {
-          console.error('[FaceAPI] Detection error:', err);
+          console.error('[Human] Detection error:', err);
         }
       }
 
       await new Promise(r => setTimeout(r, 800));
     }
-    console.log('[FaceAPI] Detection loop stopped.');
+    console.log('[Human] Detection loop stopped.');
   };
 
   const startFacialRecognition = async () => {
@@ -239,21 +257,30 @@ const Asistencia = () => {
     setLoadingModels(true);
     setFaceDetectionStatus('Cargando modelos de IA...');
     try {
-      if (!window.faceapi) {
-        throw new Error('La librería face-api no se ha cargado. Recarga la página.');
+      if (!window.Human) {
+        throw new Error('La librería Human no se ha cargado. Recarga la página.');
       }
 
       // Load AI models only once
-      if (!modelsLoadedRef.current) {
+      if (!humanRef.current) {
         setFaceDetectionStatus('Descargando modelos de IA (primera vez)...');
-        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
-        await Promise.all([
-          window.faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          window.faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
+        const config = {
+          modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models/',
+          face: {
+            enabled: true,
+            detector: { enabled: true, rotation: true, return: true },
+            mesh: { enabled: true },
+            description: { enabled: true }
+          },
+          body: { enabled: false },
+          hand: { enabled: false },
+          object: { enabled: false },
+          gesture: { enabled: false }
+        };
+        humanRef.current = new window.Human.Human(config);
+        await humanRef.current.load();
         modelsLoadedRef.current = true;
-        console.log('[FaceAPI] Models loaded successfully.');
+        console.log('[Human] Models loaded successfully.');
       }
 
       // Fetch active members and build matcher
@@ -267,8 +294,6 @@ const Asistencia = () => {
         return;
       }
 
-      matcherRef.current = buildFaceMatcher(members);
-
       // Request camera stream FIRST, then set state
       setFaceDetectionStatus('Iniciando cámara...');
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -278,9 +303,9 @@ const Asistencia = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(e => console.warn('Autoplay warning:', e));
-        console.log('[FaceAPI] Camera stream attached and playing.');
+        console.log('[Human] Camera stream attached and playing.');
       } else {
-        console.error('[FaceAPI] videoRef.current is null even before setCameraActive!');
+        console.error('[Human] videoRef.current is null even before setCameraActive!');
       }
 
       setCameraActive(true);
@@ -290,7 +315,7 @@ const Asistencia = () => {
       runDetectionLoop(members);
 
     } catch (err) {
-      console.error('[FaceAPI] Startup error:', err);
+      console.error('[Human] Startup error:', err);
       alert('Error: ' + err.message);
       setAccessMode('DNI');
       setCameraActive(false);

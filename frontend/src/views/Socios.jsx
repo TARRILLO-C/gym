@@ -62,25 +62,37 @@ const Socios = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [faceDetectionStatus, setFaceDetectionStatus] = useState('');
   const [tempDescriptor, setTempDescriptor] = useState(null);
+  const [capturedDescriptors, setCapturedDescriptors] = useState([]);
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const humanRef = useRef(null);
 
   const startCamera = async () => {
     setLoadingModels(true);
     setFaceDetectionStatus('Cargando modelos...');
     try {
-      if (!window.faceapi) {
-        throw new Error('La librería de reconocimiento facial no está disponible en la página.');
+      if (!window.Human) {
+        throw new Error('La librería de reconocimiento facial (Human) no está disponible en la página.');
       }
       
-      if (!modelsLoaded) {
-        const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
-        await Promise.all([
-          window.faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          window.faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
+      if (!humanRef.current) {
+        setFaceDetectionStatus('Descargando modelos de IA...');
+        const config = {
+          modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human/models/',
+          face: {
+            enabled: true,
+            detector: { enabled: true, rotation: true, return: true },
+            mesh: { enabled: true },
+            description: { enabled: true }
+          },
+          body: { enabled: false },
+          hand: { enabled: false },
+          object: { enabled: false },
+          gesture: { enabled: false }
+        };
+        humanRef.current = new window.Human.Human(config);
+        await humanRef.current.load();
         setModelsLoaded(true);
       }
       
@@ -117,32 +129,47 @@ const Socios = () => {
     setTempDescriptor(null);
   };
 
-  const captureFace = () => {
+  const addCapturedDescriptor = () => {
     if (tempDescriptor) {
+      if (capturedDescriptors.length >= 3) {
+        showAlert('Límite alcanzado', 'Ya ha capturado las 3 muestras recomendadas.');
+        return;
+      }
+      setCapturedDescriptors(prev => [...prev, tempDescriptor]);
+      showToast(`Muestra ${capturedDescriptors.length + 1} capturada con éxito.`);
+    } else {
+      showAlert('Error', 'No se ha detectado ningún rostro válido en este momento.');
+    }
+  };
+
+  const removeDescriptorAtIndex = (index) => {
+    setCapturedDescriptors(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const saveCapturedDescriptors = () => {
+    if (capturedDescriptors.length > 0) {
       setFormData(prev => ({
         ...prev,
-        faceDescriptor: JSON.stringify(Array.from(tempDescriptor))
+        faceDescriptor: JSON.stringify(capturedDescriptors.map(d => Array.from(d)))
       }));
-      showToast('Rostro escaneado correctamente.', 'success');
+      showToast('Rostros vinculados correctamente.', 'success');
       stopCamera();
     } else {
-      showAlert('Error', 'No se ha detectado ningún rostro válido en la cámara.');
+      showAlert('Error', 'Debe capturar al menos 1 muestra de rostro.');
     }
   };
 
   useEffect(() => {
     let intervalId;
-    if (cameraActive && videoRef.current && modelsLoaded) {
+    if (cameraActive && videoRef.current && modelsLoaded && humanRef.current) {
       intervalId = setInterval(async () => {
         if (!videoRef.current) return;
         try {
-          const detection = await window.faceapi.detectSingleFace(videoRef.current)
-            .withFaceLandmarks()
-            .withFaceDescriptor();
+          const result = await humanRef.current.detect(videoRef.current);
           
-          if (detection) {
+          if (result && result.face && result.face.length > 0) {
             setFaceDetectionStatus('¡Rostro Detectado! Listo para registrar.');
-            setTempDescriptor(detection.descriptor);
+            setTempDescriptor(result.face[0].embedding);
           } else {
             setFaceDetectionStatus('Colóquese frente a la cámara...');
             setTempDescriptor(null);
@@ -350,6 +377,7 @@ const Socios = () => {
   const openModalForNew = () => {
     setEditingId(null);
     setFormData({ nombreCompleto: '', dni: '', ruc: '', razonSocial: '', telefono: '', email: '', fechaNacimiento: '', estado: 'ACTIVO', faceDescriptor: '' });
+    setCapturedDescriptors([]);
     setShowModal(true);
   };
 
@@ -366,6 +394,23 @@ const Socios = () => {
       estado: socio.estado || 'ACTIVO',
       faceDescriptor: socio.faceDescriptor || ''
     });
+    
+    let descriptors = [];
+    if (socio.faceDescriptor && socio.faceDescriptor.trim() !== '') {
+      try {
+        const parsed = JSON.parse(socio.faceDescriptor);
+        if (parsed.length > 0) {
+          if (Array.isArray(parsed[0])) {
+            descriptors = parsed.map(d => new Float32Array(d));
+          } else {
+            descriptors = [new Float32Array(parsed)];
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing faceDescriptor", e);
+      }
+    }
+    setCapturedDescriptors(descriptors);
     setShowModal(true);
   };
 
@@ -614,30 +659,37 @@ const Socios = () => {
           {/* Sección de Reconocimiento Facial */}
           <div style={{ border: '1px dashed var(--panel-border)', borderRadius: '12px', padding: '16px', marginTop: '8px', background: 'rgba(255,255,255,0.01)' }}>
             <h4 style={{ margin: '0 0 10px 0', fontSize: '0.88rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-              <Camera size={16} color="var(--accent-secondary)" /> Reconocimiento Facial (Opcional)
+              <Camera size={16} color="var(--accent-secondary)" /> Reconocimiento Facial (Múltiples Muestras)
             </h4>
             
             {formData.faceDescriptor ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(34,197,94,0.08)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(34,197,94,0.2)' }}>
                 <span style={{ color: '#22c55e', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <CheckCircle size={14} /> Rostro registrado para este socio
+                  <CheckCircle size={14} /> {capturedDescriptors.length} {capturedDescriptors.length === 1 ? 'muestra de rostro registrada' : 'muestras de rostro registradas'}
                 </span>
-                <button type="button" onClick={() => setFormData({ ...formData, faceDescriptor: '' })} className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent' }}>
+                <button type="button" onClick={() => { setFormData({ ...formData, faceDescriptor: '' }); setCapturedDescriptors([]); }} className="btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', background: 'transparent' }}>
                   Remover
                 </button>
               </div>
             ) : (
               <div>
                 {!cameraActive ? (
-                  <button 
-                    type="button" 
-                    onClick={startCamera} 
-                    className="btn-secondary" 
-                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', color: '#a78bfa', fontWeight: 600 }}
-                    disabled={loadingModels}
-                  >
-                    {loadingModels ? 'Cargando modelos IA...' : 'Iniciar Cámara para Registrar Rostro'}
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button 
+                      type="button" 
+                      onClick={startCamera} 
+                      className="btn-secondary" 
+                      style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)', color: '#a78bfa', fontWeight: 600 }}
+                      disabled={loadingModels}
+                    >
+                      {loadingModels ? 'Cargando modelos IA...' : 'Iniciar Cámara para Registrar Rostro'}
+                    </button>
+                    {capturedDescriptors.length > 0 && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        Tienes {capturedDescriptors.length} muestra(s) listas pero no guardadas. Inicia cámara para agregar más o guardar.
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
                     <div style={{ position: 'relative', width: '100%', maxWidth: '240px', aspectRatio: '4/3', borderRadius: '10px', overflow: 'hidden', border: '2px solid var(--panel-border)', background: '#000' }}>
@@ -652,25 +704,56 @@ const Socios = () => {
                     <div style={{ fontSize: '0.8rem', color: tempDescriptor ? '#22c55e' : 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>
                       {faceDetectionStatus}
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    
+                    {/* Lista de muestras temporales */}
+                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {[0, 1, 2].map((idx) => {
+                        const isCaptured = capturedDescriptors.length > idx;
+                        return (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isCaptured ? 'rgba(34,197,94,0.05)' : 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${isCaptured ? 'rgba(34,197,94,0.15)' : 'var(--panel-border)'}`, fontSize: '0.8rem' }}>
+                            <span style={{ color: isCaptured ? '#22c55e' : 'var(--text-muted)', fontWeight: 500 }}>
+                              Muestra {idx + 1}: {isCaptured ? '✅ Capturada' : '⏳ Pendiente'}
+                            </span>
+                            {isCaptured && (
+                              <button type="button" onClick={() => removeDescriptorAtIndex(idx)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                                Eliminar
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '6px' }}>
                       <button 
                         type="button" 
                         onClick={stopCamera} 
                         className="btn-secondary" 
                         style={{ flex: 1, padding: '8px', fontSize: '0.8rem' }}
                       >
-                        Detener Cámara
+                        Cancelar
                       </button>
                       <button 
                         type="button" 
-                        onClick={captureFace} 
+                        onClick={addCapturedDescriptor} 
                         className="btn-primary" 
-                        disabled={!tempDescriptor}
-                        style={{ flex: 1, padding: '8px', fontSize: '0.8rem', opacity: tempDescriptor ? 1 : 0.5 }}
+                        disabled={!tempDescriptor || capturedDescriptors.length >= 3}
+                        style={{ flex: 1, padding: '8px', fontSize: '0.8rem', opacity: (tempDescriptor && capturedDescriptors.length < 3) ? 1 : 0.5 }}
                       >
-                        Vincular Rostro
+                        Capturar Muestra
                       </button>
                     </div>
+
+                    {capturedDescriptors.length > 0 && (
+                      <button 
+                        type="button" 
+                        onClick={saveCapturedDescriptors} 
+                        className="btn-primary" 
+                        style={{ width: '100%', padding: '10px', fontSize: '0.85rem', background: 'linear-gradient(135deg, #00ff7f, #00bfff)', color: '#000', fontWeight: 700, borderRadius: '10px', border: 'none', cursor: 'pointer' }}
+                      >
+                        ✓ GUARDAR Y VINCULAR ({capturedDescriptors.length}/3)
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
