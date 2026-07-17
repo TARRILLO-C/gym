@@ -1250,8 +1250,12 @@ const Productos = () => {
                 placeholder="Buscar por DNI o Nombre..." 
                 value={socioSearch} 
                 onChange={e => {
-                  const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\\s]/g, '');
-                  setSocioSearch(val);
+                  const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s_]/g, '');
+                  if (/^\d+$/.test(val)) {
+                    setSocioSearch(val.slice(0, 8));
+                  } else {
+                    setSocioSearch(val);
+                  }
                   setShowSocioDropdown(true);
                   if (val === '') {
                     setCheckoutForm({...checkoutForm, socioId: null, clienteNombre: '', clienteDocumento: ''});

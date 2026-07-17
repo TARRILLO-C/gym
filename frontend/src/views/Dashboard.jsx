@@ -444,7 +444,7 @@ const Dashboard = () => {
                     const percentage = h.count / (stats.horasPico.max || 1);
                     const isPeak = h.count === stats.horasPico.max && h.count > 0;
                     return (
-                      <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
+                      <div key={idx} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
                         {/* Bar Container */}
                         <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', position: 'relative' }}>
                           {/* Tooltip on hover */}
@@ -496,7 +496,7 @@ const Dashboard = () => {
                         </div>
                         {/* X Label */}
                         <span style={{ fontSize: '0.65rem', color: isPeak ? 'var(--accent-primary)' : 'var(--text-muted)', marginTop: '8px', fontWeight: isPeak ? 'bold' : 'normal' }}>
-                          {h.label}
+                          {isPeak || idx === 0 || idx === stats.horasPico.data.length - 1 ? h.label : (h.hora > 12 ? h.hora - 12 : h.hora)}
                         </span>
                       </div>
                     );

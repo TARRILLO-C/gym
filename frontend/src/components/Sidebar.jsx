@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '../context/PermissionsContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { API_BASE_URL } from '../services/api';
+import api, { API_BASE_URL } from '../services/api';
 
 const Sidebar = () => {
   const { isDarkMode, toggleTheme, accentTheme, setAccentTheme, accents } = useContext(ThemeContext);
@@ -29,6 +29,7 @@ const Sidebar = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [globalNotification, setGlobalNotification] = useState(null);
   const { can } = usePermissions();
 
   const role = sessionStorage.getItem('role');
@@ -47,26 +48,76 @@ const Sidebar = () => {
       .catch(err => console.error('Error fetching logo:', err));
   }, []);
 
+  const pendingCountRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
+
+  const playAlertSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.3);
+      
+      setTimeout(() => {
+        try {
+          const osc2 = audioCtx.createOscillator();
+          const gain2 = audioCtx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(audioCtx.destination);
+          
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+          gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+          
+          osc2.start(audioCtx.currentTime);
+          osc2.stop(audioCtx.currentTime + 0.4);
+        } catch (e) {}
+      }, 100);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     if (role !== 'ADMINISTRADOR' && role !== 'RECEPCIONISTA') return;
 
     const fetchPendingCounts = async () => {
       try {
         const [prodRes, membRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/solicitudes-producto/pendientes`),
-          fetch(`${API_BASE_URL}/solicitudes-membresia/pendientes`)
+          api.get('/solicitudes-producto/pendientes'),
+          api.get('/solicitudes-membresia/pendientes')
         ]);
         
         let count = 0;
-        if (prodRes.ok) {
-          const prodData = await prodRes.json();
-          count += prodData.length;
+        if (prodRes.data) {
+          count += prodRes.data.length;
         }
-        if (membRes.ok) {
-          const membData = await membRes.json();
-          count += membData.length;
+        if (membRes.data) {
+          count += membRes.data.length;
         }
+
+        if (count > pendingCountRef.current) {
+          if (!isInitialLoadRef.current) {
+            playAlertSound();
+          }
+          if (window.location.pathname !== '/solicitudes') {
+            setGlobalNotification({
+              message: '🔔 ¡Nueva Solicitud Recibida!',
+              description: `Tiene ${count} solicitud(es) esperando aprobación.`
+            });
+          }
+        }
+        pendingCountRef.current = count;
         setPendingCount(count);
+        isInitialLoadRef.current = false;
       } catch (err) {
         console.error('Error fetching pending counts:', err);
       }
@@ -76,6 +127,22 @@ const Sidebar = () => {
     const interval = setInterval(fetchPendingCounts, 15000);
     return () => clearInterval(interval);
   }, [role]);
+
+  useEffect(() => {
+    if (pendingCount > 0) {
+      const originalTitle = document.title;
+      let isFlashed = false;
+      const interval = setInterval(() => {
+        document.title = isFlashed ? originalTitle : `(⚠️ ${pendingCount} Solicitud(es) Pendiente(s)) ${originalTitle}`;
+        isFlashed = !isFlashed;
+      }, 1500);
+
+      return () => {
+        document.title = originalTitle;
+        clearInterval(interval);
+      };
+    }
+  }, [pendingCount]);
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, permission: 'dashboard:ver' },
@@ -140,6 +207,57 @@ const Sidebar = () => {
           </button>
         </div>
 
+        {pendingCount > 0 && window.location.pathname !== '/solicitudes' && (
+          <div 
+            style={{
+              margin: '12px 16px',
+              padding: '12px 16px',
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              cursor: 'pointer',
+              animation: 'pulse-border-red 2s infinite',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)'
+            }}
+            onClick={() => {
+              setIsMobileOpen(false);
+              navigate('/solicitudes');
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+              e.currentTarget.style.transform = 'none';
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                backgroundColor: '#ef4444',
+                borderRadius: '50%',
+                boxShadow: '0 0 8px #ef4444'
+              }} />
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.85rem', color: '#ef4444', fontWeight: '800' }}>
+                  {pendingCount} Solicitud(es) pendiente(s)
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: '600', opacity: 0.85 }}>
+                  Clic para atender
+                </span>
+              </div>
+            </div>
+            <FileText size={18} color="#ef4444" style={{ opacity: 0.8 }} />
+          </div>
+        )}
+
       <nav className="sidebar-nav">
         {menuItems.map((item) => (
           <NavLink
@@ -156,14 +274,16 @@ const Sidebar = () => {
               {item.name === 'Solicitudes' && pendingCount > 0 && (
                 <span className="pending-badge-dot" style={{
                   position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  width: '8px',
-                  height: '8px',
-                  backgroundColor: 'var(--accent-primary)',
+                  top: '-5px',
+                  right: '-5px',
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: '#ef4444',
                   borderRadius: '50%',
-                  boxShadow: '0 0 6px var(--accent-primary)',
-                  display: 'none'
+                  border: '1.5px solid var(--panel-bg, #0f172a)',
+                  boxShadow: '0 0 8px #ef4444',
+                  animation: 'pulse-badge-red 1.5s infinite',
+                  zIndex: 2
                 }} />
               )}
             </div>
@@ -270,13 +390,138 @@ const Sidebar = () => {
             box-shadow: 0 0 0 0 transparent;
           }
         }
-        @media (max-width: 1024px) {
-          .pending-badge-dot {
-            display: block !important;
+        @keyframes pulse-badge-red {
+          0% {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 6px transparent;
+          }
+          100% {
+            box-shadow: 0 0 0 0 transparent;
+          }
+        }
+        .global-toast {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          border: 1px solid var(--accent-primary);
+          border-left: 5px solid var(--accent-primary);
+          border-radius: 12px;
+          padding: 16px 36px 16px 20px;
+          color: white;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+          z-index: 10000;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          max-width: 420px;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .global-toast:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes slideInUp {
+          from {
+            transform: translateY(100px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes pulse-border-red {
+          0% {
+            border-color: rgba(239, 68, 68, 0.35);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+          }
+          50% {
+            border-color: rgba(239, 68, 68, 0.8);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+          }
+          100% {
+            border-color: rgba(239, 68, 68, 0.35);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
           }
         }
       `}} />
     </aside>
+
+    {/* Global Toast Notification */}
+    {globalNotification && (
+      <div 
+        className="global-toast" 
+        onClick={() => { navigate('/solicitudes'); setGlobalNotification(null); }}
+        title="Ver Solicitudes"
+      >
+        <div style={{
+          background: 'rgba(255, 62, 62, 0.1)',
+          borderRadius: '50%',
+          padding: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px solid rgba(255, 62, 62, 0.2)',
+          flexShrink: 0
+        }}>
+          <FileText size={20} color="var(--accent-primary)" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 'bold', fontSize: '0.95rem', marginBottom: '2px', color: '#f8fafc' }}>
+            {globalNotification.message}
+          </div>
+          <div style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: '1.3' }}>
+            {globalNotification.description}
+          </div>
+        </div>
+        <button 
+          style={{
+            background: 'var(--accent-primary)',
+            border: 'none',
+            borderRadius: '6px',
+            color: 'white',
+            padding: '6px 12px',
+            fontSize: '0.75rem',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            marginRight: '8px'
+          }}
+        >
+          Revisar
+        </button>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            setGlobalNotification(null);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#94a3b8',
+            cursor: 'pointer',
+            padding: '4px',
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'color 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = '#f8fafc'}
+          onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+          title="Cerrar"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    )}
     </>
   );
 };

@@ -14,14 +14,92 @@ const SolicitudesMembresia = () => {
   const [imageError, setImageError] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Estados para alertas de solicitudes pendientes
+  const [pendingMembresiasCount, setPendingMembresiasCount] = useState(0);
+  const [pendingProductosCount, setPendingProductosCount] = useState(0);
+  const pendingCountRef = React.useRef({ prod: 0, memb: 0 });
+
   const handleVerComprobante = (url, clientName) => {
     setImageError(false);
     setPreviewImage({ url, title: `Comprobante de ${clientName}` });
   };
 
+  const playAlertSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.3);
+      
+      setTimeout(() => {
+        try {
+          const osc2 = audioCtx.createOscillator();
+          const gain2 = audioCtx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(audioCtx.destination);
+          
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+          gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+          
+          osc2.start(audioCtx.currentTime);
+          osc2.stop(audioCtx.currentTime + 0.4);
+        } catch (e) {}
+      }, 100);
+    } catch (e) {}
+  };
+
+  const fetchPendingCounts = async () => {
+    try {
+      const [prodRes, membRes] = await Promise.all([
+        api.get('/solicitudes-producto/pendientes'),
+        api.get('/solicitudes-membresia/pendientes')
+      ]);
+
+      const newProdCount = Array.isArray(prodRes.data) ? prodRes.data.length : 0;
+      const newMembCount = Array.isArray(membRes.data) ? membRes.data.length : 0;
+
+      let hasNew = false;
+      if (newProdCount > pendingCountRef.current.prod) {
+        if (pendingCountRef.current.prod > 0) hasNew = true;
+      }
+      if (newMembCount > pendingCountRef.current.memb) {
+        if (pendingCountRef.current.memb > 0) hasNew = true;
+      }
+
+      pendingCountRef.current = { prod: newProdCount, memb: newMembCount };
+      setPendingProductosCount(newProdCount);
+      setPendingMembresiasCount(newMembCount);
+
+      if (hasNew) {
+        showNotification('🔔 ¡Nueva solicitud recibida! Revise las solicitudes pendientes.', 'info');
+        playAlertSound();
+        fetchSolicitudes();
+      }
+    } catch (err) {
+      console.error('Error fetching pending counts:', err);
+    }
+  };
+
   useEffect(() => {
     fetchSolicitudes();
   }, [activeTab, requestType]);
+
+  useEffect(() => {
+    fetchPendingCounts();
+    const interval = setInterval(fetchPendingCounts, 12000);
+    return () => clearInterval(interval);
+  }, []);
 
   const getBasePath = () =>
     requestType === 'MEMBRESIA' ? '/solicitudes-membresia' : '/solicitudes-producto';
@@ -37,6 +115,19 @@ const SolicitudesMembresia = () => {
 
       const res = await api.get(url);
       setSolicitudes(Array.isArray(res.data) ? res.data : []);
+      
+      // Sync pending counts immediately
+      try {
+        const [prodRes, membRes] = await Promise.all([
+          api.get('/solicitudes-producto/pendientes'),
+          api.get('/solicitudes-membresia/pendientes')
+        ]);
+        const newProdCount = Array.isArray(prodRes.data) ? prodRes.data.length : 0;
+        const newMembCount = Array.isArray(membRes.data) ? membRes.data.length : 0;
+        pendingCountRef.current = { prod: newProdCount, memb: newMembCount };
+        setPendingProductosCount(newProdCount);
+        setPendingMembresiasCount(newMembCount);
+      } catch (e) {}
     } catch (error) {
       console.error('Error fetching solicitudes:', error);
       setSolicitudes([]);
@@ -380,6 +471,11 @@ const SolicitudesMembresia = () => {
           0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
           50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; }
         }
+        @keyframes pulse-orange {
+          0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+          70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
       `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -424,9 +520,84 @@ const SolicitudesMembresia = () => {
         </div>
       </div>
 
+      {/* Alerta de pedidos/solicitudes pendientes sin aceptar o rechazar */}
+      {(pendingMembresiasCount > 0 || pendingProductosCount > 0) && (
+        <div style={{
+          background: 'rgba(245, 158, 11, 0.1)',
+          border: '1px solid rgba(245, 158, 11, 0.25)',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          boxShadow: '0 4px 15px rgba(245, 158, 11, 0.1)',
+          animation: 'fadeIn 0.5s ease-out'
+        }}>
+          <div style={{
+            background: '#f59e0b',
+            borderRadius: '50%',
+            width: '42px',
+            height: '42px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 0 0 rgba(245, 158, 11, 0.5)',
+            animation: 'pulse-orange 2s infinite',
+            flexShrink: 0
+          }}>
+            <FileText size={20} color="white" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h4 style={{ margin: '0 0 4px 0', color: '#f59e0b', fontSize: '0.95rem', fontWeight: 'bold' }}>
+              Solicitudes Pendientes de Revisión
+            </h4>
+            <p style={{ margin: 0, color: 'var(--text-main)', fontSize: '0.85rem', lineHeight: '1.4' }}>
+              Tiene {pendingMembresiasCount > 0 ? <span><strong>{pendingMembresiasCount}</strong> solicitud(es) de membresía</span> : null}
+              {pendingMembresiasCount > 0 && pendingProductosCount > 0 ? ' y ' : null}
+              {pendingProductosCount > 0 ? <span><strong>{pendingProductosCount}</strong> solicitud(es) de producto</span> : null} pendiente(s) que aún no han sido aceptadas o rechazadas.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {pendingMembresiasCount > 0 && requestType !== 'MEMBRESIA' && (
+              <button 
+                onClick={() => switchRequestType('MEMBRESIA')}
+                className="btn-secondary"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  borderColor: 'rgba(245, 158, 11, 0.4)',
+                  color: '#f59e0b',
+                  background: 'rgba(245, 158, 11, 0.05)',
+                  cursor: 'pointer'
+                }}
+              >
+                Ver Membresías
+              </button>
+            )}
+            {pendingProductosCount > 0 && requestType !== 'PRODUCTO' && (
+              <button 
+                onClick={() => switchRequestType('PRODUCTO')}
+                className="btn-secondary"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  borderColor: 'rgba(245, 158, 11, 0.4)',
+                  color: '#f59e0b',
+                  background: 'rgba(245, 158, 11, 0.05)',
+                  cursor: 'pointer'
+                }}
+              >
+                Ver Productos
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="card glass" style={{ marginBottom: '20px', padding: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <button 
-          className={`tab-btn-pendiente ${activeTab === 'PENDIENTE' ? 'active' : ''}`}
+          className={`tab-btn-pendiente ${activeTab === 'PENDIENTE' ? 'active' : ''}` }
           onClick={() => setActiveTab('PENDIENTE')}
         >
           Pendientes

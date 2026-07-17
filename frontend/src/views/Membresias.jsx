@@ -629,7 +629,14 @@ const Membresias = () => {
                   placeholder="Buscar socio o DNI..." 
                   style={{ paddingLeft: '40px', width: '100%', color: 'var(--text-main)', background: 'var(--panel-bg)' }}
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s_]/g, '');
+                    if (/^\d+$/.test(val)) {
+                      setSearch(val.slice(0, 8));
+                    } else {
+                      setSearch(val);
+                    }
+                  }}
                 />
               </div>
               <select 
@@ -994,7 +1001,15 @@ const Membresias = () => {
                 type="text" 
                 placeholder="Ej: 72312470 o Salas Bances..." 
                 value={socioSearch}
-                onChange={e => { setSocioSearch(e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s]/g, '')); setShowSocioList(true); }}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s_]/g, '');
+                  if (/^\d+$/.test(val)) {
+                    setSocioSearch(val.slice(0, 8));
+                  } else {
+                    setSocioSearch(val);
+                  }
+                  setShowSocioList(true);
+                }}
                 onFocus={() => setShowSocioList(true)}
                 style={{ paddingLeft: '40px', width: '100%', marginBottom: '8px' }}
               />

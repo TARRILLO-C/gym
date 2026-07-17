@@ -74,6 +74,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/membresias").permitAll()
                 .requestMatchers(HttpMethod.POST, "/solicitudes-membresia").permitAll()
                 .requestMatchers(HttpMethod.POST, "/solicitudes-producto").permitAll()
+                .requestMatchers(HttpMethod.POST, "/upload").permitAll()
                 .requestMatchers(HttpMethod.GET, "/socios/public/**").permitAll()
                 // Cualquier otro endpoint requiere token válido
                 .anyRequest().authenticated()

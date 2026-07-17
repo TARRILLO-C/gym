@@ -462,9 +462,19 @@ const Socios = () => {
         </div>
         <div style={{ flex: 1, position: 'relative', minWidth: 200 }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)}
+          <input 
+            value={search} 
+            onChange={e => {
+              const val = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s_]/g, '');
+              if (/^\d+$/.test(val)) {
+                setSearch(val.slice(0, 8));
+              } else {
+                setSearch(val);
+              }
+            }}
             placeholder="Buscar por nombre o DNI..."
-            style={{ paddingLeft: 36, width: '100%', borderRadius: 10, padding: '9px 12px 9px 36px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', outline: 'none' }} />
+            style={{ paddingLeft: 36, width: '100%', borderRadius: 10, padding: '9px 12px 9px 36px', background: 'var(--panel-bg)', border: '1px solid var(--panel-border)', color: 'var(--text-main)', outline: 'none' }} 
+          />
         </div>
       </div>
 
