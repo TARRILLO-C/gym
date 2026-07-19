@@ -6,6 +6,7 @@ import com.gym.models.SesionCaja.EstadoSesion;
 import com.gym.repositories.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ public class SesionCajaService {
     private final MovimientoCajaRepository movimientoRepo;
     private final UsuarioRepository usuarioRepository;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
 
     // ─────────────────────────────────────────────
     //  APERTURA DE SESIÓN (Feature 1)
@@ -229,13 +231,33 @@ public class SesionCajaService {
         if (pinAdmin == null || pinAdmin.isBlank()) {
             throw new SecurityException("Se requiere el PIN de administrador para esta operación.");
         }
+        // Compara usando BCrypt para no exponer PINs en texto plano en la BD
         boolean pinValido = usuarioRepository.findAll().stream()
-                .anyMatch(u -> u.getRol() != null 
-                            && "ADMINISTRADOR".equalsIgnoreCase(u.getRol().getNombre())
-                            && u.isActivo()
-                            && pinAdmin.equals(u.getPinAdmin()));
+                .anyMatch(u -> u.getRol() != null
+                             && "ADMINISTRADOR".equalsIgnoreCase(u.getRol().getNombre())
+                             && u.isActivo()
+                             && u.getPinAdmin() != null
+                             && !u.getPinAdmin().isBlank()
+                             && passwordEncoder.matches(pinAdmin, u.getPinAdmin()));
         if (!pinValido) {
             throw new SecurityException("PIN de administrador incorrecto o no autorizado.");
         }
+    }
+
+    /**
+     * Retorna el username del administrador cuyo PIN hasheado coincide con el PIN ingresado.
+     * Usado para registrar en los logs de auditoría quién autorizó la operación.
+     */
+    public String obtenerUsernameAdminPorPin(String pinAdmin) {
+        return usuarioRepository.findAll().stream()
+                .filter(u -> u.getRol() != null
+                             && "ADMINISTRADOR".equalsIgnoreCase(u.getRol().getNombre())
+                             && u.isActivo()
+                             && u.getPinAdmin() != null
+                             && !u.getPinAdmin().isBlank()
+                             && passwordEncoder.matches(pinAdmin, u.getPinAdmin()))
+                .map(u -> u.getUsername())
+                .findFirst()
+                .orElse("admin");
     }
 }

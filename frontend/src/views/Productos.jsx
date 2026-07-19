@@ -1316,9 +1316,27 @@ const Productos = () => {
                       type="number" step="0.01" min="0" required
                       placeholder="0.00" 
                       value={pago.monto} 
+                      onKeyDown={e => {
+                        if (['e', 'E', '+', '-'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onPaste={e => {
+                        const pasteData = e.clipboardData.getData('text');
+                        if (/[^0-9.]/.test(pasteData)) {
+                          e.preventDefault();
+                        }
+                      }}
                       onChange={e => {
+                        let val = e.target.value;
+                        if (val.includes('.')) {
+                          const [integer, decimal] = val.split('.');
+                          if (decimal && decimal.length > 2) {
+                            val = `${integer}.${decimal.slice(0, 2)}`;
+                          }
+                        }
                         const newPagos = [...checkoutForm.pagos];
-                        newPagos[index].monto = e.target.value;
+                        newPagos[index].monto = val;
                         setCheckoutForm({...checkoutForm, pagos: newPagos});
                       }} 
                       style={{ width: '100%', padding: '10px 10px 10px 25px', borderRadius: '8px', background: 'var(--bg-color)', color: 'var(--text-main)', border: '1px solid var(--panel-border)', outline: 'none' }} 

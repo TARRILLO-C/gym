@@ -27,6 +27,7 @@ public class Usuario extends Auditable {
 
     @NotBlank(message = "La contraseña es obligatoria")
     @Column(nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String password; 
 
     /**
@@ -48,4 +49,7 @@ public class Usuario extends Auditable {
     /** PIN hasheado para operaciones sensibles (anulaciones, retiros de fondos) */
     @Column(name = "pin_admin", length = 64)
     private String pinAdmin;
+
+    @Transient
+    private String currentPinAdmin;
 }

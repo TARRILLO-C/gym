@@ -67,6 +67,8 @@ public class SolicitudProductoController {
 
     @PostMapping
     @Transactional
+    // Endpoint público del catálogo virtual — protegido por rate limiting en application.properties
+    // (rate.limit.max.requests=5 por IP/minuto) implementado en RateLimiterService
     public ResponseEntity<?> crear(@RequestBody SolicitudProductoRequest request) {
         if (solicitudProductoRepository.existsByNumeroOperacion(request.getNumeroOperacion()) ||
             solicitudMembresiaRepository.existsByNumeroOperacion(request.getNumeroOperacion())) {

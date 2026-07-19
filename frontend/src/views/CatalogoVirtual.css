@@ -29,6 +29,7 @@
     radial-gradient(ellipse 80% 60% at 50% -20%, rgba(255, 45, 45, 0.12) 0%, transparent 70%),
     radial-gradient(ellipse 60% 40% at 90% 80%, rgba(255, 122, 0, 0.07) 0%, transparent 60%);
   min-height: 100vh;
+  padding-top: 72px;
   padding-bottom: 80px;
   color: #f1f1f2;
   font-family: var(--font-body);
@@ -45,14 +46,16 @@
 
 /* ── Navbar ─────────────────────────────────────────── */
 .catalog-nav {
-  position: sticky !important;
+  position: fixed !important;
   top: 0 !important;
-  z-index: 900 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1000 !important;
   padding: 0 60px !important;
   height: 72px !important;
   display: flex !important;
   align-items: center !important;
-  background: rgba(8, 8, 9, 0.82) !important;
+  background: rgba(8, 8, 9, 0.9) !important;
   backdrop-filter: blur(22px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
   border-bottom: 1px solid var(--gym-border) !important;
@@ -605,6 +608,10 @@
 
 /* ── Responsive ─────────────────────────────────────── */
 @media (max-width: 768px) {
+  .catalog-body {
+    padding-top: 110px;
+  }
+
   .catalog-nav {
     padding: 0 20px !important;
     flex-wrap: wrap !important;

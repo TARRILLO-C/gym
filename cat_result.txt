@@ -1,1 +1,0 @@
-{"timestamp":"2026-06-02T20:04:07.819766300","status":500,"error":"Internal Server Error","mensaje":"Error interno: HttpMediaTypeNotSupportedException - Content-Type 'application/octet-stream' is not supported"}

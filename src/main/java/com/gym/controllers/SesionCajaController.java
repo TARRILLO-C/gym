@@ -136,7 +136,9 @@ public class SesionCajaController {
     // ── DTOs ─────────────────────────────────────────────
 
     @Data public static class AbrirRequest {
+        @jakarta.validation.constraints.NotBlank(message = "El nombre de usuario es obligatorio")
         private String username;
+        @jakarta.validation.constraints.NotNull(message = "El monto inicial es obligatorio (puede ser 0)")
         private BigDecimal montoInicial;
         private String turno;
         private String observaciones;

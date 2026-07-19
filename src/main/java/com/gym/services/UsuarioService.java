@@ -100,7 +100,8 @@ public class UsuarioService {
         }
 
         // Encriptar la contraseña si viene en texto plano
-        if (usuario.getPassword() != null && !usuario.getPassword().startsWith("$2a$")) {
+        // Se verifica el prefijo $2 para cubrir todas las versiones de BCrypt ($2a$, $2b$, $2y$)
+        if (usuario.getPassword() != null && !usuario.getPassword().startsWith("$2")) {
             usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
         }
 

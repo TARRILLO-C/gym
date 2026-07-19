@@ -12,65 +12,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class GymManagementApplication {
 
     public static void main(String[] args) {
-        System.out.println("=== SYSTEM ENV DEBUG ===");
-        System.out.println("DB_USER: " + System.getenv("DB_USER"));
-        System.out.println("DB_PASS length: " + (System.getenv("DB_PASS") != null ? System.getenv("DB_PASS").length() : "null"));
-        System.out.println("MYSQLPASSWORD length: " + (System.getenv("MYSQLPASSWORD") != null ? System.getenv("MYSQLPASSWORD").length() : "null"));
-        System.out.println("DB_URL: " + System.getenv("DB_URL"));
-        System.out.println("========================");
-        corregirRelacionRolesUsuarios();
         SpringApplication.run(GymManagementApplication.class, args);
     }
 
-    private static void corregirRelacionRolesUsuarios() {
-        String url = "jdbc:mysql://190.116.26.62:3307/gym_db?useSSL=false&serverTimezone=America/Lima&allowPublicKeyRetrieval=true";
-        String user = "root";
-        String pass = "MUwjL1I5Cpc9dcGfdU";
 
-        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
-             java.sql.Statement stmt = conn.createStatement()) {
-            
-            // 1. Crear tabla roles si no existe
-            stmt.execute("CREATE TABLE IF NOT EXISTS roles (" +
-                    "id BIGINT AUTO_INCREMENT PRIMARY KEY, " +
-                    "nombre VARCHAR(100) NOT NULL UNIQUE, " +
-                    "descripcion VARCHAR(255), " +
-                    "activo BOOLEAN NOT NULL, " +
-                    "creado_por VARCHAR(50), " +
-                    "fecha_creacion DATETIME, " +
-                    "modificado_por VARCHAR(50), " +
-                    "fecha_modificacion DATETIME" +
-                    ") ENGINE=InnoDB");
-
-            // 2. Insertar roles por defecto si no existen
-            stmt.execute("INSERT IGNORE INTO roles (nombre, descripcion, activo) VALUES " +
-                    "('ADMINISTRADOR', 'Acceso total al sistema', true), " +
-                    "('RECEPCIONISTA', 'Acceso operativo del gimnasio', true)");
-
-            // 3. Crear columna rol_id en usuarios si no existe
-            try {
-                stmt.execute("ALTER TABLE usuarios ADD COLUMN rol_id BIGINT");
-            } catch (Exception e) {
-                // Ya existe la columna
-            }
-
-            // 4. Asignar el rol de ADMINISTRADOR a cualquier usuario que no tenga rol_id asignado o tenga uno inválido
-            stmt.execute("UPDATE usuarios SET rol_id = (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1) " +
-                    "WHERE rol_id IS NULL OR rol_id NOT IN (SELECT id FROM roles)");
-
-            // 5. Garantizar que el usuario predeterminado 'recepcion' tenga el rol RECEPCIONISTA
-            stmt.execute("UPDATE usuarios SET rol_id = (SELECT id FROM roles WHERE nombre = 'RECEPCIONISTA' LIMIT 1) " +
-                    "WHERE username = 'recepcion'");
-
-            // 6. Garantizar que el usuario predeterminado 'admin' tenga el rol ADMINISTRADOR
-            stmt.execute("UPDATE usuarios SET rol_id = (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1) " +
-                    "WHERE username = 'admin'");
-
-            System.out.println("Esquema relacional roles/usuarios corregido preventivamente de forma exitosa.");
-        } catch (Exception e) {
-            System.err.println("Advertencia al corregir relación roles/usuarios en base de datos: " + e.getMessage());
-        }
-    }
 
     @Bean
     public CommandLineRunner updateDatabaseSchema(JdbcTemplate jdbcTemplate) {
@@ -150,23 +95,31 @@ public class GymManagementApplication {
                     System.out.println("Sembrado de permisos finalizado con éxito.");
                 }
 
-                // Sincronización forzada de permisos por rol para asegurar consistencia
-                System.out.println("Sincronizando permisos de roles (limpieza y reasignación preventiva)...");
-                jdbcTemplate.execute("DELETE FROM rol_permiso");
-                
-                // 2. Asociar todos los permisos al Administrador
-                jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
-                        "SELECT (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1), id FROM permisos");
+                // Sincronización de permisos por rol SOLO en instalaciones nuevas (count == 0)
+                // Se verifica si el Administrador ya tiene permisos asignados antes de sincronizar
+                Integer countRolPermiso = jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM rol_permiso rp JOIN roles r ON rp.rol_id = r.id WHERE r.nombre = 'ADMINISTRADOR'",
+                        Integer.class);
 
-                // 3. Asociar permisos acotados al Recepcionista
-                jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
-                        "SELECT (SELECT id FROM roles WHERE nombre = 'RECEPCIONISTA' LIMIT 1), id FROM permisos " +
-                        "WHERE codigo IN ('asistencia:ver', 'asistencia:registrar', 'socios:ver', 'socios:crear', " +
-                        "'socios:editar', 'membresias:ver', 'productos:ver', 'ventas:ver', " +
-                        "'ventas:crear', 'solicitudes:ver', 'solicitudes:aprobar', 'catalogo:ver', " +
-                        "'caja:ver', 'caja:operar')");
-                
-                System.out.println("Sincronización de permisos de roles finalizada con éxito.");
+                if (countRolPermiso == null || countRolPermiso == 0) {
+                    System.out.println("Sincronizando permisos de roles (primera configuración)...");
+
+                    // 2. Asociar todos los permisos al Administrador
+                    jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
+                            "SELECT (SELECT id FROM roles WHERE nombre = 'ADMINISTRADOR' LIMIT 1), id FROM permisos");
+
+                    // 3. Asociar permisos acotados al Recepcionista
+                    jdbcTemplate.execute("INSERT INTO rol_permiso (rol_id, permiso_id) " +
+                            "SELECT (SELECT id FROM roles WHERE nombre = 'RECEPCIONISTA' LIMIT 1), id FROM permisos " +
+                            "WHERE codigo IN ('asistencia:ver', 'asistencia:registrar', 'socios:ver', 'socios:crear', " +
+                            "'socios:editar', 'membresias:ver', 'productos:ver', 'ventas:ver', " +
+                            "'ventas:crear', 'solicitudes:ver', 'solicitudes:aprobar', 'catalogo:ver', " +
+                            "'caja:ver', 'caja:operar')");
+
+                    System.out.println("Sincronización de permisos de roles finalizada con éxito.");
+                } else {
+                    System.out.println("Permisos de roles ya configurados. Saltando sincronización para preservar personalizaciones.");
+                }
             } catch (Exception e) {
                 System.err.println("Error al sembrar o sincronizar permisos: " + e.getMessage());
             }

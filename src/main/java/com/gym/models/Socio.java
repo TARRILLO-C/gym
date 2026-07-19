@@ -27,7 +27,7 @@ public class Socio extends Auditable {
     private String nombreCompleto;
 
     @NotBlank(message = "El DNI es obligatorio")
-    @Size(min = 8, max = 15, message = "El DNI debe tener entre 8 y 15 caracteres")
+    @Size(min = 8, max = 8, message = "El DNI peruano debe tener exactamente 8 dígitos")
     @Column(name = "dni", nullable = false, unique = true, length = 8)
     private String dni;
 

@@ -47,7 +47,7 @@ const validatePassword = (pwd) => {
   return null;
 };
 
-const validate = (formData, editingId) => {
+const validate = (formData, editingId, changePin, currentPin, newPin, confirmPin, originalHasPin) => {
   if (!formData.username.trim()) return 'El nombre de usuario es obligatorio.';
   if (formData.username.length < 4) return 'El usuario debe tener al menos 4 caracteres.';
   if (!/^[a-zA-Z0-9._]+$/.test(formData.username)) return 'Solo letras, números, puntos y guiones bajos.';
@@ -55,6 +55,20 @@ const validate = (formData, editingId) => {
   if (!editingId) {
     const passErr = validatePassword(formData.password);
     if (passErr) return passErr;
+  }
+
+  if (formData.rol === 'ADMINISTRADOR') {
+    if (editingId && originalHasPin) {
+      if (changePin) {
+        if (!currentPin) return 'El PIN actual es obligatorio.';
+        if (!newPin) return 'El nuevo PIN es obligatorio.';
+        if (!/^\d{4,6}$/.test(newPin)) return 'El nuevo PIN debe ser numérico y tener entre 4 y 6 dígitos.';
+        if (newPin !== confirmPin) return 'El nuevo PIN y su confirmación no coinciden.';
+      }
+    } else {
+      if (!formData.pinAdmin) return 'El PIN de administrador es obligatorio para el rol ADMINISTRADOR.';
+      if (!/^\d{4,6}$/.test(formData.pinAdmin)) return 'El PIN debe ser numérico y tener entre 4 y 6 dígitos.';
+    }
   }
   return null;
 };
@@ -64,7 +78,7 @@ const Usuarios = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ username: '', password: '', rol: 'RECEPCIONISTA', activo: true });
+  const [formData, setFormData] = useState({ username: '', password: '', pinAdmin: '', rol: 'RECEPCIONISTA', activo: true });
   const [errorMSG, setErrorMSG] = useState('');
   const [saving, setSaving] = useState(false);
   const [filterMode, setFilterMode] = useState('ALL');
@@ -79,6 +93,12 @@ const Usuarios = () => {
   const [passSaving, setPassSaving] = useState(false);
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
+
+  // States for Admin PIN modification
+  const [changePin, setChangePin] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
 
   const [dialogConfig, setDialogConfig] = useState({ isOpen: false });
   const currentUser = localStorage.getItem('username');
@@ -96,35 +116,73 @@ const Usuarios = () => {
 
   const openCreate = () => {
     setEditingId(null);
-    setFormData({ username: '', password: '', rol: 'RECEPCIONISTA', activo: true });
+    setFormData({ username: '', password: '', pinAdmin: '', rol: 'RECEPCIONISTA', activo: true });
+    setChangePin(false);
+    setCurrentPin('');
+    setNewPin('');
+    setConfirmPin('');
     setErrorMSG(''); setShowPass(false); setShowModal(true);
   };
 
   const openEdit = (u) => {
     setEditingId(u.id);
-    setFormData({ username: u.username, password: '', rol: u.rol, activo: u.activo });
+    setFormData({ username: u.username, password: '********', pinAdmin: u.pinAdmin || '', rol: u.rol?.nombre || 'RECEPCIONISTA', activo: u.activo });
+    setChangePin(false);
+    setCurrentPin('');
+    setNewPin('');
+    setConfirmPin('');
     setErrorMSG(''); setShowPass(false); setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const err = validate(formData, editingId);
+    const originalUser = editingId ? usuarios.find(u => u.id === editingId) : null;
+    const originalHasPin = originalUser?.pinAdmin ? true : false;
+    const err = validate(formData, editingId, changePin, currentPin, newPin, confirmPin, originalHasPin);
     if (err) { setErrorMSG(err); return; }
     if (editingId && !formData.activo && currentUser?.toLowerCase() === formData.username.toLowerCase()) {
       setErrorMSG('No puedes desactivar tu propia cuenta mientras tienes sesión activa.'); return;
     }
+    const dataToSend = { 
+      ...formData,
+      rol: formData.rol === 'ADMINISTRADOR' ? { id: 1, nombre: 'ADMINISTRADOR' } : { id: 2, nombre: 'RECEPCIONISTA' },
+    };
+    if (formData.rol === 'ADMINISTRADOR') {
+      if (editingId && originalHasPin) {
+        if (changePin) {
+          // Enviar el nuevo PIN en texto plano (el backend lo hasheará)
+          dataToSend.pinAdmin = newPin;
+          dataToSend.currentPinAdmin = currentPin;
+        } else {
+          // No cambiar el PIN: enviar el PIN actual del formulario para que BCrypt.matches() lo valide
+          // Como no tenemos el texto plano, enviamos null y el controller lo detectará (pinCambio=false)
+          dataToSend.pinAdmin = formData.pinAdmin; // Esto será el hash de la BD → matches devolverá false → no se toca
+          dataToSend.currentPinAdmin = null; // No se necesita si no hay cambio
+        }
+      } else {
+        dataToSend.pinAdmin = formData.pinAdmin;
+        dataToSend.currentPinAdmin = null;
+      }
+    } else {
+      dataToSend.pinAdmin = null;
+      dataToSend.currentPinAdmin = null;
+    }
     setSaving(true); setErrorMSG('');
     try {
-      if (editingId) await api.put(`/usuarios/${editingId}`, formData);
-      else await api.post('/usuarios', formData);
+      if (editingId) await api.put(`/usuarios/${editingId}`, dataToSend);
+      else await api.post('/usuarios', dataToSend);
       setShowModal(false); fetchData();
     } catch (e) {
-      setErrorMSG(e.response?.data || 'Error al guardar. Verifica los datos e intenta nuevamente.');
+      const serverError = e.response?.data;
+      const msg = typeof serverError === 'string'
+        ? serverError
+        : (serverError?.mensaje || serverError?.error || 'Error al guardar. Verifica los datos e intenta nuevamente.');
+      setErrorMSG(msg);
     } finally { setSaving(false); }
   };
 
   const handleToggleActivo = (u) => {
-    if (u.rol === 'ADMINISTRADOR') { showAlert('Acción Restringida', 'Por políticas de seguridad no es posible desactivar a un usuario con rol ADMINISTRADOR.'); return; }
+    if (u.rol?.nombre === 'ADMINISTRADOR') { showAlert('Acción Restringida', 'Por políticas de seguridad no es posible desactivar a un usuario con rol ADMINISTRADOR.'); return; }
     if (currentUser?.toLowerCase() === u.username.toLowerCase()) { showAlert('Acción Denegada', 'No puedes desactivar tu propia cuenta mientras tienes una sesión activa.'); return; }
     const accion = u.activo !== false ? 'desactivar' : 'activar';
     setDialogConfig({
@@ -176,7 +234,11 @@ const Usuarios = () => {
       if (error.response?.status === 401) {
         setPassError('La contraseña actual es incorrecta.');
       } else {
-        setPassError(error.response?.data || 'Error al cambiar la contraseña. Inténtalo de nuevo.');
+        const serverError = error.response?.data;
+        const msg = typeof serverError === 'string'
+          ? serverError
+          : (serverError?.mensaje || serverError?.error || 'Error al cambiar la contraseña. Inténtalo de nuevo.');
+        setPassError(msg);
       }
     } finally {
       setPassSaving(false);
@@ -185,13 +247,13 @@ const Usuarios = () => {
 
   const filtered = usuarios.filter(u => {
     const matchFilter = filterMode === 'ALL' || (filterMode === 'ACTIVO' ? u.activo !== false : u.activo === false);
-    const matchSearch = !search || u.username.toLowerCase().includes(search.toLowerCase()) || u.rol.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || u.username.toLowerCase().includes(search.toLowerCase()) || u.rol?.nombre?.toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
 
   const totalActivos = usuarios.filter(u => u.activo !== false).length;
-  const totalAdmins = usuarios.filter(u => u.rol === 'ADMINISTRADOR').length;
-  const totalRecep = usuarios.filter(u => u.rol === 'RECEPCIONISTA').length;
+  const totalAdmins = usuarios.filter(u => u.rol?.nombre === 'ADMINISTRADOR').length;
+  const totalRecep = usuarios.filter(u => u.rol?.nombre === 'RECEPCIONISTA').length;
 
   const FILTERS = [
     { key: 'ALL', label: 'Todos', count: usuarios.length },
@@ -261,18 +323,22 @@ const Usuarios = () => {
             </thead>
             <tbody>
               {filtered.map(u => {
-                const cfg = ROL_CONFIG[u.rol] || ROL_CONFIG.RECEPCIONISTA;
+                const cfg = ROL_CONFIG[u.rol?.nombre] || ROL_CONFIG.RECEPCIONISTA;
                 const isMe = currentUser?.toLowerCase() === u.username.toLowerCase();
                 const isActive = u.activo !== false;
                 return (
                   <tr key={u.id} style={{ opacity: isActive ? 1 : 0.55 }}>
                     <td data-label="USUARIO">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Avatar name={u.username} rol={u.rol} />
+                        <Avatar name={u.username} rol={u.rol?.nombre} />
                         <div>
-                          <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                          <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                             {u.username}
-
+                            {u.rol?.nombre === 'ADMINISTRADOR' && (
+                              <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: 4, background: u.pinAdmin ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', color: u.pinAdmin ? '#22c55e' : '#ef4444', border: `1px solid ${u.pinAdmin ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`, fontWeight: 600 }}>
+                                {u.pinAdmin ? 'PIN OK' : 'SIN PIN'}
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID #{u.id}</div>
                         </div>
@@ -308,7 +374,7 @@ const Usuarios = () => {
                         {/* Activar / Desactivar */}
                         {isActive ? (
                           <button onClick={() => handleToggleActivo(u)} title="Desactivar acceso"
-                            disabled={u.rol === 'ADMINISTRADOR' || isMe}
+                            disabled={u.rol?.nombre === 'ADMINISTRADOR' || isMe}
                             style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 8, padding: '6px 10px', cursor: (u.rol === 'ADMINISTRADOR' || isMe) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', fontWeight: 600, opacity: (u.rol === 'ADMINISTRADOR' || isMe) ? 0.35 : 1 }}>
                             <UserX size={14} /> Desactivar
                           </button>
@@ -346,6 +412,109 @@ const Usuarios = () => {
               placeholder="Ej: maria.recepcion"
               style={{ width: '100%' }} />
           </div>
+
+          {formData.rol === 'ADMINISTRADOR' && (
+            <div style={{ background: 'rgba(59,130,246,0.04)', border: '1px dashed rgba(59,130,246,0.2)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Shield size={16} style={{ color: '#3b82f6' }} />
+                <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>PIN de Seguridad</span>
+              </div>
+              
+              {editingId && (usuarios.find(u => u.id === editingId)?.pinAdmin ? true : false) ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#22c55e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      ✓ PIN configurado
+                    </span>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 600 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={changePin} 
+                        onChange={e => {
+                          setChangePin(e.target.checked);
+                          if (!e.target.checked) {
+                            setCurrentPin('');
+                            setNewPin('');
+                            setConfirmPin('');
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      Cambiar PIN
+                    </label>
+                  </div>
+                  
+                  {changePin && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, borderTop: '1px solid var(--panel-border)', paddingTop: 12 }}>
+                      <div>
+                        <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                          PIN Actual <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input 
+                          required 
+                          type="password" 
+                          maxLength={6}
+                          value={currentPin}
+                          onChange={e => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+                          placeholder="Ingresa el PIN anterior"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div>
+                          <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                            Nuevo PIN <span style={{ color: '#ef4444' }}>*</span>
+                          </label>
+                          <input 
+                            required 
+                            type="password" 
+                            maxLength={6}
+                            value={newPin}
+                            onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+                            placeholder="Mín. 4 dígitos"
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600 }}>
+                            Confirmar PIN <span style={{ color: '#ef4444' }}>*</span>
+                          </label>
+                          <input 
+                            required 
+                            type="password" 
+                            maxLength={6}
+                            value={confirmPin}
+                            onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                            placeholder="Repite el nuevo PIN"
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6, fontWeight: 600 }}>
+                    Asignar PIN de Seguridad <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    required 
+                    type="password" 
+                    maxLength={6}
+                    value={formData.pinAdmin || ''}
+                    onChange={e => setFormData({ ...formData, pinAdmin: e.target.value.replace(/\D/g, '') })}
+                    placeholder="Ej: 123456"
+                    style={{ width: '100%' }} 
+                  />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                    PIN numérico de 4 a 6 dígitos para autorizar retiros y anulaciones.
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {!editingId && (
             <div>

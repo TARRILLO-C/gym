@@ -122,25 +122,50 @@ const Ventas = () => {
       ? `${venta.tipoComprobante} ${venta.serie}-${venta.correlativo}`
       : `Venta Interna #${venta.id}`;
 
+    // PASO 1: Solicitar motivo de anulación
     setDialogInput('');
     setDialogConfig({
       isOpen: true, 
       type: 'confirm', 
-      title: 'Anular Comprobante',
+      title: 'Anular Comprobante — Paso 1 de 2',
       message: `¿Estás seguro que deseas anular la ${ident}? El stock será devuelto (si aplica).`,
       warningText: 'Esta acción reportará la baja a SUNAT y no se puede deshacer.',
       showInput: true,
       inputLabel: 'Motivo de anulación (Obligatorio)',
       inputPlaceholder: 'Ej: Error en los productos, Cliente desistió de la compra...',
-      onConfirm: async () => {
-        try {
-          await api.put(`/ventas/${venta.id}`, { ...venta, activo: false, motivoAnulacion: dialogInput });
-          await fetchVentas();
-          await fetchPagos();
-        } catch (err) { showAlert("Error", "Error al anular venta"); }
+      onConfirm: () => {
+        const motivo = dialogInput;
+        // PASO 2: Solicitar PIN del administrador
+        setDialogInput('');
+        setDialogConfig({
+          isOpen: true,
+          type: 'confirm',
+          title: '🔐 Anular Comprobante — Paso 2 de 2',
+          message: `Ingresa el PIN de administrador para autorizar la anulación de la ${ident}.`,
+          warningText: 'Se requiere autorización del administrador para anular comprobantes.',
+          showInput: true,
+          inputLabel: 'PIN de Administrador (Obligatorio)',
+          inputPlaceholder: 'Ingresa el PIN de admin...',
+          onConfirm: async () => {
+            const pinAdmin = dialogInput;
+            try {
+              await api.post(`/ventas/${venta.id}/anular`, { 
+                motivoAnulacion: motivo, 
+                pinAdmin: pinAdmin 
+              });
+              await fetchVentas();
+              await fetchPagos();
+              showAlert("✅ Anulación Exitosa", "El comprobante ha sido anulado correctamente y el stock ha sido repuesto.");
+            } catch (err) {
+              const errorMsg = err.response?.data?.error || "Error al anular la venta.";
+              showAlert("❌ Error de Anulación", errorMsg);
+            }
+          }
+        });
       }
     });
   };
+
 
   // Removida la función handleRestoreVenta según requerimiento de cambiar a "Emitir Comprobante"
 

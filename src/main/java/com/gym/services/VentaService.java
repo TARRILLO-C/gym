@@ -34,6 +34,7 @@ public class VentaService {
     private final LogAnulacionRepository logAnulacionRepository;
     private final PagoRepository pagoRepository;
     private final SuscripcionRepository suscripcionRepository;
+    private final UsuarioRepository usuarioRepository;
 
     // ─────────────────────────────────────────────
     //  REGISTRAR VENTA CON PAGOS MIXTOS (Feature 4)
@@ -106,6 +107,9 @@ public class VentaService {
 
         BigDecimal subtotalGeneral = BigDecimal.ZERO;
         for (DetalleVenta item : detalles) {
+            if (item.getCantidad() == null || item.getCantidad() <= 0) {
+                throw new IllegalStateException("La cantidad de cada producto debe ser mayor a cero.");
+            }
             Producto p = productoService.buscarPorId(item.getProducto().getId());
             if (!p.getNombre().startsWith("Servicio de Membresía")) {
                 if (p.getStock() < item.getCantidad()) {
@@ -323,8 +327,8 @@ public class VentaService {
     // ─────────────────────────────────────────────
 
     private String obtenerUsernameAdmin(String pinAdmin) {
-        // Reutiliza la búsqueda del servicio; aquí se extrae el username
-        return "admin"; // simplificado — el PinAdmin fue validado antes
+        // Delega al SesionCajaService que ya valida con BCrypt
+        return sesionCajaService.obtenerUsernameAdminPorPin(pinAdmin);
     }
 
     private void crearSolicitudProductoDesdeVenta(Venta venta) {

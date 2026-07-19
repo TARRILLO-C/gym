@@ -16,6 +16,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,6 +44,9 @@ public class UsuarioController {
 
     @Autowired
     private RolRepository rolRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     // ── Autenticación ─────────────────────────────────────────────────────────
 
@@ -141,6 +145,39 @@ public class UsuarioController {
             }
             Usuario usuario = usuarioOpt.get();
             usuario.setUsername(usuarioDetails.getUsername());
+
+            // Validar y aplicar cambio de PIN de administrador con BCrypt
+            String pinNuevo = usuarioDetails.getPinAdmin();
+            String pinActualHash = usuario.getPinAdmin(); // ya hasheado en BD
+
+            // Si el frontend devuelve el mismo hash almacenado (empieza con $2), no hay intención de cambio
+            boolean esElMismoHash = pinNuevo != null && pinNuevo.startsWith("$2");
+
+            if (pinActualHash != null && !pinActualHash.isBlank() && !esElMismoHash) {
+                // El usuario ya tiene un PIN configurado y viene un valor diferente (texto plano)
+                boolean pinCambio = (pinNuevo == null)
+                        || pinNuevo.isBlank()
+                        || !passwordEncoder.matches(pinNuevo, pinActualHash);
+                if (pinCambio) {
+                    // Verificar que el PIN actual proporcionado sea correcto
+                    String currentPinIngresado = usuarioDetails.getCurrentPinAdmin();
+                    if (currentPinIngresado == null || currentPinIngresado.isBlank()
+                            || !passwordEncoder.matches(currentPinIngresado, pinActualHash)) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("El PIN actual de administrador proporcionado es incorrecto.");
+                    }
+                    // Hashear el nuevo PIN antes de guardarlo
+                    usuario.setPinAdmin(pinNuevo != null && !pinNuevo.isBlank()
+                            ? passwordEncoder.encode(pinNuevo) : null);
+                }
+                // Si matches devolvió true (mismo PIN), no tocar el campo
+            } else if (!esElMismoHash && pinActualHash == null) {
+                // El usuario no tenía PIN, hashear y guardar el nuevo si viene
+                if (pinNuevo != null && !pinNuevo.isBlank()) {
+                    usuario.setPinAdmin(passwordEncoder.encode(pinNuevo));
+                }
+            }
+            // Si esElMismoHash == true: no tocar el PIN (el frontend devolvió el hash guardado = sin cambios)
 
             // Actualizar contraseña si no coincide con la máscara del frontend
             if (usuarioDetails.getPassword() != null
